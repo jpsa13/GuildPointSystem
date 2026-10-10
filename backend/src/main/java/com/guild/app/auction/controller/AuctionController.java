@@ -33,6 +33,19 @@ public class AuctionController {
         return auctionService.create(request, SecurityUtils.currentMember());
     }
 
+    /** Líder/Administrador: force-close an active auction (no winner, reserves released). */
+    @PostMapping("/{id}/cancel")
+    public AuctionResponse cancel(@PathVariable Long id) {
+        return auctionService.cancel(id, SecurityUtils.currentMember());
+    }
+
+    /** Líder/Administrador: delete a finished auction. Points are untouched. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        auctionService.delete(id, SecurityUtils.currentMember());
+    }
+
     @PostMapping("/{id}/bids")
     public AuctionResponse placeBid(@PathVariable Long id, @Valid @RequestBody PlaceBidRequest request) {
         return auctionService.placeBid(id, request, SecurityUtils.currentMember());

@@ -6,6 +6,7 @@ import {
   getKeenPct,
 } from '@/Domain/Item/utils/talicUtils'
 import { mediaUrl } from '@/Shared/utils/mediaUrl'
+import { SpriteIcon } from '@/Shared/ui/components/SpriteIcon/SpriteIcon'
 import type { Item, ItemTalic, SeedOption } from '@/Domain/types/models'
 
 export const TALIC_IMAGES: Record<string, string> = {
@@ -94,11 +95,13 @@ export function ItemCard({
   item,
   canAdmin,
   onDelete,
+  onEdit,
   weaponCasts,
 }: {
   item: Item
   canAdmin: boolean
   onDelete: (id: number) => void
+  onEdit?: (id: number) => void
   weaponCasts: SeedOption[]
 }) {
   const [imgError, setImgError] = useState(false)
@@ -123,7 +126,15 @@ export function ItemCard({
     <div className="item-tooltip" style={{ '--rarity': color } as React.CSSProperties}>
       <div className="item-tooltip__header">
         <div className="item-tooltip__icon-wrap">
-          {!imgError && item.imageUrl ? (
+          {item.gameIcon ? (
+            <SpriteIcon
+              iconId={item.gameIcon.iconId}
+              spriteSheet={item.gameIcon.spriteSheet}
+              spriteCols={item.gameIcon.spriteCols}
+              size={48}
+              className="item-tooltip__icon"
+            />
+          ) : !imgError && item.imageUrl ? (
             <img
               src={mediaUrl(item.imageUrl)}
               alt={item.name}
@@ -139,14 +150,26 @@ export function ItemCard({
           <span className="item-tooltip__rarity">{item.rarity}</span>
         </div>
         {canAdmin && (
-          <button
-            type="button"
-            className="item-tooltip__delete"
-            title="Deletar"
-            onClick={() => onDelete(item.id)}
-          >
-            ×
-          </button>
+          <div className="item-tooltip__admin-actions">
+            {onEdit && (
+              <button
+                type="button"
+                className="item-tooltip__edit"
+                title="Editar"
+                onClick={() => onEdit(item.id)}
+              >
+                ✎
+              </button>
+            )}
+            <button
+              type="button"
+              className="item-tooltip__delete"
+              title="Deletar"
+              onClick={() => onDelete(item.id)}
+            >
+              ×
+            </button>
+          </div>
         )}
       </div>
 

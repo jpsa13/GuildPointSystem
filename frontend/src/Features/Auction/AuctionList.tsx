@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuctions, useCreateAuction } from '@/Domain/Auction/hooks/useAuction'
-import { useItems } from '@/Domain/Item/hooks/useItems'
+import { useAuctions, useCreateAuction, useDeleteAuction } from '@/Domain/Auction/hooks/useAuction'
+import { isAuctionFinished } from '@/Domain/types/models'
+import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
+import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
+import { AuctionItemPicker } from '@/Features/Auction/components/AuctionItemPicker/AuctionItemPicker'
+import { AuctionItemIcon } from '@/Features/Auction/components/AuctionItemIcon/AuctionItemIcon'
 import { Button } from '@/Shared/ui/components/Button/Button'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import type { Auction } from '@/Domain/types/models'
@@ -29,16 +33,22 @@ const STATUS_LABEL: Record<string, string> = {
   DOLE: 'DOLE',
   TIE_BREAK: 'Empate',
   CLOSED: 'Encerrado',
+  CANCELLED: 'Cancelado',
 }
 
 function AuctionListSection({
   title,
   auctions,
   emptyText,
+  onDelete,
+  deletingId,
 }: {
   title: string
   auctions: Auction[]
   emptyText?: string
+  /** Shown only for finished auctions, to Líder/Administrador. */
+  onDelete?: (auction: Auction) => void
+  deletingId?: number | null
 }) {
   if (auctions.length === 0 && !emptyText) return null
 
@@ -51,9 +61,10 @@ function AuctionListSection({
           {auctions.map((auction) => (
             <li
               key={auction.id}
-              className={`auction-list__item${auction.status === 'CLOSED' ? ' auction-list__item--closed' : ''}`}
+              className={`auction-list__item${isAuctionFinished(auction.status) ? ' auction-list__item--closed' : ''}`}
             >
               <span className="auction-list__lot">#{String(auction.id).padStart(3, '0')}</span>
+              <AuctionItemIcon item={auction.items[0]} />
               <div className="auction-list__info">
                 <strong>
                   {auction.items.map((i) => i.itemName).join(', ') || `Leilão #${auction.id}`}
@@ -73,11 +84,23 @@ function AuctionListSection({
                 {STATUS_LABEL[auction.status] ?? auction.status}
               </span>
               <span className="auction-list__bid">{auction.currentBid}</span>
-              <Link to={`/auctions/${auction.id}`}>
-                <Button variant="secondary" size="sm">
-                  Ver
-                </Button>
-              </Link>
+              <div className="auction-list__actions">
+                <Link to={`/auctions/${auction.id}`}>
+                  <Button variant="secondary" size="sm">
+                    Ver
+                  </Button>
+                </Link>
+                {onDelete && isAuctionFinished(auction.status) && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    loading={deletingId === auction.id}
+                    onClick={() => onDelete(auction)}
+                  >
+                    Excluir
+                  </Button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -88,13 +111,16 @@ function AuctionListSection({
 
 export function AuctionListPage() {
   const { data: auctions = [], isLoading } = useAuctions()
-  const { data: items = [] } = useItems()
   const createAuction = useCreateAuction()
+  const deleteAuction = useDeleteAuction()
+  const { showToast } = useAppToast()
   const { hasRole } = useAuthContext()
   const isAdmin = hasRole('ADMINISTRADOR')
 
   const [durationMinutes, setDurationMinutes] = useState(15)
   const [entries, setEntries] = useState<ItemEntry[]>([emptyEntry()])
+  const [pendingDelete, setPendingDelete] = useState<Auction | null>(null)
+  const closeDelete = useCallback(() => setPendingDelete(null), [])
 
   const updateEntry = (index: number, patch: Partial<ItemEntry>) => {
     setEntries((prev) => prev.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)))
@@ -120,8 +146,22 @@ export function AuctionListPage() {
 
   if (isLoading) return <p>Carregando leilões...</p>
 
-  const active = auctions.filter((a) => a.status !== 'CLOSED')
-  const closed = auctions.filter((a) => a.status === 'CLOSED')
+  const active = auctions.filter((a) => !isAuctionFinished(a.status))
+  const closed = auctions.filter((a) => isAuctionFinished(a.status))
+
+  const lotOf = (auction: Auction) => `#${String(auction.id).padStart(3, '0')}`
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return
+    try {
+      await deleteAuction.mutateAsync(pendingDelete.id)
+      showToast(`Leilão ${lotOf(pendingDelete)} excluído.`, 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Não foi possível excluir o leilão.', 'error')
+    } finally {
+      setPendingDelete(null)
+    }
+  }
 
   return (
     <div className="auction-page">
@@ -146,20 +186,18 @@ export function AuctionListPage() {
 
             <fieldset className="auction-form__items">
               <legend>Itens do leilão</legend>
-              {entries.map((entry, index) => (
+              {entries.map((entry, index) => {
+                const otherIds = entries
+                  .filter((_, i) => i !== index)
+                  .map((e) => e.itemId)
+                  .filter((id) => id > 0)
+                return (
                 <div key={index} className="auction-form__item-row">
-                  <select
-                    value={entry.itemId}
-                    onChange={(e) => updateEntry(index, { itemId: Number(e.target.value) })}
-                    required={index === 0}
-                  >
-                    <option value={0}>Selecione um item...</option>
-                    {items.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  <AuctionItemPicker
+                    itemId={entry.itemId}
+                    onChange={(id) => updateEntry(index, { itemId: id })}
+                    disabledIds={otherIds}
+                  />
                   <input
                     type="number"
                     min={1}
@@ -174,13 +212,18 @@ export function AuctionListPage() {
                     </Button>
                   )}
                 </div>
-              ))}
+                )
+              })}
               <Button type="button" variant="secondary" size="sm" onClick={addEntry}>
                 + Adicionar item
               </Button>
             </fieldset>
 
-            <Button type="submit" loading={createAuction.isPending} disabled={items.length === 0}>
+            <Button
+              type="submit"
+              loading={createAuction.isPending}
+              disabled={!entries.some((e) => e.itemId > 0)}
+            >
               Criar Leilão
             </Button>
           </form>
@@ -188,7 +231,37 @@ export function AuctionListPage() {
       )}
 
       <AuctionListSection title="Em andamento" auctions={active} emptyText="Nenhum leilão aberto." />
-      <AuctionListSection title="Encerrados" auctions={closed} />
+      <AuctionListSection
+        title="Encerrados"
+        auctions={closed}
+        onDelete={isAdmin ? setPendingDelete : undefined}
+        deletingId={deleteAuction.isPending ? deleteAuction.variables : null}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Excluir leilão ${pendingDelete ? lotOf(pendingDelete) : ''}`}
+        code="ADM"
+        confirmLabel="Excluir leilão"
+        loading={deleteAuction.isPending}
+        onConfirm={handleDelete}
+        onCancel={closeDelete}
+      >
+        {pendingDelete && (
+          <>
+            <p>
+              <strong>{pendingDelete.items.map((i) => i.itemName).join(', ')}</strong> — o leilão, os
+              lances e o chat serão apagados. Essa ação não pode ser desfeita.
+            </p>
+            <p className="confirm-dialog__note">
+              Os pontos não são alterados
+              {pendingDelete.winnerNickname
+                ? `: ${pendingDelete.winnerNickname} continua debitado em ${pendingDelete.currentBid} pts.`
+                : '.'}
+            </p>
+          </>
+        )}
+      </ConfirmDialog>
     </div>
   )
 }

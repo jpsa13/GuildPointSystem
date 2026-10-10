@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import type { ItemType } from '@/Domain/types/models'
+import type { GameLuaItem, ItemType } from '@/Domain/types/models'
 import type { CreateItemPayload } from '@/Domain/Item/hooks/useItems'
-import { useCreateItem } from '@/Domain/Item/hooks/useItems'
+import { useCreateItem, useItem, useUpdateItem } from '@/Domain/Item/hooks/useItems'
+import { GameRefPicker } from '@/Features/Items/components/GameRefPicker/GameRefPicker'
 import { TALIC_BONUS_PCT, applyBonus } from '@/Domain/Item/utils/talicUtils'
 import { useItemSeeds } from '@/Domain/Seed/hooks/useItemSeeds'
 import { useRaces } from '@/Domain/Seed/hooks/useSeeds'
@@ -486,8 +487,19 @@ function InputWithBoost({
   )
 }
 
-export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+export function CreateItemForm({
+  onSuccess,
+  onCancel,
+  itemId,
+}: {
+  onSuccess?: () => void
+  onCancel?: () => void
+  itemId?: number
+} = {}) {
+  const isEdit = itemId != null && itemId > 0
+  const { data: editItem } = useItem(itemId ?? 0)
   const createItem = useCreateItem()
+  const updateItem = useUpdateItem()
   const uploadImage = useUploadImage()
   const { showToast } = useAppToast()
 
@@ -525,7 +537,9 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const [raceId, setRaceId] = useState(0)
   const [accessorySubtype, setAccessorySubtype] = useState('')
   const [accessoryEffects, setAccessoryEffects] = useState<string[]>([])
+  const [gameRef, setGameRef] = useState<GameLuaItem | null>(null)
   const [formKey, setFormKey] = useState(0)
+  const [prefilledId, setPrefilledId] = useState<number | null>(null)
 
   const { data: weaponRarities = [] } = useItemSeeds('WEAPON_RARITY', type === 'WEAPON')
   const { data: armorRarities = [] } = useItemSeeds('ARMOR_RARITY', type === 'ARMOR')
@@ -541,11 +555,76 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const filterEffects = (effects: string[]) =>
     effects.map((e) => e.trim()).filter(Boolean).slice(0, 4)
 
+  useEffect(() => {
+    if (!isEdit || !editItem || prefilledId === editItem.id) return
+
+    const det = editItem.details as Record<string, unknown> | null
+    setType(editItem.type)
+    setName(editItem.name ?? '')
+    setDescription(editItem.description ?? '')
+    setGameRef(
+      editItem.gameIcon
+        ? {
+            category: editItem.gameIcon.category,
+            gameIndex: editItem.gameIcon.gameIndex,
+            gameCode: editItem.gameIcon.gameCode,
+            name: editItem.name ?? editItem.gameIcon.gameCode,
+            iconId: editItem.gameIcon.iconId,
+            spriteSheet: editItem.gameIcon.spriteSheet,
+            spriteCols: editItem.gameIcon.spriteCols,
+            itemGrade: 0,
+            levelRequired: 0,
+          }
+        : null,
+    )
+
+    if (editItem.type === 'WEAPON' && det) {
+      setWeaponRarity(editItem.rarity ?? '')
+      setWeaponLevel(Number(det.level) || 1)
+      setWeaponSubtype(String(det.subtype ?? ''))
+      setAttackMin(Number(det.attackMin) || 0)
+      setAttackMax(Number(det.attackMax) || 0)
+      setForceAttackMin(Number(det.forceAttackMin) || 0)
+      setForceAttackMax(Number(det.forceAttackMax) || 0)
+      setWeaponEffects((det.specialEffects as string[]) ?? [])
+      const cast = weaponCasts.find((c) => c.name === det.castName)
+      setCastSeedId(cast?.id ?? 0)
+    } else if (editItem.type === 'ARMOR' && det) {
+      setArmorRarity(editItem.rarity ?? '')
+      setArmorLevel(Number(det.level) || 1)
+      setArmorSubtype(String(det.subtype ?? ''))
+      setArmorClass(String(det.armorClass ?? ''))
+      setAvgDefPower(Number(det.avgDefPower) || 0)
+      setDefenseSuccessRate(Number(det.defenseSuccessRate) || 0)
+      setArmorEffects((det.specialEffects as string[]) ?? [])
+    } else if (editItem.type === 'ACCESSORY' && det) {
+      setRaceId(Number(det.raceId) || 0)
+      setAccessorySubtype(String(det.subtype ?? ''))
+      setAccessoryEffects((det.specialEffects as string[]) ?? [])
+    }
+
+    const weaponSlotState: WeaponSlot[] = Array(TALIC_SLOT_COUNT).fill(null)
+    const armorSlotState: ArmorSlot[] = Array(TALIC_SLOT_COUNT).fill(null)
+    for (const t of editItem.talics) {
+      const slot = t.slot
+      if (slot < 0 || slot >= TALIC_SLOT_COUNT) continue
+      if (editItem.type === 'WEAPON') {
+        weaponSlotState[slot] = { type: t.talicType as WeaponTalicType }
+      } else if (editItem.type === 'ARMOR') {
+        armorSlotState[slot] = { type: t.talicType as ArmorTalicType }
+      }
+    }
+    setWeaponSlots(weaponSlotState)
+    setArmorSlots(armorSlotState)
+    setPrefilledId(editItem.id)
+  }, [isEdit, editItem, prefilledId, weaponCasts])
+
   const resetForm = () => {
     setName('')
     setDescription('')
     setImageFile(null)
     setImagePreview(null)
+    setGameRef(null)
     setCastSeedId(0)
     setWeaponEffects([])
     setArmorEffects([])
@@ -558,22 +637,27 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
     e.preventDefault()
     setUploadError(null)
 
-    if (!imageFile) {
-      setUploadError('Selecione uma imagem.')
+    if (!imageFile && !gameRef && !(isEdit && editItem?.imageUrl)) {
+      setUploadError('Selecione uma imagem ou um item do servidor (Lua).')
       return
     }
 
-    let imageUrl: string
-    try {
-      imageUrl = await uploadImage.mutateAsync(imageFile)
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Falha no upload da imagem.')
-      return
+    let imageUrl: string | undefined
+    if (imageFile) {
+      try {
+        imageUrl = await uploadImage.mutateAsync(imageFile)
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Falha no upload da imagem.')
+        return
+      }
+    } else if (isEdit && editItem?.imageUrl) {
+      imageUrl = editItem.imageUrl
     }
 
     const payload: CreateItemPayload = {
       type,
       name: name.trim(),
+      gameCode: gameRef?.gameCode,
       imageUrl,
       description: description.trim() || undefined,
       talics: type === 'WEAPON'
@@ -616,10 +700,15 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
       payload.name = name.trim() || undefined
     }
 
-    await createItem.mutateAsync(payload as Record<string, unknown>)
-    showToast('Item criado com sucesso!', 'success')
-    resetForm()
-    setFormKey((k) => k + 1)
+    if (isEdit && itemId) {
+      await updateItem.mutateAsync({ id: itemId, body: payload as Record<string, unknown> })
+      showToast('Item atualizado com sucesso!', 'success')
+    } else {
+      await createItem.mutateAsync(payload as Record<string, unknown>)
+      showToast('Item criado com sucesso!', 'success')
+      resetForm()
+      setFormKey((k) => k + 1)
+    }
     onSuccess?.()
   }
 
@@ -629,10 +718,11 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const favorCount = armorSlots.filter(s => s?.type === 'FAVOR').length
   const favorPct = TALIC_BONUS_PCT[favorCount]
 
-  const isSubmitting = createItem.isPending || uploadImage.isPending
+  const isSubmitting =
+    createItem.isPending || updateItem.isPending || uploadImage.isPending
 
   return (
-    <Panel title="Criar item" variant="amber" code="NEW">
+    <Panel title={isEdit ? 'Editar item' : 'Criar item'} variant="amber" code={isEdit ? 'EDIT' : 'NEW'}>
     <form key={formKey} className="create-item-form" onSubmit={handleSubmit}>
 
       <div className="create-item-form__grid">
@@ -666,8 +756,15 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
           />
         </label>
 
+        <div className="create-item-form__full">
+          <span className="create-item-form__image-label">Referência do servidor (ícone Lua)</span>
+          <GameRefPicker itemType={type} value={gameRef} onChange={setGameRef} />
+        </div>
+
         <div className="create-item-form__full create-item-form__image-wrap">
-          <span className="create-item-form__image-label">Imagem *</span>
+          <span className="create-item-form__image-label">
+            Imagem {gameRef ? '(opcional)' : '*'}
+          </span>
           <ImageUploader
             preview={imagePreview}
             error={uploadError}
@@ -858,8 +955,13 @@ export function CreateItemForm({ onSuccess }: { onSuccess?: () => void } = {}) {
       )}
 
       <div className="create-item-form__actions">
+        {isEdit && onCancel && (
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+            Voltar
+          </Button>
+        )}
         <Button type="submit" loading={isSubmitting}>
-          Criar item
+          {isEdit ? 'Salvar alterações' : 'Criar item'}
         </Button>
       </div>
     </form>

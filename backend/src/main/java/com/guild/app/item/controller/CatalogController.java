@@ -78,6 +78,19 @@ public class CatalogController {
         return catalogService.getWeapon(gameCode);
     }
 
+    @GetMapping("/lua-items")
+    public Page<GameLuaItemResponse> listLuaItems(
+            @RequestParam String category,
+            @RequestParam(required = false) String search,
+            Pageable pageable) {
+        return catalogService.listLuaItems(category, search, pageable);
+    }
+
+    @GetMapping("/lua-items/{gameCode}")
+    public GameLuaItemResponse getLuaItem(@PathVariable String gameCode) {
+        return catalogService.getLuaItem(gameCode);
+    }
+
     @GetMapping("/effects")
     public List<EffectDefinitionResponse> listEffects() {
         return catalogService.listEffects();

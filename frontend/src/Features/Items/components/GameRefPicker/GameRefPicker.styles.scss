@@ -1,0 +1,148 @@
+.game-ref-picker {
+  display: flex;
+  flex-direction: column;
+  gap: theme.$spacing-sm;
+
+  &__current {
+    display: flex;
+    align-items: center;
+    gap: theme.$spacing-sm;
+    min-height: 48px;
+    padding: theme.$spacing-sm;
+    border: 1px solid theme.$color-border;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  &__meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-size: theme.$font-size-base;
+    color: theme.$color-text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__code {
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+  }
+
+  &__empty {
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-faint;
+    font-style: italic;
+  }
+
+  &__clear,
+  &__open {
+    @include theme.chamfer(4px);
+    font-family: theme.$font-heading;
+    font-size: theme.$font-size-ui;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 8px theme.$spacing-md;
+    border: 1px solid theme.$color-border-strong;
+    background: theme.metal-surface(theme.$metal-600, theme.$metal-800);
+    color: theme.$color-text-muted;
+    cursor: pointer;
+
+    &:hover {
+      color: theme.$color-primary;
+      border-color: theme.$color-primary;
+    }
+  }
+
+  &__clear {
+    flex-shrink: 0;
+  }
+}
+
+.game-ref-picker-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: theme.$spacing-md;
+  background: rgba(0, 0, 0, 0.8);
+
+  &__card {
+    @include theme.panel;
+    width: min(920px, 96vw);
+    max-height: 90vh;
+    overflow: auto;
+    padding: theme.$spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-md;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    h4 {
+      margin: 0;
+      font-family: theme.$font-heading;
+      text-transform: uppercase;
+    }
+
+    button {
+      width: 28px;
+      height: 28px;
+      border: 1px solid theme.$color-border-strong;
+      background: rgba(0, 0, 0, 0.4);
+      color: theme.$color-text-muted;
+      cursor: pointer;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: theme.$spacing-sm;
+  }
+
+  &__option {
+    @include theme.slot;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: theme.$spacing-sm;
+    cursor: pointer;
+    text-align: center;
+
+    &--selected {
+      border-color: theme.$color-primary;
+    }
+  }
+
+  &__name {
+    font-size: theme.$font-size-ui;
+    font-weight: 700;
+    line-height: 1.1;
+    color: theme.$color-text;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__code {
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+  }
+}

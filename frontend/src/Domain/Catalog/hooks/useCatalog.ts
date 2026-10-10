@@ -59,7 +59,7 @@ export const catalogKeys = {
   allSets: ['catalog', 'sets', 'all'] as const,
 }
 
-export function useCatalogAccessories(filters: CatalogAccessoryFilters) {
+export function useCatalogAccessories(filters: CatalogAccessoryFilters, enabled = true) {
   const params = new URLSearchParams()
   if (filters.subtype) params.set('subtype', filters.subtype)
   if (filters.grade != null) params.set('grade', String(filters.grade))
@@ -76,6 +76,7 @@ export function useCatalogAccessories(filters: CatalogAccessoryFilters) {
       const path = `/catalog/accessories?${query}`
       return apiClient<Page<GameAccessory>>(path)
     },
+    enabled,
     placeholderData: (prev) => prev,
   })
 }
@@ -88,11 +89,12 @@ export function useCatalogAccessory(gameCode: string | null) {
   })
 }
 
-export function useCatalogAccessoryIconIndex() {
+export function useCatalogAccessoryIconIndex(enabled = true) {
   return useQuery({
     queryKey: catalogKeys.accessoryIconIndex,
     queryFn: () => apiClient<CatalogIconRef[]>('/catalog/accessories/icon-index'),
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 
@@ -111,15 +113,16 @@ export function useCatalogSets(gameCode: string | null) {
   })
 }
 
-export function useAllCatalogSets() {
+export function useAllCatalogSets(enabled = true) {
   return useQuery({
     queryKey: catalogKeys.allSets,
     queryFn: () => apiClient<ItemSet[]>('/catalog/sets'),
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 
-export function useCatalogArmor(filters: CatalogArmorFilters) {
+export function useCatalogArmor(filters: CatalogArmorFilters, enabled = true) {
   const params = new URLSearchParams()
   if (filters.slot) params.set('slot', filters.slot)
   if (filters.grade != null) params.set('grade', String(filters.grade))
@@ -137,19 +140,21 @@ export function useCatalogArmor(filters: CatalogArmorFilters) {
       const path = `/catalog/armor?${query}`
       return apiClient<Page<GameArmor>>(path)
     },
+    enabled,
     placeholderData: (prev) => prev,
   })
 }
 
-export function useCatalogArmorIconIndex() {
+export function useCatalogArmorIconIndex(enabled = true) {
   return useQuery({
     queryKey: catalogKeys.armorIconIndex,
     queryFn: () => apiClient<CatalogIconRef[]>('/catalog/armor/icon-index'),
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 
-export function useCatalogWeapons(filters: CatalogWeaponFilters) {
+export function useCatalogWeapons(filters: CatalogWeaponFilters, enabled = true) {
   const params = new URLSearchParams()
   if (filters.weaponType) params.set('weaponType', filters.weaponType)
   if (filters.grade != null) params.set('grade', String(filters.grade))
@@ -167,14 +172,16 @@ export function useCatalogWeapons(filters: CatalogWeaponFilters) {
       const path = `/catalog/weapons?${query}`
       return apiClient<Page<GameWeapon>>(path)
     },
+    enabled,
     placeholderData: (prev) => prev,
   })
 }
 
-export function useCatalogWeaponIconIndex() {
+export function useCatalogWeaponIconIndex(enabled = true) {
   return useQuery({
     queryKey: catalogKeys.weaponIconIndex,
     queryFn: () => apiClient<CatalogIconRef[]>('/catalog/weapons/icon-index'),
     staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }

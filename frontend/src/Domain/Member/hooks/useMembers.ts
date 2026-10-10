@@ -124,6 +124,20 @@ export function useAdjustPoints() {
   })
 }
 
+/** Líder/Administrador: delete a member's account (history kept, login and personal data wiped). */
+export function useDeleteMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiClient<void>(`/members/${id}`, { method: 'DELETE' }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: memberKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: memberKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['parties'] })
+      queryClient.invalidateQueries({ queryKey: ['logs'] })
+    },
+  })
+}
+
 export function useUpdateMemberRole() {
   const queryClient = useQueryClient()
   return useMutation({

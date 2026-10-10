@@ -301,6 +301,23 @@ public class PartyService {
         return getBoard(actor);
     }
 
+    /**
+     * Account deletion: drops the member from their PT (passing leadership / dissolving an emptied PT),
+     * the LFG list and any pending invite or join request.
+     */
+    @Transactional
+    public void removeMemberEverywhere(Long memberId) {
+        partyMemberRepository.findByMemberId(memberId).ifPresent(pm ->
+                partyRepository.findByIdForUpdate(pm.getPartyId())
+                        .ifPresent(party -> removeMemberFromParty(party, memberId, false)));
+        partyLfgRepository.findByMemberId(memberId).ifPresent(partyLfgRepository::delete);
+        partyPendingRepository.findActiveForMember(memberId, PartyPendingStatus.PENDING).forEach(p -> {
+            p.setStatus(PartyPendingStatus.CANCELLED);
+            partyPendingRepository.save(p);
+        });
+        publishBoard();
+    }
+
     @Transactional
     public PartyBoardResponse kickMember(Long partyId, KickMemberRequest request, MemberPrincipal actor) {
         var actorMember = requireApproved(actor);

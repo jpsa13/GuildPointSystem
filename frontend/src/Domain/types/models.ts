@@ -1,7 +1,10 @@
 export type Role = 'MEMBRO' | 'MODERADOR' | 'ADMINISTRADOR' | 'LIDER'
-export type MemberStatus = 'PENDENTE' | 'APROVADO' | 'REJEITADO'
+export type MemberStatus = 'PENDENTE' | 'APROVADO' | 'REJEITADO' | 'EXCLUIDO'
 export type ObjectiveType = 'NORMAL' | 'LIMITADO'
-export type AuctionStatus = 'OPEN' | 'DOLE' | 'TIE_BREAK' | 'CLOSED'
+export type AuctionStatus = 'OPEN' | 'DOLE' | 'TIE_BREAK' | 'CLOSED' | 'CANCELLED'
+
+/** Finished auctions: no more bids; CANCELLED = force-closed by leadership, nobody charged. */
+export const isAuctionFinished = (status: AuctionStatus) => status === 'CLOSED' || status === 'CANCELLED'
 export type ItemType = 'WEAPON' | 'ARMOR' | 'ACCESSORY' | 'MISC'
 export type PointsModality = 'AJUSTE' | 'LEILAO' | 'EVENTO' | 'REVERSAO'
 
@@ -16,6 +19,9 @@ export type AuditLogType =
   | 'POINTS_ADJUSTED'
   | 'AUCTION_CREATED'
   | 'AUCTION_CLOSED'
+  | 'AUCTION_CANCELLED'
+  | 'AUCTION_DELETED'
+  | 'MEMBER_DELETED'
   | 'PROFILE_UPDATED'
   | 'MEMBER_APPROVED'
   | 'MEMBER_REJECTED'
@@ -93,12 +99,23 @@ export interface ItemTalic {
   slot: number
 }
 
+export interface ItemGameIcon {
+  category: LuaItemCategory
+  gameIndex: number
+  gameCode: string
+  iconId: number
+  spriteSheet: string
+  spriteCols: number
+}
+
 export interface Item {
   id: number
   type: ItemType
   name: string
   rarity: string
-  imageUrl: string
+  imageUrl: string | null
+  gameCode: string | null
+  gameIcon: ItemGameIcon | null
   description: string | null
   details: Record<string, unknown> | null
   talics: ItemTalic[]
@@ -189,6 +206,33 @@ export interface CatalogIconRef {
   spriteCols?: number
 }
 
+export type LuaItemCategory =
+  | 'WEAPON'
+  | 'HELMET'
+  | 'UPPER'
+  | 'LOWER'
+  | 'GLOVES'
+  | 'SHOES'
+  | 'AMULET'
+  | 'RING'
+  | 'SHIELD'
+  | 'BOOTY'
+  | 'BOX'
+  | 'POTION'
+  | 'RESOURCE'
+
+export interface GameLuaItem {
+  category: LuaItemCategory
+  gameIndex: number
+  gameCode: string
+  name: string
+  iconId: number
+  spriteSheet: string
+  spriteCols: number
+  itemGrade: number
+  levelRequired: number
+}
+
 export interface ItemSetEffect {
   code: number
   name: string
@@ -225,8 +269,10 @@ export interface EffectDefinition {
 export interface AuctionItem {
   itemId: number
   itemName: string
-  imageUrl: string
+  imageUrl: string | null
   quantity: number
+  /** Game-catalog items render from a sprite instead of `imageUrl`. */
+  gameIcon: ItemGameIcon | null
 }
 
 export interface Auction {
@@ -245,7 +291,21 @@ export interface Auction {
   tiedMemberIds: number[]
   tiedMemberNicknames: string[]
   items: AuctionItem[]
-  tieBreakSeed: number | null
+  dolePhase: number
+  /** 0 = none, 1 = countdown, 2 = spinning, 3 = landing on the drawn winner. */
+  tieBreakPhase: number
+  /** Monotonic per auction — newer state always has a higher version. */
+  version: number
+  serverTime: string
+}
+
+export interface AuctionBidResult {
+  requestId: string
+  auctionId: number
+  amount: number
+  accepted: boolean
+  error: string | null
+  auction: Auction | null
 }
 
 export interface AuctionMessage {

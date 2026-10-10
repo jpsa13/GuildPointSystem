@@ -1,0 +1,19 @@
+.auction-item-icon {
+  @include theme.slot;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 3px;
+
+  &__img {
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  &__fallback {
+    font-family: theme.$font-mono;
+    font-size: 18px;
+    color: theme.$color-text-muted;
+    text-transform: uppercase;
+  }
+}

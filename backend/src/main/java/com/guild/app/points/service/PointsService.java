@@ -25,6 +25,14 @@ public class PointsService {
     private final AuctionBidRepository auctionBidRepository;
 
     public long getAvailablePoints(Long memberId) {
+        return getAvailablePoints(memberId, null);
+    }
+
+    /**
+     * Total points minus the amounts the member is winning (or tied on) in active auctions.
+     * {@code excludeAuctionId} skips one auction: a new bid there replaces the member's own reserve.
+     */
+    public long getAvailablePoints(Long memberId, Long excludeAuctionId) {
         var member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
         long reserved = 0;
@@ -32,6 +40,7 @@ public class PointsService {
         var auctions = auctionRepository.findByStatusInOrderByCreatedAtDesc(openStatuses);
         for (var auction : auctions) {
             if (auction.getCurrentBid() == 0) continue;
+            if (auction.getId().equals(excludeAuctionId)) continue;
             var tied = auctionBidRepository.findTiedMemberIds(auction.getId(), auction.getCurrentBid());
             if (tied.contains(memberId)) {
                 reserved += auction.getCurrentBid();

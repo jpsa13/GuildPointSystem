@@ -9,17 +9,14 @@ import java.util.Optional;
 
 public interface AuctionBidRepository extends JpaRepository<AuctionBid, Long> {
 
-    @Query("""
-            SELECT b FROM AuctionBid b WHERE b.auction.id = :auctionId
-            ORDER BY b.amount DESC, b.createdAt ASC
-            """)
-    List<AuctionBid> findTopBidsForAuction(Long auctionId);
+    Optional<AuctionBid> findFirstByAuctionIdOrderByAmountDescIdAsc(Long auctionId);
 
-    Optional<AuctionBid> findFirstByAuctionIdOrderByAmountDescCreatedAtAsc(Long auctionId);
-
+    /** Members holding the given amount, in the order they reached it (stable roulette order). */
     @Query("""
-            SELECT DISTINCT b.member.id FROM AuctionBid b
+            SELECT b.member.id FROM AuctionBid b
             WHERE b.auction.id = :auctionId AND b.amount = :amount
+            GROUP BY b.member.id
+            ORDER BY MIN(b.id) ASC
             """)
     List<Long> findTiedMemberIds(Long auctionId, Long amount);
 }

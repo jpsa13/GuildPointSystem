@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { SeedOption } from '@/Domain/types/models'
 import './CastPicker.styles.scss'
 
@@ -69,72 +70,74 @@ export function CastPicker({ label, options, value, onChange }: CastPickerProps)
         </div>
       </div>
 
-      {open && (
-        <div
-          className="cast-picker-modal"
-          role="presentation"
-          onClick={() => setOpen(false)}
-        >
+      {open &&
+        createPortal(
           <div
-            className="cast-picker-modal__card"
-            role="dialog"
-            aria-modal="true"
-            aria-label={label}
-            onClick={(event) => event.stopPropagation()}
+            className="cast-picker-modal"
+            role="presentation"
+            onClick={() => setOpen(false)}
           >
-            <div className="cast-picker-modal__header">
-              <h4>{label}</h4>
-              <button
-                type="button"
-                className="cast-picker-modal__close"
-                onClick={() => setOpen(false)}
-                aria-label="Fechar"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="cast-picker-modal__grid" role="listbox">
-              <button
-                type="button"
-                role="option"
-                aria-selected={value === 0}
-                className={[
-                  'cast-picker-modal__option',
-                  'cast-picker-modal__option--none',
-                  value === 0 ? 'cast-picker-modal__option--selected' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => handleSelect(0)}
-              >
-                <span className="cast-picker-modal__option-name">Nenhum</span>
-              </button>
-
-              {options.map((option) => (
+            <div
+              className="cast-picker-modal__card"
+              role="dialog"
+              aria-modal="true"
+              aria-label={label}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="cast-picker-modal__header">
+                <h4>{label}</h4>
                 <button
-                  key={option.id}
+                  type="button"
+                  className="cast-picker-modal__close"
+                  onClick={() => setOpen(false)}
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="cast-picker-modal__grid" role="listbox">
+                <button
                   type="button"
                   role="option"
-                  aria-selected={value === option.id}
+                  aria-selected={value === 0}
                   className={[
                     'cast-picker-modal__option',
-                    value === option.id ? 'cast-picker-modal__option--selected' : '',
+                    'cast-picker-modal__option--none',
+                    value === 0 ? 'cast-picker-modal__option--selected' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
-                  onClick={() => handleSelect(option.id)}
+                  onClick={() => handleSelect(0)}
                 >
-                  {option.imageUrl && (
-                    <img src={option.imageUrl} alt="" className="cast-picker-modal__option-icon" />
-                  )}
-                  <span className="cast-picker-modal__option-name">{option.name}</span>
+                  <span className="cast-picker-modal__option-name">Nenhum</span>
                 </button>
-              ))}
+
+                {options.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="option"
+                    aria-selected={value === option.id}
+                    className={[
+                      'cast-picker-modal__option',
+                      value === option.id ? 'cast-picker-modal__option--selected' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => handleSelect(option.id)}
+                  >
+                    {option.imageUrl && (
+                      <img src={option.imageUrl} alt="" className="cast-picker-modal__option-icon" />
+                    )}
+                    <span className="cast-picker-modal__option-name">{option.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   )
 }

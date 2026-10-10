@@ -55,11 +55,13 @@ export async function apiClient<T>(path: string, options: RequestOptions = {}): 
     throw new ApiError(formatApiError(message), response.status)
   }
 
-  if (response.status === 204) {
+  // No body (204, or e.g. a 201 from a void endpoint): parsing would throw on success.
+  const text = await response.text()
+  if (!text) {
     return undefined as T
   }
 
-  return response.json() as Promise<T>
+  return JSON.parse(text) as T
 }
 
 export { API_BASE }

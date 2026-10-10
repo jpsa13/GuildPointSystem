@@ -1,0 +1,114 @@
+.auction-item-picker {
+  flex: 1;
+  min-width: 260px;
+
+  &__current {
+    min-height: 56px;
+  }
+
+  &__meta {
+    gap: 4px;
+  }
+
+  &__details {
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__icon-fallback {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid theme.$color-border;
+    font-family: theme.$font-mono;
+    color: theme.$color-text-faint;
+  }
+
+  &__icon--img {
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+}
+
+.auction-item-picker-modal {
+  &__card {
+    max-width: 720px;
+    width: min(96vw, 720px);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 200px;
+    max-height: 50vh;
+    border: 1px solid theme.$color-border;
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  &__row {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: theme.$spacing-sm;
+    padding: theme.$spacing-sm theme.$spacing-md;
+    border: none;
+    border-bottom: 1px solid theme.$color-border;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover:not(:disabled) {
+      background: rgba(theme.$color-primary, 0.08);
+    }
+
+    &--selected {
+      background: rgba(theme.$color-primary, 0.12);
+      box-shadow: inset 3px 0 0 theme.$color-primary;
+    }
+
+    &--disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-family: theme.$font-heading;
+    font-size: theme.$font-size-base;
+    font-weight: 700;
+  }
+
+  &__sub {
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+    line-height: 1.35;
+  }
+
+  &__code {
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-ui;
+    color: theme.$color-text-faint;
+  }
+}

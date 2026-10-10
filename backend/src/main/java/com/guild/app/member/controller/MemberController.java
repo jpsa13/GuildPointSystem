@@ -76,6 +76,13 @@ public class MemberController {
         return memberService.promoteToLeader(id, SecurityUtils.currentMember());
     }
 
+    /** Líder/Administrador: delete a member's account (history kept, login and personal data wiped). */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(@PathVariable Long id) {
+        memberService.deleteAccount(id, SecurityUtils.currentMember());
+    }
+
     @PatchMapping("/{id}/role")
     public MemberResponse updateRole(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest request) {
         return memberService.updateRole(id, request, SecurityUtils.currentMember());

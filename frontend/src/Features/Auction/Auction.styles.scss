@@ -63,13 +63,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: theme.$spacing-sm;
-    margin-bottom: theme.$spacing-sm;
-    align-items: center;
-
-    select {
-      flex: 2;
-      min-width: 200px;
-    }
+    margin-bottom: theme.$spacing-md;
+    align-items: flex-start;
 
     input[type='number'] {
       width: 90px;
@@ -154,6 +149,13 @@
     &--open      { color: theme.$color-primary; border-color: rgba(theme.$color-primary, 0.4); }
     &--dole      { color: theme.$color-amber;   border-color: rgba(theme.$color-amber, 0.4); }
     &--tie_break { color: theme.$color-danger;  border-color: rgba(theme.$color-danger, 0.4); }
+    &--cancelled { color: theme.$color-text-muted; text-decoration: line-through; }
+  }
+
+  &__actions {
+    display: flex;
+    gap: theme.$spacing-sm;
+    flex-shrink: 0;
   }
 
   &__bid {
@@ -211,6 +213,7 @@
     &--dole      { color: theme.$color-amber;   border-color: rgba(theme.$color-amber, 0.4); }
     &--tie_break { color: theme.$color-danger;  border-color: rgba(theme.$color-danger, 0.4); }
     &--closed    { color: theme.$color-text-muted; }
+    &--cancelled { color: theme.$color-text-muted; text-decoration: line-through; }
   }
 
   &__winner-name,
@@ -266,6 +269,37 @@
     > .btn--primary {
       flex: 1;
       min-width: 120px;
+    }
+  }
+
+  &__tied-names {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 10px;
+  }
+
+  &__bid-hint {
+    margin: 0;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+  }
+
+  &__bid-feedback {
+    margin: 0;
+    padding: 6px 10px;
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-base;
+    border-left: 2px solid currentColor;
+
+    &--ok {
+      color: theme.$color-success;
+      background: rgba(theme.$color-success, 0.08);
+    }
+
+    &--error {
+      color: theme.$color-danger;
+      background: rgba(theme.$color-danger, 0.08);
     }
   }
 
@@ -372,6 +406,55 @@
     letter-spacing: 1px;
     text-transform: uppercase;
     animation: amber-pulse 1s ease-in-out infinite;
+  }
+}
+
+// Leadership actions
+.auction-admin {
+  &__hint {
+    margin: 0 0 theme.$spacing-md;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+    line-height: 1.4;
+  }
+}
+
+// Tie-break panel
+.auction-tiebreak {
+  &__countdown {
+    display: flex;
+    align-items: center;
+    gap: theme.$spacing-md;
+    padding: theme.$spacing-sm 0;
+  }
+
+  &__number {
+    @include theme.readout(theme.$color-danger);
+    min-width: 72px;
+    text-align: center;
+    font-size: 56px;
+    line-height: 1;
+    animation: amber-pulse 1s ease-in-out infinite;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: theme.$font-size-base;
+    line-height: 1.5;
+    color: theme.$color-text;
+
+    strong { color: theme.$color-amber; }
+  }
+
+  &__status {
+    margin: theme.$spacing-md 0 0;
+    text-align: center;
+    font-family: theme.$font-heading;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: theme.$color-amber;
   }
 }
 

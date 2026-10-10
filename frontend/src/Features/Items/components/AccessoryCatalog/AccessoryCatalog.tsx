@@ -139,24 +139,29 @@ export function ItemCatalog() {
     size: CATALOG_PAGE_SIZE,
   }
 
+  const accessoriesEnabled = mode === 'accessories'
+  const armorEnabled = mode === 'armor'
+  const weaponsEnabled = mode === 'weapons'
+
   const { data: accessoryPageData, isLoading: loadingAccessories, isFetching: fetchingAccessories } =
-    useCatalogAccessories(accessoryFilters)
+    useCatalogAccessories(accessoryFilters, accessoriesEnabled)
   const accessories = accessoryPageData?.content ?? []
   const accessoryTotalPages = accessoryPageData?.totalPages ?? 0
   const accessoryTotalElements = accessoryPageData?.totalElements ?? 0
-  const { data: armorPageData, isLoading: loadingArmor, isFetching: fetchingArmor } = useCatalogArmor(armorFilters)
+  const { data: armorPageData, isLoading: loadingArmor, isFetching: fetchingArmor } =
+    useCatalogArmor(armorFilters, armorEnabled)
   const armors = armorPageData?.content ?? []
   const armorTotalPages = armorPageData?.totalPages ?? 0
   const armorTotalElements = armorPageData?.totalElements ?? 0
   const { data: weaponPageData, isLoading: loadingWeapons, isFetching: fetchingWeapons } =
-    useCatalogWeapons(weaponFilters)
+    useCatalogWeapons(weaponFilters, weaponsEnabled)
   const weapons = weaponPageData?.content ?? []
   const weaponTotalPages = weaponPageData?.totalPages ?? 0
   const weaponTotalElements = weaponPageData?.totalElements ?? 0
-  const { data: allSets = [] } = useAllCatalogSets()
-  const { data: accessoryIcons = [] } = useCatalogAccessoryIconIndex()
-  const { data: armorIcons = [] } = useCatalogArmorIconIndex()
-  const { data: weaponIcons = [] } = useCatalogWeaponIconIndex()
+  const { data: allSets = [] } = useAllCatalogSets(accessoriesEnabled || armorEnabled || weaponsEnabled)
+  const { data: accessoryIcons = [] } = useCatalogAccessoryIconIndex(accessoriesEnabled)
+  const { data: armorIcons = [] } = useCatalogArmorIconIndex(armorEnabled)
+  const { data: weaponIcons = [] } = useCatalogWeaponIconIndex(weaponsEnabled)
 
   const setIndex = useMemo(() => buildSetIndex(allSets), [allSets])
   const catalogByCode = useMemo(() => {

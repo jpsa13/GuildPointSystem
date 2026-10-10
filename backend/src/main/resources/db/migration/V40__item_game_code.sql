@@ -1,0 +1,3 @@
+ALTER TABLE item ADD COLUMN IF NOT EXISTS game_code VARCHAR(50);
+ALTER TABLE item ALTER COLUMN image_url DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_item_game_code ON item (game_code);

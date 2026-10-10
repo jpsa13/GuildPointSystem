@@ -1,3 +1,28 @@
+.items-catalog-view-toggle {
+  display: flex;
+  gap: 4px;
+
+  &__btn {
+    @include theme.chamfer(4px);
+    padding: 4px 10px;
+    font-family: theme.$font-heading;
+    font-size: theme.$font-size-ui;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: theme.$color-text-muted;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid theme.$color-border-strong;
+    cursor: pointer;
+
+    &--active {
+      color: theme.$color-on-primary;
+      border-color: theme.$color-primary;
+      background: linear-gradient(180deg, theme.$color-primary, theme.$color-cyan-dim);
+    }
+  }
+}
+
 .items-page {
   display: flex;
   flex-direction: column;
@@ -158,10 +183,20 @@
     color: theme.$color-text-faint;
   }
 
-  &__delete {
+  &__admin-actions {
     position: absolute;
     top: 8px;
     right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.12s;
+
+    .item-tooltip:hover & { opacity: 1; }
+  }
+
+  &__edit,
+  &__delete {
     width: 24px;
     height: 24px;
     padding: 0;
@@ -169,22 +204,24 @@
     align-items: center;
     justify-content: center;
     font-family: theme.$font-mono;
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1;
     color: theme.$color-text-muted;
     background: rgba(0, 0, 0, 0.6);
     border: 1px solid theme.$color-border-strong;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.12s, border-color 0.12s, color 0.12s;
+    transition: border-color 0.12s, color 0.12s;
     @include theme.chamfer-all(3px);
+  }
 
-    .item-tooltip:hover & { opacity: 1; }
+  &__edit:hover {
+    border-color: theme.$color-primary;
+    color: theme.$color-primary;
+  }
 
-    &:hover {
-      border-color: theme.$color-danger;
-      color: theme.$color-danger;
-    }
+  &__delete:hover {
+    border-color: theme.$color-danger;
+    color: theme.$color-danger;
   }
 
   &__divider {

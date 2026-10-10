@@ -9,6 +9,7 @@ public record CreateItemRequest(
         String name,
         String rarity,
         String imageUrl,
+        String gameCode,
         String description,
         WeaponData weapon,
         ArmorData armor,

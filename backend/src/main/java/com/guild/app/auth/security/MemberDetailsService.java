@@ -1,5 +1,6 @@
 package com.guild.app.auth.security;
 
+import com.guild.app.common.enums.MemberStatus;
 import com.guild.app.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,8 +22,10 @@ public class MemberDetailsService implements UserDetailsService {
         return new MemberPrincipal(member);
     }
 
+    /** Used for every JWT (REST + WebSocket): a deleted account's still-valid token stops working at once. */
     public UserDetails loadById(Long id) {
         var member = memberRepository.findById(id)
+                .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO)
                 .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
         return new MemberPrincipal(member);
     }

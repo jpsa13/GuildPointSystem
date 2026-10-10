@@ -1,0 +1,37 @@
+.confirm-dialog {
+  max-width: 440px;
+  width: 100%;
+
+  &--danger .auth-window-bar::before { background: theme.$color-danger; }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-lg;
+  }
+
+  &__message {
+    font-size: theme.$font-size-base;
+    line-height: 1.5;
+    color: theme.$color-text;
+
+    p { margin: 0 0 theme.$spacing-sm; }
+    p:last-child { margin-bottom: 0; }
+    strong { color: theme.$color-amber; }
+  }
+
+  &__note {
+    padding: theme.$spacing-sm theme.$spacing-md;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+    border-left: 2px solid theme.$color-border-strong;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: theme.$spacing-sm;
+  }
+}

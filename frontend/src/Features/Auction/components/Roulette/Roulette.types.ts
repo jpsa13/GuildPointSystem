@@ -3,12 +3,20 @@ export interface RouletteSegment {
   label: string
 }
 
+/**
+ * idle = waiting (countdown); spinning = free spin, winner unknown; landing = decelerating onto
+ * `winnerIndex`; stopped = already decided, rests on `winnerIndex` without animating.
+ */
+export type RoulettePhase = 'idle' | 'spinning' | 'landing' | 'stopped'
+
 export interface RouletteProps {
   segments: RouletteSegment[]
-  winnerIndex: number
-  seed?: number | null
-  spinning?: boolean
-  onComplete?: (winnerIndex: number) => void
+  phase: RoulettePhase
+  /** Only known once the server has drawn the winner (landing phase). */
+  winnerIndex: number | null
+  landingMs: number
+  onStopped?: (winnerIndex: number) => void
 }
 
-export const MIN_SPIN_MS = 10000
+/** Free-spin speed in degrees per second. */
+export const SPIN_DEG_PER_SEC = 540

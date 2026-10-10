@@ -15,7 +15,7 @@ const migrationDir = join(root, 'src', 'main', 'resources', 'db', 'migration')
 const MIN_LEVEL = 35
 const BATCH_SIZE = 200
 const SPRITE = '/sprites/weapon.png'
-const SPRITE_COLS = 64
+const SPRITE_COLS = 32
 
 const WEAPON_FILES = ['WeaponItem.xlsx', 'WeaponItema.xlsx', 'WeaponItemb.xlsx']
 

@@ -11,11 +11,14 @@ const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
   POINTS_ADJUSTED: 'Pontos ajustados',
   AUCTION_CREATED: 'Leilão criado',
   AUCTION_CLOSED: 'Leilão encerrado',
+  AUCTION_CANCELLED: 'Leilão cancelado',
+  AUCTION_DELETED: 'Leilão excluído',
   PROFILE_UPDATED: 'Perfil alterado',
   MEMBER_APPROVED: 'Cadastro aprovado',
   MEMBER_REJECTED: 'Cadastro rejeitado',
   MEMBER_REGISTERED: 'Novo cadastro',
   MEMBER_ROLE_CHANGED: 'Papel alterado',
+  MEMBER_DELETED: 'Conta excluída',
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -80,6 +83,12 @@ export function formatLogDetails(log: AuditLogEntry): string {
           : `Vencedor #${str(p.winnerId)}`
       return `${winner} · ${str(p.amount)} pts`
     }
+    case 'AUCTION_CANCELLED': {
+      const released = Array.isArray(p.releasedMemberIds) ? p.releasedMemberIds.length : 0
+      return `#${str(p.auctionId)} · lance ${str(p.amount)} pts · ${released} reserva(s) devolvida(s)`
+    }
+    case 'AUCTION_DELETED':
+      return `#${str(p.auctionId)} · ${str(p.items)}`
     case 'PROFILE_UPDATED': {
       const field = PROFILE_FIELD_LABELS[str(p.field)] ?? str(p.field)
       return `${field}: ${str(p.oldValue)} → ${str(p.newValue)}`
@@ -92,6 +101,8 @@ export function formatLogDetails(log: AuditLogEntry): string {
       return str(p.nickname)
     case 'MEMBER_ROLE_CHANGED':
       return `${ROLE_LABELS[str(p.oldRole)] ?? str(p.oldRole)} → ${ROLE_LABELS[str(p.newRole)] ?? str(p.newRole)}`
+    case 'MEMBER_DELETED':
+      return `${str(p.nickname)} · ${ROLE_LABELS[str(p.role)] ?? str(p.role)} · ${str(p.points)} pts`
     default:
       return ''
   }

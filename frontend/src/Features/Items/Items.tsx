@@ -1,21 +1,22 @@
 import { useState } from 'react'
-import { useItems, useDeleteItem } from '@/Domain/Item/hooks/useItems'
+import { useDeleteItem } from '@/Domain/Item/hooks/useItems'
+import { useGuildInventory } from '@/Domain/Item/hooks/useGuildInventory'
 import { useItemSeeds } from '@/Domain/Seed/hooks/useItemSeeds'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { Button } from '@/Shared/ui/components/Button/Button'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { CreateItemForm } from '@/Features/Items/components/CreateItemForm/CreateItemForm'
-import { ItemCard } from '@/Features/Items/components/ItemCard/ItemCard'
-import { ItemCatalog } from '@/Features/Items/components/AccessoryCatalog/AccessoryCatalog'
+import { GuildInventoryList } from '@/Features/Items/components/GuildInventoryList/GuildInventoryList'
 import './Items.styles.scss'
 
 export { ItemCard } from '@/Features/Items/components/ItemCard/ItemCard'
 
-type Tab = 'list' | 'catalog' | 'create'
+type Tab = 'list' | 'create' | 'edit'
 
 export function ItemsPage() {
-  const { data: items = [], isLoading } = useItems()
+  const { data: inventorySummary } = useGuildInventory({ page: 0, size: 1 })
+  const totalInventory = inventorySummary?.totalElements ?? 0
   const { data: weaponCasts = [] } = useItemSeeds('WEAPON_CAST')
   const { hasRole } = useAuthContext()
   const { showToast } = useAppToast()
@@ -23,6 +24,7 @@ export function ItemsPage() {
   const isAdmin = hasRole('ADMINISTRADOR')
 
   const [tab, setTab] = useState<Tab>('list')
+  const [editItemId, setEditItemId] = useState<number | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
 
   const handleDelete = async (id: number) => {
@@ -40,17 +42,13 @@ export function ItemsPage() {
       <div className="items-tabs" role="tablist">
         <button
           type="button"
-          className={`items-tabs__btn${tab === 'list' ? ' items-tabs__btn--active' : ''}`}
-          onClick={() => setTab('list')}
+          className={`items-tabs__btn${tab === 'list' || tab === 'edit' ? ' items-tabs__btn--active' : ''}`}
+          onClick={() => {
+            setEditItemId(null)
+            setTab('list')
+          }}
         >
           Listagem
-        </button>
-        <button
-          type="button"
-          className={`items-tabs__btn${tab === 'catalog' ? ' items-tabs__btn--active' : ''}`}
-          onClick={() => setTab('catalog')}
-        >
-          Catálogo
         </button>
         {isAdmin && (
           <button
@@ -63,35 +61,39 @@ export function ItemsPage() {
         )}
       </div>
 
-      {tab === 'catalog' && (
-        <Panel title="Catálogo do jogo" code="DB">
-          <ItemCatalog />
-        </Panel>
-      )}
-
       {tab === 'create' && isAdmin && (
         <CreateItemForm onSuccess={() => setTab('list')} />
       )}
 
+      {tab === 'edit' && isAdmin && editItemId != null && (
+        <CreateItemForm
+          itemId={editItemId}
+          onCancel={() => {
+            setEditItemId(null)
+            setTab('list')
+          }}
+          onSuccess={() => {
+            setEditItemId(null)
+            setTab('list')
+          }}
+        />
+      )}
+
       {tab === 'list' && (
-        <Panel title="Inventário da guild" code={`${items.length} ITM`}>
-          {isLoading ? (
-            <p className="items-page__loading">Carregando itens...</p>
-          ) : items.length === 0 ? (
-            <p className="items-page__empty">Nenhum item cadastrado.</p>
-          ) : (
-            <div className="items-grid">
-              {items.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  canAdmin={isAdmin}
-                  weaponCasts={weaponCasts}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
-            </div>
-          )}
+        <Panel title="Inventário da guild" code={`${totalInventory.toLocaleString('pt-BR')} ITM`}>
+          <GuildInventoryList
+            canAdmin={isAdmin}
+            weaponCasts={weaponCasts}
+            onEdit={
+              isAdmin
+                ? (id) => {
+                    setEditItemId(id)
+                    setTab('edit')
+                  }
+                : undefined
+            }
+            onDelete={(id) => setConfirmDelete(id)}
+          />
         </Panel>
       )}
 

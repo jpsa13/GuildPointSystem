@@ -11,11 +11,21 @@ public record ItemResponse(
         String name,
         String rarity,
         String imageUrl,
+        String gameCode,
+        GameIcon gameIcon,
         String description,
         Object details,
         List<TalicResponse> talics,
         Instant createdAt
 ) {
+    public record GameIcon(
+            String category,
+            int gameIndex,
+            String gameCode,
+            int iconId,
+            String spriteSheet,
+            int spriteCols
+    ) {}
     public record TalicResponse(String talicType, Integer level, Integer slot) {}
 
     public record WeaponDetails(

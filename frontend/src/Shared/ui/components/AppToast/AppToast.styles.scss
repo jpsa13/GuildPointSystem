@@ -32,7 +32,7 @@
     height: 3px;
     background: var(--toast-accent);
     transform-origin: left;
-    animation: toast-life 3.5s linear forwards;
+    animation: toast-life var(--toast-life, 3.5s) linear forwards;
   }
 
   @keyframes toast-in {
@@ -61,8 +61,47 @@
     color: var(--toast-accent);
   }
 
-  &__msg {
+  &__image {
+    @include theme.slot;
+    width: 52px;
+    height: 52px;
+    padding: 4px;
+    flex-shrink: 0;
+    object-fit: contain;
+    image-rendering: pixelated;
+    display: grid;
+    place-items: center;
+  }
+
+  &__body {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__title {
+    font-family: theme.$font-heading;
+    font-size: theme.$font-size-ui;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--toast-accent);
+  }
+
+  &__link {
+    align-self: flex-start;
+    margin-top: 2px;
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-base;
+    color: theme.$color-amber;
+    text-transform: uppercase;
+
+    &:hover { text-decoration: underline; }
+  }
+
+  &__msg {
     font-family: theme.$font-family;
     font-size: theme.$font-size-base;
     font-weight: 500;

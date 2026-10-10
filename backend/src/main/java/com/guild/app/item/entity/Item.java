@@ -28,8 +28,14 @@ public class Item {
     @Column(length = 50)
     private String rarity;
 
-    @Column(name = "image_url", nullable = false, length = 500)
+    @Column(name = "image_url", length = 500)
     private String imageUrl;
+
+    @Column(name = "game_code", length = 50)
+    private String gameCode;
+
+    @Column(name = "lua_category", length = 20)
+    private String luaCategory;
 
     @Column(columnDefinition = "TEXT")
     private String description;

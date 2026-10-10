@@ -16,11 +16,11 @@ const MIN_LEVEL = 35
 const BATCH_SIZE = 200
 
 const ARMOR_FILES = [
-  { file: 'HelmetItem.xlsx', slot: 'HELMET', sprite: '/sprites/helmet.png', spriteCols: 64 },
-  { file: 'UpperItem.xlsx', slot: 'UPPER', sprite: '/sprites/upper.png', spriteCols: 64 },
-  { file: 'LowerItem.xlsx', slot: 'LOWER', sprite: '/sprites/lower.png', spriteCols: 64 },
-  { file: 'GauntletItem.xlsx', slot: 'GAUNTLET', sprite: '/sprites/gloves.png', spriteCols: 64 },
-  { file: 'ShoeItem.xlsx', slot: 'SHOES', sprite: '/sprites/shoes.png', spriteCols: 64 },
+  { file: 'HelmetItem.xlsx', slot: 'HELMET', sprite: '/sprites/helmet.png', spriteCols: 32 },
+  { file: 'UpperItem.xlsx', slot: 'UPPER', sprite: '/sprites/upper.png', spriteCols: 32 },
+  { file: 'LowerItem.xlsx', slot: 'LOWER', sprite: '/sprites/lower.png', spriteCols: 32 },
+  { file: 'GauntletItem.xlsx', slot: 'GAUNTLET', sprite: '/sprites/gloves.png', spriteCols: 32 },
+  { file: 'ShoeItem.xlsx', slot: 'SHOES', sprite: '/sprites/shoes.png', spriteCols: 32 },
 ]
 
 function escapeSql(str) {

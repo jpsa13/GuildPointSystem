@@ -151,6 +151,35 @@ export async function subscribeTopic(
   }
 }
 
+/**
+ * Effect-friendly subscribe: returns the cleanup synchronously. Use this inside `useEffect` —
+ * with the async variant a cleanup that runs before the subscription resolves (StrictMode's
+ * mount → unmount → mount) can't unsubscribe, leaving a duplicate handler.
+ */
+export function subscribeTopicEffect(
+  topic: string,
+  handler: (message: IMessage) => void,
+): () => void {
+  let cancelled = false
+  let unsubscribe: (() => void) | undefined
+  subscribeTopic(topic, handler).then((fn) => {
+    if (cancelled) fn()
+    else unsubscribe = fn
+  })
+  return () => {
+    cancelled = true
+    unsubscribe?.()
+  }
+}
+
+/** STOMP SEND to an application destination (`/app/...`). Throws if the socket is not connected. */
+export function sendSocketMessage(destination: string, body: unknown): void {
+  if (!stompClient?.connected) {
+    throw new Error('WebSocket desconectado')
+  }
+  stompClient.publish({ destination, body: JSON.stringify(body) })
+}
+
 export function disconnectSocket(): void {
   clearConnectTimeout()
   subscriptions.clear()

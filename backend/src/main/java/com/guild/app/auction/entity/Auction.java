@@ -47,4 +47,14 @@ public class Auction {
 
     @Column(name = "dole_phase", nullable = false)
     private Integer dolePhase = 0;
+
+    @Column(name = "tie_break_phase", nullable = false)
+    private Short tieBreakPhase = 0;
+
+    @Column(name = "state_version", nullable = false)
+    private Long stateVersion = 0L;
+
+    public void bumpVersion() {
+        stateVersion = stateVersion + 1;
+    }
 }

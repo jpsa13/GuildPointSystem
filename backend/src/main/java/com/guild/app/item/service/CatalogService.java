@@ -11,8 +11,10 @@ import com.guild.app.item.entity.ItemSet;
 import com.guild.app.item.repository.EffectDefinitionRepository;
 import com.guild.app.item.repository.GameAccessoryRepository;
 import com.guild.app.item.repository.GameArmorRepository;
+import com.guild.app.item.repository.GameLuaItemRepository;
 import com.guild.app.item.repository.GameWeaponRepository;
 import com.guild.app.item.repository.ItemSetRepository;
+import com.guild.app.item.entity.GameLuaItem;
 import com.guild.app.item.util.CivilMaskUtil;
 import com.guild.app.item.util.DefFacingUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,9 +38,14 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CatalogService {
 
+    private static final Set<String> LUA_ITEM_CATEGORIES = Set.of(
+            "WEAPON", "HELMET", "UPPER", "LOWER", "GLOVES", "SHOES",
+            "AMULET", "RING", "SHIELD", "BOOTY", "BOX", "POTION", "RESOURCE");
+
     private final GameAccessoryRepository gameAccessoryRepository;
     private final GameArmorRepository gameArmorRepository;
     private final GameWeaponRepository gameWeaponRepository;
+    private final GameLuaItemRepository gameLuaItemRepository;
     private final EffectDefinitionRepository effectDefinitionRepository;
     private final ItemSetRepository itemSetRepository;
 
@@ -129,6 +137,29 @@ public class CatalogService {
         return toWeaponResponse(weapon, effectMap());
     }
 
+    public GameLuaItemResponse getLuaItem(String gameCode) {
+        var normalized = gameCode == null ? null : gameCode.trim().toLowerCase();
+        if (normalized == null || normalized.isBlank()) {
+            throw new AppException("Código do item inválido.", HttpStatus.BAD_REQUEST);
+        }
+        return gameLuaItemRepository.findByGameCode(normalized)
+                .map(this::toLuaItemResponse)
+                .orElseThrow(() -> new AppException("Item não encontrado no catálogo Lua.", HttpStatus.NOT_FOUND));
+    }
+
+    public Page<GameLuaItemResponse> listLuaItems(String category, String search, Pageable pageable) {
+        var normalizedCategory = category == null ? null : category.trim().toUpperCase();
+        if (normalizedCategory == null || !LUA_ITEM_CATEGORIES.contains(normalizedCategory)) {
+            throw new AppException("Categoria de item inválida.", HttpStatus.BAD_REQUEST);
+        }
+        var normalizedSearch = blankToNull(search);
+        var hasSearch = normalizedSearch != null;
+        var searchPattern = hasSearch ? "%" + normalizedSearch.toLowerCase() + "%" : "%";
+        return gameLuaItemRepository
+                .findFilteredPage(normalizedCategory, hasSearch, searchPattern, pageable)
+                .map(this::toLuaItemResponse);
+    }
+
     public List<EffectDefinitionResponse> listEffects() {
         return effectDefinitionRepository.findAll().stream()
                 .map(e -> new EffectDefinitionResponse(e.getCode(), e.getName(), e.getDisplayType()))
@@ -181,6 +212,19 @@ public class CatalogService {
                 a.getLevelRequired(), a.getDefFc(), a.getDefFacing(),
                 DefFacingUtil.toClientDsr(a.getDefFacing()),
                 effects);
+    }
+
+    private GameLuaItemResponse toLuaItemResponse(GameLuaItem item) {
+        return new GameLuaItemResponse(
+                item.getCategory(),
+                item.getGameIndex(),
+                item.getGameCode(),
+                item.getName(),
+                item.getIconId(),
+                item.getSpriteSheet(),
+                item.getSpriteCols(),
+                item.getItemGrade(),
+                item.getLevelRequired());
     }
 
     private GameWeaponResponse toWeaponResponse(GameWeapon w, Map<Integer, EffectDefinition> effectMap) {

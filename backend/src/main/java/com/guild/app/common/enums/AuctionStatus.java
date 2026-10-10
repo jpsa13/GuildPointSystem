@@ -4,5 +4,7 @@ public enum AuctionStatus {
     OPEN,
     DOLE,
     TIE_BREAK,
-    CLOSED
+    CLOSED,
+    /** Force-closed by a leader/admin: no winner, nobody charged. */
+    CANCELLED
 }

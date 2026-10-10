@@ -10,6 +10,8 @@ import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberCl
 import { getSocketState, type SocketState } from '@/Shared/websocket/socketClient'
 import { EventHeaderTimers } from '@/Shared/ui/Layout/EventHeaderTimers'
 import { ScheduleAlertListener } from '@/Features/Schedule/ScheduleAlertListener'
+import { AuctionCreatedListener } from '@/Features/Auction/AuctionCreatedListener'
+import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
 import './Layout.styles.scss'
 
 const NAV_ITEMS = [
@@ -84,6 +86,8 @@ function LayoutShell() {
   return (
     <div className={`layout${drawerOpen ? ' layout--drawer-open' : ''}`}>
       <ScheduleAlertListener />
+      <AuctionCreatedListener />
+      <AccountDeletedListener />
       <aside className="layout__sidebar">
         <div className="layout__brand">
           <img src="/Logo-Blacklist.png" alt="" className="layout__logo" />

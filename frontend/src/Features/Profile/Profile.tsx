@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   useAdjustPoints,
   useCurrentMember,
+  useDeleteMember,
   useGrantManualEvent,
   useMember,
   useMemberClaims,
@@ -16,6 +17,8 @@ import { useRaces, useClasses } from '@/Domain/Seed/hooks/useSeeds'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import type { PointsModality, Role } from '@/Domain/types/models'
 import { Button } from '@/Shared/ui/components/Button/Button'
+import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
+import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { SeedOptionPicker } from '@/Shared/ui/components/SeedOptionPicker/SeedOptionPicker'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
@@ -28,6 +31,13 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'ADMINISTRADOR', label: 'Administrador' },
   { value: 'LIDER', label: 'Líder' },
 ]
+
+/** Minimum role needed to delete a member of the given role (strictly above it). */
+const ROLE_REQUIRED_TO_DELETE: Partial<Record<Role, Role>> = {
+  MEMBRO: 'ADMINISTRADOR',
+  MODERADOR: 'ADMINISTRADOR',
+  ADMINISTRADOR: 'LIDER',
+}
 
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>()
@@ -57,6 +67,11 @@ export function ProfilePage() {
   const updateMemberRole = useUpdateMemberRole()
   const grantManualEvent = useGrantManualEvent()
   const denyClaim = useDenyEventClaim()
+  const deleteMember = useDeleteMember()
+  const navigate = useNavigate()
+  const { showToast } = useAppToast()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const closeDelete = useCallback(() => setConfirmDelete(false), [])
   const isStaff = hasRole('ADMINISTRADOR')
   const isLeader = hasRole('LIDER')
   const isOwn = !id || Number(id) === user?.memberId
@@ -75,6 +90,21 @@ export function ProfilePage() {
   }, [profile?.id, profile?.nickname, profile?.raceId, profile?.classId, profile?.level, profile?.role])
 
   if (!profile) return <p>Carregando perfil...</p>
+
+  const isDeleted = profile.status === 'EXCLUIDO'
+  const requiredToDelete = ROLE_REQUIRED_TO_DELETE[profile.role]
+  const canDelete = isStaff && !isOwn && !isDeleted && !!requiredToDelete && hasRole(requiredToDelete)
+
+  const handleDelete = async () => {
+    try {
+      await deleteMember.mutateAsync(profile.id)
+      showToast(`Conta de ${profile.nickname} excluída.`, 'success')
+      navigate('/')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Não foi possível excluir a conta.', 'error')
+      setConfirmDelete(false)
+    }
+  }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,9 +206,14 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
+        {isDeleted && (
+          <p className="profile-sheet__deleted" role="status">
+            Conta excluída — sem acesso ao sistema. O histórico de pontos, lances e eventos foi mantido.
+          </p>
+        )}
       </Panel>
 
-      {(isOwn || isStaff) && (
+      {(isOwn || isStaff) && !isDeleted && (
         <div className={`profile-page__grid${isStaff && !isOwn ? ' profile-page__grid--staff' : ''}`}>
           <form className="profile-form" onSubmit={handleSaveProfile}>
             <h3>Editar Perfil</h3>
@@ -368,6 +403,36 @@ export function ProfilePage() {
           )}
         </div>
       )}
+
+      {canDelete && (
+        <Panel title="Zona de perigo" variant="danger" code="ADM" className="profile-danger">
+          <p className="profile-danger__hint">
+            Excluir a conta remove o acesso de {profile.nickname} imediatamente. O histórico é mantido.
+          </p>
+          <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+            Excluir conta
+          </Button>
+        </Panel>
+      )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Excluir conta de ${profile.nickname}`}
+        code="ADM"
+        confirmLabel="Excluir conta"
+        loading={deleteMember.isPending}
+        onConfirm={handleDelete}
+        onCancel={closeDelete}
+      >
+        <p>
+          <strong>{profile.nickname}</strong> perde o acesso na hora: é desconectado, sai da PT e da
+          lista de espera, e o e-mail/Discord ficam livres para um novo cadastro.
+        </p>
+        <p className="confirm-dialog__note">
+          Pontos ({profile.points}), lances, resgates e logs ficam no histórico. Essa ação não pode ser
+          desfeita.
+        </p>
+      </ConfirmDialog>
     </div>
   )
 }
