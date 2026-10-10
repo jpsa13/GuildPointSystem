@@ -28,6 +28,9 @@ import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberCl
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { playScheduleAlertSound } from '@/Shared/utils/notificationSound'
 import { PartyCreateModal, type PartyCreateMode } from '@/Features/Party/components/PartyCreateModal'
+import { PartyLfgList, WaitingTime } from '@/Features/Party/components/PartyLfgList'
+import { sortByWaiting } from '@/Features/Party/utils/partyWait'
+import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
 import {
   formatPartyLabel,
   PARTY_MAX_MEMBERS,
@@ -369,6 +372,8 @@ export function PartyPage() {
   const [leaderLoadingId, setLeaderLoadingId] = useState<number | null>(null)
   const [dropHighlight, setDropHighlight] = useState<{ partyId: number; slot: number } | null>(null)
   const [createModal, setCreateModal] = useState<PartyCreateMode | null>(null)
+  const [disbandTarget, setDisbandTarget] = useState<PartySummary | null>(null)
+  const closeDisband = useCallback(() => setDisbandTarget(null), [])
 
   const { data: board, isLoading } = usePartyBoard()
   const createParty = useCreateParty()
@@ -394,6 +399,13 @@ export function PartyPage() {
   )
   usePartyMemberNotices(user?.memberId, onPartyNotice)
 
+  // Every action reports its failure (PT just filled up, request already handled by someone else…).
+  const failToast = useCallback(
+    (err: unknown) => showToast(err instanceof Error ? err.message : 'Não foi possível concluir a ação.', 'error'),
+    [showToast],
+  )
+  const onFail = { onError: failToast }
+
   const my = board?.my ?? {
     partyId: null,
     partyNumber: null,
@@ -417,6 +429,7 @@ export function PartyPage() {
         setCreateModal(null)
         showToast('PT criada com sucesso.', 'success')
       },
+      onError: failToast,
     }
     if (createModal === 'empty') {
       createEmptyParty.mutate(payload, onDone)
@@ -482,16 +495,16 @@ export function PartyPage() {
                 <div className="party-pending__actions">
                   <Button
                     size="sm"
-                    loading={acceptPending.isPending}
-                    onClick={() => acceptPending.mutate(p.id)}
+                    loading={acceptPending.isPending && acceptPending.variables === p.id}
+                    onClick={() => acceptPending.mutate(p.id, onFail)}
                   >
                     Aceitar
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    loading={rejectPending.isPending}
-                    onClick={() => rejectPending.mutate(p.id)}
+                    loading={rejectPending.isPending && rejectPending.variables === p.id}
+                    onClick={() => rejectPending.mutate(p.id, onFail)}
                   >
                     Recusar
                   </Button>
@@ -514,8 +527,8 @@ export function PartyPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  loading={cancelPending.isPending}
-                  onClick={() => cancelPending.mutate(p.id)}
+                  loading={cancelPending.isPending && cancelPending.variables === p.id}
+                  onClick={() => cancelPending.mutate(p.id, onFail)}
                 >
                   Cancelar
                 </Button>
@@ -541,8 +554,10 @@ export function PartyPage() {
               <Button
                 size="sm"
                 variant="secondary"
-                loading={disbandParty.isPending}
-                onClick={() => my.partyId && disbandParty.mutate(my.partyId)}
+                onClick={() => {
+                  const mine = board?.parties.find((p) => p.id === my.partyId)
+                  if (mine) setDisbandTarget(mine)
+                }}
               >
                 Dissolver PT
               </Button>
@@ -551,7 +566,7 @@ export function PartyPage() {
               size="sm"
               variant="secondary"
               loading={leaveParty.isPending}
-              onClick={() => my.partyId && leaveParty.mutate(my.partyId)}
+              onClick={() => my.partyId && leaveParty.mutate(my.partyId, onFail)}
             >
               Sair da PT
             </Button>
@@ -569,15 +584,26 @@ export function PartyPage() {
               </Button>
             )}
             {onLfg ? (
-              <Button variant="secondary" loading={leaveLfg.isPending} onClick={() => leaveLfg.mutate()}>
+              <Button variant="secondary" loading={leaveLfg.isPending} onClick={() => leaveLfg.mutate(undefined, onFail)}>
                 Sair da lista de espera
               </Button>
             ) : (
-              <Button variant="secondary" loading={upsertLfg.isPending} onClick={() => upsertLfg.mutate({})}>
+              <Button variant="secondary" loading={upsertLfg.isPending} onClick={() => upsertLfg.mutate({}, onFail)}>
                 Entrar na lista de espera
               </Button>
             )}
           </div>
+          {my.lfg && board && (
+            <p className="party-page__lfg-status">
+              Você está na lista de espera há{' '}
+              <span className="party-my__wait">
+                <WaitingTime since={my.lfg.createdAt} />
+              </span>
+              {' · posição '}
+              {sortByWaiting(board.lfg).findIndex((e) => e.memberId === my.lfg!.memberId) + 1}
+              {` de ${board.lfg.length}`}
+            </p>
+          )}
         </Panel>
       )}
 
@@ -596,22 +622,22 @@ export function PartyPage() {
                       party={party}
                       my={my}
                       viewerId={user?.memberId}
-                      onRequestJoin={(id) => requestJoin.mutate(id)}
-                      requestLoading={requestJoin.isPending}
-                      onDisband={(id) => disbandParty.mutate(id)}
-                      disbandLoading={disbandParty.isPending}
+                      onRequestJoin={(id) => requestJoin.mutate(id, onFail)}
+                      requestLoading={requestJoin.isPending && requestJoin.variables === party.id}
+                      onDisband={() => setDisbandTarget(party)}
+                      disbandLoading={disbandParty.isPending && disbandParty.variables === party.id}
                       onKick={(partyId, memberId) => {
                         setKickLoadingId(memberId)
                         kickMember.mutate(
                           { partyId, memberId },
-                          { onSettled: () => setKickLoadingId(null) },
+                          { onSettled: () => setKickLoadingId(null), onError: failToast },
                         )
                       }}
                       onMakeLeader={(partyId, memberId) => {
                         setLeaderLoadingId(memberId)
                         transferLeader.mutate(
                           { partyId, memberId },
-                          { onSettled: () => setLeaderLoadingId(null) },
+                          { onSettled: () => setLeaderLoadingId(null), onError: failToast },
                         )
                       }}
                       kickLoadingId={kickLoadingId}
@@ -635,45 +661,45 @@ export function PartyPage() {
             {board.lfg.length === 0 ? (
               <p className="party-page__empty party-page__empty--panel">Ninguém na lista de espera.</p>
             ) : (
-              <ul className="party-lfg-grid">
-                {board.lfg.map((entry) => (
-                  <li
-                    key={entry.memberId}
-                    className={`party-lfg-item${canDragFromLfg && entry.memberId !== user?.memberId ? ' party-lfg-item--draggable' : ''}`}
-                    draggable={canDragFromLfg && entry.memberId !== user?.memberId}
-                    onDragStart={(e) => {
-                      if (!canDragFromLfg || entry.memberId === user?.memberId) return
-                      setPartyDragData(e, {
-                        memberId: entry.memberId,
-                        fromPartyId: null,
-                        nickname: entry.nickname,
-                      })
-                    }}
-                  >
-                    <div className="party-lfg-item__main">
-                      {entry.classImageUrl ? (
-                        <MemberClassIcon
-                          classImageUrl={entry.classImageUrl}
-                          classLabel={entry.className ?? ''}
-                          size="sm"
-                        />
-                      ) : (
-                        <span className="party-card__roster-fallback party-card__roster-fallback--muted">?</span>
-                      )}
-                      <div className="party-lfg-item__info">
-                        <strong title={entry.nickname}>{entry.nickname}</strong>
-                        <span>
-                          {entry.className ?? 'Classe'} · Lv {entry.level}
-                        </span>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <PartyLfgList entries={board.lfg} viewerId={user?.memberId} canDrag={canDragFromLfg} />
             )}
           </Panel>
         </div>
       )}
+
+      <ConfirmDialog
+        open={disbandTarget !== null}
+        title={`Dissolver ${disbandTarget ? formatPartyLabel(disbandTarget) : 'PT'}`}
+        code="PT"
+        confirmLabel="Dissolver PT"
+        loading={disbandParty.isPending}
+        onConfirm={() =>
+          disbandTarget &&
+          disbandParty.mutate(disbandTarget.id, {
+            onSuccess: () => {
+              showToast('PT dissolvida. Os membros voltaram para a lista de espera.', 'success')
+              setDisbandTarget(null)
+            },
+            onError: (err) => {
+              failToast(err)
+              setDisbandTarget(null)
+            },
+          })
+        }
+        onCancel={closeDisband}
+      >
+        <p>
+          {disbandTarget && disbandTarget.memberCount > 0 ? (
+            <>
+              <strong>{disbandTarget.members.map((m) => m.nickname).join(', ')}</strong>{' '}
+              {disbandTarget.memberCount > 1 ? 'voltam' : 'volta'} para a lista de espera e são avisados na hora.
+            </>
+          ) : (
+            'A PT está vazia e será removida.'
+          )}
+        </p>
+        <p className="confirm-dialog__note">Pedidos e convites pendentes desta PT são cancelados.</p>
+      </ConfirmDialog>
     </div>
   )
 }

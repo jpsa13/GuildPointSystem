@@ -1,33 +1,56 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
-import { subscribeTopic } from '@/Shared/websocket/socketClient'
+import { onSocketReconnect, subscribeTopicEffect } from '@/Shared/websocket/socketClient'
+import { trackServerTime } from '@/Shared/utils/serverClock'
 import type { PartyBoard, PartyMap, PartyMemberNotice } from '@/Features/Party/Party.types'
 
 export const partyKeys = {
   board: ['party', 'board'] as const,
 }
 
+/**
+ * Board snapshots come from mutation responses and from WS-triggered refetches, in any order.
+ * Keep whichever the server generated last, so a slow response never rolls the screen back.
+ */
+function newerBoard(old: PartyBoard | undefined, next: PartyBoard): PartyBoard {
+  if (old?.serverTime && next.serverTime && new Date(old.serverTime) > new Date(next.serverTime)) return old
+  return next
+}
+
 function setBoard(queryClient: ReturnType<typeof useQueryClient>, data: PartyBoard) {
-  queryClient.setQueryData(partyKeys.board, data)
+  trackServerTime(data.serverTime)
+  queryClient.setQueryData<PartyBoard>(partyKeys.board, (old) => newerBoard(old, data))
 }
 
 export function usePartyBoard() {
   const queryClient = useQueryClient()
 
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined
-    subscribeTopic('/topic/parties', () => {
-      queryClient.invalidateQueries({ queryKey: partyKeys.board, exact: true })
-    }).then((fn) => {
-      unsubscribe = fn
-    })
-    return () => unsubscribe?.()
-  }, [queryClient])
+  // The board is personalised (my PT, my pending), so the server only signals "changed" and each
+  // client refetches its own view. Publishes happen after commit, so the refetch sees the change.
+  useEffect(
+    () =>
+      subscribeTopicEffect('/topic/parties', () => {
+        queryClient.invalidateQueries({ queryKey: partyKeys.board, exact: true })
+      }),
+    [queryClient],
+  )
+
+  // Changes published while the socket was down never arrive — refetch on reconnect.
+  useEffect(
+    () => onSocketReconnect(() => queryClient.invalidateQueries({ queryKey: partyKeys.board, exact: true })),
+    [queryClient],
+  )
 
   return useQuery({
     queryKey: partyKeys.board,
-    queryFn: () => apiClient<PartyBoard>('/parties/board'),
+    queryFn: async () => {
+      const board = await apiClient<PartyBoard>('/parties/board')
+      trackServerTime(board.serverTime)
+      return board
+    },
+    structuralSharing: (oldData, newData) =>
+      newerBoard(oldData as PartyBoard | undefined, newData as PartyBoard),
   })
 }
 
@@ -224,20 +247,9 @@ export function usePartyMemberNotices(
 ) {
   useEffect(() => {
     if (!memberId) return
-    let cancelled = false
-    let unsubscribe: (() => void) | undefined
-
-    subscribeTopic(`/topic/parties/member/${memberId}`, (message) => {
+    return subscribeTopicEffect(`/topic/parties/member/${memberId}`, (message) => {
       const notice = parsePartyMemberNotice(message.body)
       if (notice) onNotice(notice)
-    }).then((fn) => {
-      if (cancelled) fn()
-      else unsubscribe = fn
     })
-
-    return () => {
-      cancelled = true
-      unsubscribe?.()
-    }
   }, [memberId, onNotice])
 }

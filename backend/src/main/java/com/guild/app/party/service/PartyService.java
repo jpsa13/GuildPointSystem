@@ -76,7 +76,7 @@ public class PartyService {
                 .toList();
 
         var my = buildMyState(member, memberLookup, displayNumbers);
-        return new PartyBoardResponse(partySummaries, lfg, my);
+        return new PartyBoardResponse(partySummaries, lfg, my, Instant.now());
     }
 
     @Transactional
@@ -145,6 +145,11 @@ public class PartyService {
     @Transactional
     public PartyBoardResponse moveMember(Long toPartyId, MovePartyMemberRequest request, MemberPrincipal actor) {
         var actorMember = requireApproved(actor);
+        // Lock both PTs in id order: two opposite moves (A→B and B→A) would otherwise deadlock.
+        Long fromId = request.fromPartyId();
+        if (fromId != null && !fromId.equals(toPartyId) && fromId < toPartyId) {
+            partyRepository.findByIdForUpdate(fromId);
+        }
         var toParty = partyRepository.findByIdForUpdate(toPartyId)
                 .orElseThrow(() -> new AppException("PT não encontrada", HttpStatus.NOT_FOUND));
         if (!canManageParty(toParty, actorMember)) {
@@ -287,7 +292,8 @@ public class PartyService {
     @Transactional
     public PartyBoardResponse leave(Long partyId, MemberPrincipal actor) {
         var member = requireApproved(actor);
-        var party = partyRepository.findById(partyId)
+        // Lock: the last member leaving deletes the PT — must not interleave with someone being added.
+        var party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new AppException("PT não encontrada", HttpStatus.NOT_FOUND));
         if (!partyMemberRepository.findByMemberId(member.getId())
                 .map(pm -> pm.getPartyId().equals(partyId))

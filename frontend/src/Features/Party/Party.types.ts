@@ -98,6 +98,7 @@ export interface PartyLfgEntry {
 
   note: string | null
 
+  /** When the member joined the waiting list. */
   createdAt: string
 
 }
@@ -165,6 +166,9 @@ export interface PartyBoard {
   lfg: PartyLfgEntry[]
 
   my: MyPartyState
+
+  /** When the server built this snapshot (also drives the waiting timers). */
+  serverTime: string
 
 }
 

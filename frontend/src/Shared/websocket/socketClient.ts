@@ -26,6 +26,19 @@ let connectPromise: Promise<Client> | null = null
 let connectTimeoutId: ReturnType<typeof setTimeout> | null = null
 
 const subscriptions = new Map<symbol, SubscriptionEntry>()
+const reconnectListeners = new Set<() => void>()
+let hasConnectedBefore = false
+
+/**
+ * Fires after the socket comes back from a drop. Events published while offline are lost,
+ * so screens that rely on WS pushes should refetch here.
+ */
+export function onSocketReconnect(listener: () => void): () => void {
+  reconnectListeners.add(listener)
+  return () => {
+    reconnectListeners.delete(listener)
+  }
+}
 
 function clearConnectTimeout() {
   if (connectTimeoutId !== null) {
@@ -77,6 +90,8 @@ function getOrCreateClient(): Client {
     onConnect: () => {
       resubscribeAll()
       resolvePendingConnect(stompClient!)
+      if (hasConnectedBefore) reconnectListeners.forEach((listener) => listener())
+      hasConnectedBefore = true
     },
     onStompError: (frame) => {
       console.error('[WS] STOMP error:', frame.headers.message)
@@ -183,6 +198,7 @@ export function sendSocketMessage(destination: string, body: unknown): void {
 export function disconnectSocket(): void {
   clearConnectTimeout()
   subscriptions.clear()
+  hasConnectedBefore = false
   stompClient?.deactivate()
   stompClient = null
   connectPromise = null

@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { apiClient } from '@/Shared/api/client'
 import {
   getSocketState,
+  onSocketReconnect,
   sendSocketMessage,
   subscribeTopic,
   subscribeTopicEffect,
 } from '@/Shared/websocket/socketClient'
+import { serverNow, trackServerTime } from '@/Shared/utils/serverClock'
 import { isAuctionFinished } from '@/Domain/types/models'
 import type { Auction, AuctionBidResult, AuctionMessage } from '@/Domain/types/models'
 import { memberKeys } from '@/Domain/Member/hooks/useMembers'
@@ -19,18 +21,12 @@ export const auctionKeys = {
 }
 
 // ─── Server clock ─────────────────────────────────────────────────────────────
-// Timers must follow the server clock, not the viewer's: a few seconds of skew decide
-// whether a last-second bid lands before or after the deadline.
+// A few seconds of skew decide whether a last-second bid lands before or after the deadline.
 
-let serverOffsetMs = 0
+export { serverNow }
 
-function trackServerTime(auction: Auction | null | undefined) {
-  if (!auction?.serverTime) return
-  serverOffsetMs = new Date(auction.serverTime).getTime() - Date.now()
-}
-
-export function serverNow() {
-  return Date.now() + serverOffsetMs
+function trackAuctionTime(auction: Auction | null | undefined) {
+  trackServerTime(auction?.serverTime)
 }
 
 // ─── Version-guarded cache writes ─────────────────────────────────────────────
@@ -42,7 +38,7 @@ function newer(old: Auction | undefined, next: Auction): Auction {
 }
 
 function applyAuction(queryClient: QueryClient, auction: Auction) {
-  trackServerTime(auction)
+  trackAuctionTime(auction)
   queryClient.setQueryData<Auction>(auctionKeys.detail(auction.id), (old) => newer(old, auction))
   queryClient.setQueryData<Auction[]>(auctionKeys.all, (old) =>
     old?.map((a) => (a.id === auction.id ? newer(a, auction) : a)),
@@ -72,6 +68,12 @@ export function useAuctions() {
     [queryClient],
   )
 
+  // Bids/creations published while the socket was down never arrive — refetch on reconnect.
+  useEffect(
+    () => onSocketReconnect(() => queryClient.invalidateQueries({ queryKey: auctionKeys.all, exact: true })),
+    [queryClient],
+  )
+
   return useQuery({
     queryKey: auctionKeys.all,
     queryFn: () => apiClient<Auction[]>('/auctions'),
@@ -95,7 +97,7 @@ export function useAuction(id: number, onDeleted?: () => void) {
     queryKey: auctionKeys.detail(id),
     queryFn: async () => {
       const auction = await apiClient<Auction>(`/auctions/${id}`)
-      trackServerTime(auction)
+      trackAuctionTime(auction)
       return auction
     },
     enabled: id > 0,
@@ -104,6 +106,14 @@ export function useAuction(id: number, onDeleted?: () => void) {
     structuralSharing: (oldData, newData) =>
       newer(oldData as Auction | undefined, newData as Auction),
   })
+
+  useEffect(() => {
+    if (id <= 0) return
+    return onSocketReconnect(() => {
+      queryClient.invalidateQueries({ queryKey: auctionKeys.detail(id), exact: true })
+      queryClient.invalidateQueries({ queryKey: auctionKeys.messages(id), exact: true })
+    })
+  }, [id, queryClient])
 
   useEffect(() => {
     if (id <= 0) return
