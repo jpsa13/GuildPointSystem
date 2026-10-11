@@ -103,9 +103,9 @@ const devTestEvent = devTestScheduleEvent()
 
 export const HEADER_SCHEDULED_EVENTS: ScheduledEvent[] = [
   ...(devTestEvent ? [devTestEvent] : []),
-  { kind: 'daily', id: 'cw1', label: 'CW1', hour: 6, minute: 0 },
-  { kind: 'daily', id: 'cw2', label: 'CW2', hour: 14, minute: 0 },
-  { kind: 'daily', id: 'cw3', label: 'CW3', hour: 22, minute: 0 },
+  { kind: 'daily', id: 'cw1', label: 'CW1', hour: 8, minute: 0 },
+  { kind: 'daily', id: 'cw2', label: 'CW2', hour: 16, minute: 0 },
+  { kind: 'daily', id: 'cw3', label: 'CW3', hour: 0, minute: 0 },
   { kind: 'daily', id: 'pbs-elan', label: 'PB Elan', hour: 19, minute: 0 },
   {
     kind: 'interval',

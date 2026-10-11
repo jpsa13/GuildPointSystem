@@ -1,5 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useFitRows } from '@/Shared/utils/useFitRows'
+import { useMatchBottom } from '@/Shared/utils/useMatchBottom'
+import { NewsPanel } from '@/Features/News/NewsPanel'
+import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCountdown'
 import { useMemberRanking } from '@/Domain/Member/hooks/useMembers'
 import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
 import { useActiveEvents, useClaimEvent } from '@/Domain/Event/hooks/useEvents'
@@ -9,19 +13,22 @@ import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import './Dashboard.styles.scss'
 
-const RANK_PER_PAGE = 14
 const EVENT_PER_PAGE = 4
+/** Ranking row (46px min-height + 1px border) and pagination block, used until measured. */
+const RANK_ROW_HEIGHT = 47
+const PAGINATION_HEIGHT = 46
 
 interface PaginationProps {
   page: number
   total: number
   onChange: (page: number) => void
+  ref?: React.Ref<HTMLDivElement>
 }
 
-function Pagination({ page, total, onChange }: PaginationProps) {
+function Pagination({ page, total, onChange, ref }: PaginationProps) {
   if (total <= 1) return null
   return (
-    <div className="dash-pagination">
+    <div className="dash-pagination" ref={ref}>
       <button
         className="dash-pagination__btn"
         onClick={() => onChange(Math.max(0, page - 1))}
@@ -53,10 +60,31 @@ export function DashboardPage() {
   const [rankPage, setRankPage] = useState(0)
   const [eventPage, setEventPage] = useState(0)
 
+  // Right column ends exactly where the ranking panel ends; events and news split it in half.
+  const sideRef = useRef<HTMLDivElement>(null)
+  const rankingRef = useRef<HTMLDivElement>(null)
+  const sideHeight = useMatchBottom(sideRef, rankingRef, !isLoading)
+
   const top3 = ranking.slice(0, 3)
   const rest = ranking.slice(3)
-  const rankTotalPages = Math.ceil(rest.length / RANK_PER_PAGE)
-  const pagedRest = rest.slice(rankPage * RANK_PER_PAGE, (rankPage + 1) * RANK_PER_PAGE)
+
+  // Rows per page follow the viewport height so the dashboard never scrolls; extra rows paginate.
+  const rankListRef = useRef<HTMLUListElement>(null)
+  const rankPaginationRef = useRef<HTMLDivElement>(null)
+  const rankPerPage = useFitRows({
+    listRef: rankListRef,
+    paginationRef: rankPaginationRef,
+    totalRows: rest.length,
+    fallbackRowHeight: RANK_ROW_HEIGHT,
+    fallbackPaginationHeight: PAGINATION_HEIGHT,
+  })
+  const rankTotalPages = Math.max(1, Math.ceil(rest.length / rankPerPage))
+  // A taller window can leave the current page past the end — clamp instead of showing nothing.
+  const currentRankPage = Math.min(rankPage, rankTotalPages - 1)
+  const pagedRest = rest.slice(currentRankPage * rankPerPage, (currentRankPage + 1) * rankPerPage)
+  // Last page of several: pad with numbered blank rows so the table keeps its height and the
+  // pagination stays put.
+  const emptyRankRows = rankTotalPages > 1 ? Math.max(0, rankPerPage - pagedRest.length) : 0
 
   const unclaimedEvents = events.filter((e) => !e.claimedByMe)
   const eventTotalPages = Math.ceil(unclaimedEvents.length / EVENT_PER_PAGE)
@@ -100,16 +128,13 @@ export function DashboardPage() {
 
   return (
     <div className="dashboard">
-      <Link to="/server-info" className="dashboard__cerberus-link">
-        Informações do servidor Cerberus (tópicos traduzidos)
-      </Link>
+      <div className="dashboard__cerberus">
+        <CerberusCountdown compact />
+      </div>
 
       {/* ── Left: Ranking ─────────────────────────────────────────────────── */}
-      <Panel
-        title="Ranking"
-        code={`${ranking.length} MBR`}
-        className="dashboard__col dashboard__col--ranking"
-      >
+      <div className="dashboard__col dashboard__col--ranking" ref={rankingRef}>
+      <Panel title="Ranking" code={`${ranking.length} MBR`}>
         <div className="podium">
           {[1, 0, 2].map((rankIdx) => {
             const member = top3[rankIdx]
@@ -147,16 +172,18 @@ export function DashboardPage() {
               <span>Último login</span>
               <span>Pontos</span>
             </div>
-            <ul className="ranking-list">
+            <ul className="ranking-list" ref={rankListRef}>
               {pagedRest.map((m, i) => (
                 <li key={m.id}>
                   <span className="ranking-list__pos">
-                    {String(rankPage * RANK_PER_PAGE + i + 4).padStart(2, '0')}
+                    {String(currentRankPage * rankPerPage + i + 4).padStart(2, '0')}
                   </span>
-                  <MemberClassIcon
-                    classImageUrl={m.classImageUrl}
-                    classLabel={m.className}
-                  />
+                  {m.classImageUrl && m.className ? (
+                    <MemberClassIcon classImageUrl={m.classImageUrl} classLabel={m.className} />
+                  ) : (
+                    // Keep the icon column even without a class, or the row's cells shift left.
+                    <span className="ranking-list__empty-icon" aria-hidden="true" />
+                  )}
                   <Link to={`/profile/${m.id}`} className="ranking-list__name">
                     {m.nickname}
                   </Link>
@@ -167,13 +194,29 @@ export function DashboardPage() {
                   <span className="ranking-list__pts">{m.points}</span>
                 </li>
               ))}
+              {Array.from({ length: emptyRankRows }, (_, i) => (
+                <li key={`empty-${i}`} className="ranking-list__row--empty" aria-hidden="true">
+                  <span className="ranking-list__pos">
+                    {String(currentRankPage * rankPerPage + pagedRest.length + i + 4).padStart(2, '0')}
+                  </span>
+                  <span className="ranking-list__empty-icon" />
+                  <span className="ranking-list__empty-name">—</span>
+                </li>
+              ))}
             </ul>
-            <Pagination page={rankPage} total={rankTotalPages} onChange={setRankPage} />
+            <Pagination
+              ref={rankPaginationRef}
+              page={currentRankPage}
+              total={rankTotalPages}
+              onChange={setRankPage}
+            />
           </div>
         )}
       </Panel>
+      </div>
 
-      {/* ── Right: Active Events ──────────────────────────────────────────── */}
+      {/* ── Right: Active Events (top half) + News (bottom half) ───────────── */}
+      <div className="dashboard__side" ref={sideRef} style={sideHeight ? { height: sideHeight } : undefined}>
       <Panel
         title="Eventos Ativos"
         variant="amber"
@@ -240,6 +283,9 @@ export function DashboardPage() {
           </div>
         )}
       </Panel>
+
+      <NewsPanel className="dashboard__col dashboard__col--news" />
+      </div>
     </div>
   )
 }

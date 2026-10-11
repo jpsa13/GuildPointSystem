@@ -26,9 +26,9 @@ public final class GameEventDefinitions {
             ZonedDateTime.of(2026, 9, 27, 19, 0, 0, 0, SCHEDULE_ZONE);
 
     public static final List<GameEvent> ALL = List.of(
-            new DailyGameEvent("cw1", "CW1", 6, 0),
-            new DailyGameEvent("cw2", "CW2", 14, 0),
-            new DailyGameEvent("cw3", "CW3", 22, 0),
+            new DailyGameEvent("cw1", "CW1", 8, 0),
+            new DailyGameEvent("cw2", "CW2", 16, 0),
+            new DailyGameEvent("cw3", "CW3", 0, 0),
             new DailyGameEvent("pbs-elan", "PB Elan", 19, 0),
             new IntervalGameEvent("pbs-major", "PB Major", 4, PBS_MAJOR_ANCHOR));
 }

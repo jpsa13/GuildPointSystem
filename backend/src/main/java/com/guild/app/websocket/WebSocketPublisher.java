@@ -62,6 +62,10 @@ public class WebSocketPublisher {
         send("/topic/account/" + memberId, payload);
     }
 
+    public void publishNews(Object payload) {
+        send("/topic/news", payload);
+    }
+
     public void publishScheduleAlert(Object payload) {
         send("/topic/schedule", payload);
     }

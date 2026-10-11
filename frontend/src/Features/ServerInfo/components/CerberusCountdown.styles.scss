@@ -1,0 +1,164 @@
+// Cerberus launch countdown — full banner (login) and compact strip (dashboard)
+.cerberus-banner {
+  @include theme.panel(theme.$chamfer-lg);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: theme.$spacing-md theme.$spacing-lg theme.$spacing-lg;
+  border-color: rgba(theme.$color-amber, 0.35);
+
+  &__logo {
+    width: min(280px, 70vw);
+    height: auto;
+    object-fit: contain;
+    margin-bottom: theme.$spacing-sm;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.65));
+  }
+
+  &__title {
+    margin: 0;
+    font-family: theme.$font-heading;
+    font-size: clamp(22px, 4vw, 32px);
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: theme.$color-amber;
+  }
+
+  &__date {
+    margin: 4px 0 theme.$spacing-md;
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+    text-transform: uppercase;
+  }
+
+  &__live {
+    @include theme.readout(theme.$color-success);
+    margin: 0;
+    font-size: theme.$font-size-base;
+    text-transform: uppercase;
+  }
+
+  &__timer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  &__unit {
+    @include theme.readout(theme.$color-primary);
+    min-width: 72px;
+    padding: 8px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    @include theme.chamfer(4px);
+  }
+
+  &__value {
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  &__label {
+    margin-top: 4px;
+    font-family: theme.$font-family;
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+    text-transform: lowercase;
+  }
+
+  &__sep {
+    font-family: theme.$font-mono;
+    font-size: 28px;
+    color: theme.$color-text-faint;
+    padding-bottom: 8px;
+  }
+
+  // Single-row strip: logo + title/date on the left, timer on the right.
+  &--compact {
+    @include theme.panel(theme.$chamfer-sm);
+    flex-direction: row;
+    justify-content: space-between;
+    gap: theme.$spacing-md;
+    padding: 8px theme.$spacing-md;
+    text-align: left;
+    border-color: rgba(theme.$color-amber, 0.35);
+
+    .cerberus-banner__heading {
+      display: flex;
+      align-items: center;
+      gap: theme.$spacing-sm;
+      min-width: 0;
+    }
+
+    .cerberus-banner__logo {
+      width: 44px;
+      margin: 0;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.65));
+    }
+
+    .cerberus-banner__title {
+      font-size: 20px;
+      letter-spacing: 1.5px;
+    }
+
+    .cerberus-banner__date {
+      margin: 0;
+      font-size: theme.$font-size-heading;
+    }
+
+    .cerberus-banner__timer {
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+    }
+
+    .cerberus-banner__unit {
+      min-width: 52px;
+      padding: 4px 6px 5px;
+    }
+
+    .cerberus-banner__value {
+      font-size: 20px;
+    }
+
+    .cerberus-banner__label {
+      margin-top: 2px;
+    }
+
+    .cerberus-banner__sep {
+      font-size: 18px;
+      padding-bottom: 0;
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .cerberus-banner__unit {
+    min-width: 58px;
+    padding: 6px 6px 8px;
+  }
+
+  .cerberus-banner__value {
+    font-size: 24px;
+  }
+
+  .cerberus-banner--compact {
+    flex-direction: column;
+    align-items: center;
+
+    .cerberus-banner__unit {
+      min-width: 44px;
+    }
+
+    .cerberus-banner__value {
+      font-size: 18px;
+    }
+  }
+}

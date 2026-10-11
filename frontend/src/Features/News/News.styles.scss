@@ -1,0 +1,221 @@
+// ── Dashboard news panel ─────────────────────────────────────────────────────
+.news-panel {
+  &__article {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-sm;
+    min-height: 0;
+    flex: 1;
+  }
+
+  &__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px theme.$spacing-md;
+    align-items: start;
+    padding-bottom: theme.$spacing-sm;
+    border-bottom: 1px dashed theme.$color-border;
+  }
+
+  &__title {
+    margin: 0;
+    font-family: theme.$font-heading;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: theme.$color-amber;
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    grid-column: 1;
+    margin: 0;
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-heading;
+    line-height: 1.5;
+    color: theme.$color-text-muted;
+  }
+
+  &__actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex;
+    gap: theme.$spacing-xs;
+  }
+
+  // Long news scroll inside the panel; the page itself never scrolls.
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: theme.$spacing-xs;
+  }
+
+  &__pagination {
+    margin-top: auto;
+  }
+}
+
+// ── Rendered rich text (viewer + editor surface) ─────────────────────────────
+.news-content {
+  font-size: theme.$font-size-base;
+  line-height: 1.6;
+  color: theme.$color-text;
+  overflow-wrap: anywhere;
+
+  > :first-child { margin-top: 0; }
+  > :last-child { margin-bottom: 0; }
+
+  p { margin: 0 0 theme.$spacing-sm; }
+
+  h2,
+  h3 {
+    margin: theme.$spacing-md 0 theme.$spacing-xs;
+    font-family: theme.$font-heading;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: theme.$color-primary;
+  }
+
+  h2 { font-size: 18px; }
+  h3 { font-size: 15px; }
+
+  ul,
+  ol {
+    margin: 0 0 theme.$spacing-sm;
+    padding-left: 1.4em;
+  }
+
+  li > p { margin: 0; }
+
+  blockquote {
+    margin: 0 0 theme.$spacing-sm;
+    padding: 4px theme.$spacing-md;
+    border-left: 3px solid theme.$color-amber;
+    background: rgba(theme.$color-amber, 0.06);
+    color: theme.$color-text-muted;
+  }
+
+  a {
+    color: theme.$color-primary;
+    text-decoration: underline;
+  }
+
+  code {
+    font-family: theme.$font-mono;
+    padding: 0 4px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid theme.$color-border-strong;
+    margin: theme.$spacing-md 0;
+  }
+}
+
+// ── Editor modal ─────────────────────────────────────────────────────────────
+.news-editor {
+  max-width: 760px;
+  width: 100%;
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-md;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    > span { @include theme.field-label; }
+
+    > input {
+      @include theme.field-input;
+      @include theme.field-control-height;
+    }
+  }
+
+  &__frame {
+    border: 1px solid theme.$color-border-strong;
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  &__toolbar {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    padding: 6px;
+    border-bottom: 1px solid theme.$color-border-strong;
+    background: linear-gradient(180deg, theme.$metal-700, theme.$metal-800);
+  }
+
+  &__tool {
+    min-width: 32px;
+    height: 30px;
+    padding: 0 8px;
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: theme.$color-text;
+      border-color: theme.$color-border-strong;
+    }
+
+    &--active {
+      color: theme.$color-primary;
+      border-color: rgba(theme.$color-primary, 0.5);
+      background: rgba(theme.$color-primary, 0.1);
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+  }
+
+  &__sep {
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: theme.$color-border-strong;
+  }
+
+  &__link {
+    display: flex;
+    gap: theme.$spacing-xs;
+    flex-basis: 100%;
+    margin-top: 6px;
+
+    input {
+      @include theme.field-input;
+      flex: 1;
+    }
+  }
+
+  &__surface {
+    min-height: 240px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: theme.$spacing-md;
+    outline: none;
+
+    &:focus-visible { box-shadow: inset 0 0 0 1px rgba(theme.$color-primary, 0.5); }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: theme.$spacing-sm;
+  }
+}

@@ -5,35 +5,36 @@
   gap: theme.$spacing-lg;
   align-items: start;
 
-  &__cerberus-link {
+  &__cerberus {
     grid-column: 1 / -1;
-    @include theme.chamfer(theme.$chamfer-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 18px;
-    font-family: theme.$font-heading;
-    font-size: theme.$font-size-ui;
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    text-decoration: none;
-    color: theme.$color-amber;
-    border: 1px solid rgba(theme.$color-amber, 0.45);
-    background:
-      linear-gradient(180deg, rgba(theme.$color-amber, 0.1), rgba(0, 0, 0, 0.35)),
-      theme.$metal-800;
-    transition: border-color 0.12s, color 0.12s;
-
-    &:hover {
-      color: theme.$color-text;
-      border-color: theme.$color-amber;
-      text-decoration: none;
-    }
   }
 
   &__col {
     min-height: 0;
+  }
+
+  // Right column: events on top, news below, each taking half of the viewport-filling height.
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-lg;
+    min-height: 0;
+
+    > .panel {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    > .panel > .panel__body {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    // Events overflow scroll inside their half instead of growing the page.
+    > .dashboard__col--events > .panel__body {
+      overflow-y: auto;
+    }
   }
 
   &__empty {
@@ -198,6 +199,27 @@
     font-family: theme.$font-mono;
     font-size: 18px;
     color: theme.$color-text-muted;
+  }
+
+  // Filler rows on the last page: same height as real rows, visibly vacant.
+  li.ranking-list__row--empty {
+    pointer-events: none;
+
+    &:hover { background: transparent; }
+
+    .ranking-list__pos { color: theme.$color-text-faint; opacity: 0.6; }
+  }
+
+  &__empty-icon {
+    @include theme.slot;
+    width: 32px;
+    height: 32px;
+    opacity: 0.35;
+  }
+
+  &__empty-name {
+    color: theme.$color-text-faint;
+    opacity: 0.5;
   }
 
   &__name {

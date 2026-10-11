@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import './CerberusCountdown.styles.scss'
 
 /** Próximo 24 de outubro (horário de Brasília). */
 function getTargetDate(): Date {
@@ -15,7 +16,12 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-export function CerberusCountdown() {
+interface CerberusCountdownProps {
+  /** Single-row strip for in-app pages; the default is the large login banner. */
+  compact?: boolean
+}
+
+export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
   const target = useMemo(() => getTargetDate(), [])
   const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [done, setDone] = useState(false)
@@ -41,13 +47,31 @@ export function CerberusCountdown() {
     return () => window.clearInterval(id)
   }, [target])
 
-  return (
-    <section className="cerberus-banner" aria-label="Contagem regressiva Cerberus">
-      <img src="/logo.png" alt="" className="cerberus-banner__logo" />
+  const heading = (
+    <>
       <h2 className="cerberus-banner__title">CERBERUS GAMES Inc</h2>
       <p className="cerberus-banner__date">
         Contagem para 24 de outubro de {target.getFullYear()}
       </p>
+    </>
+  )
+
+  return (
+    <section
+      className={`cerberus-banner${compact ? ' cerberus-banner--compact' : ''}`}
+      aria-label="Contagem regressiva Cerberus"
+    >
+      {compact ? (
+        <div className="cerberus-banner__heading">
+          <img src="/logo.png" alt="" className="cerberus-banner__logo" />
+          <div>{heading}</div>
+        </div>
+      ) : (
+        <>
+          <img src="/logo.png" alt="" className="cerberus-banner__logo" />
+          {heading}
+        </>
+      )}
       {done ? (
         <p className="cerberus-banner__live">Evento em andamento</p>
       ) : (

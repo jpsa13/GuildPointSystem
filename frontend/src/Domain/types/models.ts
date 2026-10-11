@@ -22,6 +22,9 @@ export type AuditLogType =
   | 'AUCTION_CANCELLED'
   | 'AUCTION_DELETED'
   | 'MEMBER_DELETED'
+  | 'NEWS_CREATED'
+  | 'NEWS_UPDATED'
+  | 'NEWS_DELETED'
   | 'PROFILE_UPDATED'
   | 'MEMBER_APPROVED'
   | 'MEMBER_REJECTED'
@@ -297,6 +300,18 @@ export interface Auction {
   /** Monotonic per auction — newer state always has a higher version. */
   version: number
   serverTime: string
+}
+
+export interface News {
+  id: number
+  title: string
+  /** Sanitized server-side; sanitized again before rendering. */
+  contentHtml: string
+  authorId: number | null
+  authorNickname: string | null
+  createdAt: string
+  editorNickname: string | null
+  updatedAt: string | null
 }
 
 export interface AuctionBidResult {
