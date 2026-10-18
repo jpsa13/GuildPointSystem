@@ -11,6 +11,8 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
@@ -22,16 +24,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final TaskScheduler messageBrokerTaskScheduler;
     private final int inboundThreads;
     private final int outboundThreads;
+    private final String[] allowedOrigins;
 
     public WebSocketConfig(
             WebSocketAuthInterceptor webSocketAuthInterceptor,
             @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler,
             @Value("${guild.websocket.inbound-threads:32}") int inboundThreads,
-            @Value("${guild.websocket.outbound-threads:16}") int outboundThreads) {
+            @Value("${guild.websocket.outbound-threads:16}") int outboundThreads,
+            @Value("${guild.cors.allowed-origins}") String allowedOrigins) {
         this.webSocketAuthInterceptor = webSocketAuthInterceptor;
         this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
         this.inboundThreads = inboundThreads;
         this.outboundThreads = outboundThreads;
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
     }
 
     @Override
@@ -49,8 +57,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Same origins as REST CORS: another site can't open a socket in a member's browser.
+        // SockJS also serves a raw WebSocket at /ws/websocket, which the frontend tries first.
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(allowedOrigins)
                 .withSockJS();
     }
 

@@ -5,11 +5,26 @@ import { getWsBaseUrl } from '@/Shared/utils/env'
 
 const CONNECT_TIMEOUT_MS = 10_000
 
+/** Native attempts that may fail before falling back to SockJS (e.g. a proxy that blocks upgrades). */
+const NATIVE_FAILURES_BEFORE_FALLBACK = 2
+
 function getWsUrl(): string {
   return getWsBaseUrl()
 }
 
+/**
+ * Raw WebSocket endpoint the server exposes next to SockJS: no `/info` round trip, no SockJS framing,
+ * no XHR fallback — the lowest-latency path.
+ */
+function getNativeWsUrl(): string {
+  return `${getWsUrl().replace(/^http/, 'ws')}/websocket`
+}
+
 export const WS_URL = getWsUrl()
+
+let useSockJs = typeof WebSocket === 'undefined'
+let nativeFailures = 0
+let socketOpened = false
 
 export type SocketState = 'disconnected' | 'connecting' | 'connected'
 
@@ -79,15 +94,18 @@ function getOrCreateClient(): Client {
   if (stompClient) return stompClient
 
   stompClient = new Client({
-    webSocketFactory: () => new SockJS(getWsUrl()),
+    webSocketFactory: () => (useSockJs ? new SockJS(getWsUrl()) : new WebSocket(getNativeWsUrl())),
     reconnectDelay: 3000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,
     beforeConnect: () => {
+      socketOpened = false
       const token = getToken()
       stompClient!.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {}
     },
     onConnect: () => {
+      socketOpened = true
+      nativeFailures = 0
       resubscribeAll()
       resolvePendingConnect(stompClient!)
       if (hasConnectedBefore) reconnectListeners.forEach((listener) => listener())
@@ -101,6 +119,11 @@ function getOrCreateClient(): Client {
       console.error('[WS] WebSocket error:', event)
     },
     onWebSocketClose: () => {
+      // Native socket never got to CONNECTED: after a couple of tries, stick to SockJS for this page.
+      if (!useSockJs && !socketOpened && ++nativeFailures >= NATIVE_FAILURES_BEFORE_FALLBACK) {
+        console.warn('[WS] Native WebSocket unavailable, falling back to SockJS')
+        useSockJs = true
+      }
       subscriptions.forEach((entry) => {
         entry.stomp = null
       })
