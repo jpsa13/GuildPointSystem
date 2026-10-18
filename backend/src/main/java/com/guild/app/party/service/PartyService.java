@@ -33,17 +33,37 @@ public class PartyService {
     private final PartyLfgRepository partyLfgRepository;
     private final MemberRepository memberRepository;
     private final WebSocketPublisher webSocketPublisher;
+    private final PartyBoardBroadcaster partyBoardBroadcaster;
 
     @Transactional(readOnly = true)
     public PartyBoardResponse getBoard(MemberPrincipal actor) {
         var member = requireApproved(actor);
+        var board = loadPublicBoard();
+        var my = buildMyState(member, board.memberLookup(), board.displayNumbers());
+        return new PartyBoardResponse(board.parties(), board.lfg(), my, board.serverTime());
+    }
+
+    /** Board without personal state, broadcast to every client by {@link PartyBoardBroadcaster}. */
+    @Transactional(readOnly = true)
+    public PartyBoardSnapshot getPublicSnapshot() {
+        var board = loadPublicBoard();
+        return new PartyBoardSnapshot(board.parties(), board.lfg(), board.serverTime());
+    }
+
+    private record PublicBoard(
+            List<PartySummary> parties,
+            List<PartyLfgEntry> lfg,
+            Map<Long, Member> memberLookup,
+            Map<Long, Integer> displayNumbers,
+            Instant serverTime) {}
+
+    private PublicBoard loadPublicBoard() {
         var parties = partyRepository.findAllByOrderByMapAscCreatedAtAsc();
         var displayNumbers = computeDisplayNumbers(parties);
         var partyIds = parties.stream().map(Party::getId).toList();
 
         Map<Long, List<PartyMember>> membersByParty = new HashMap<>();
         Set<Long> memberIds = new HashSet<>();
-        memberIds.add(member.getId());
 
         if (!partyIds.isEmpty()) {
             var partyMembers = partyMemberRepository.findByPartyIdInWithMember(partyIds);
@@ -75,8 +95,7 @@ public class PartyService {
                 .map(row -> toLfgEntry(row, memberLookup))
                 .toList();
 
-        var my = buildMyState(member, memberLookup, displayNumbers);
-        return new PartyBoardResponse(partySummaries, lfg, my, Instant.now());
+        return new PublicBoard(partySummaries, lfg, memberLookup, displayNumbers, Instant.now());
     }
 
     @Transactional
@@ -268,7 +287,7 @@ public class PartyService {
 
         partyPendingRepository.findByPartyIdAndStatus(partyId, PartyPendingStatus.PENDING).forEach(p -> {
             p.setStatus(PartyPendingStatus.CANCELLED);
-            partyPendingRepository.save(p);
+            savePending(p);
         });
 
         for (Long memberId : memberIds) {
@@ -319,7 +338,7 @@ public class PartyService {
         partyLfgRepository.findByMemberId(memberId).ifPresent(partyLfgRepository::delete);
         partyPendingRepository.findActiveForMember(memberId, PartyPendingStatus.PENDING).forEach(p -> {
             p.setStatus(PartyPendingStatus.CANCELLED);
-            partyPendingRepository.save(p);
+            savePending(p);
         });
         publishBoard();
     }
@@ -426,7 +445,7 @@ public class PartyService {
         pending.setInitiator(member);
         pending.setTarget(party.getLeader());
         pending.setStatus(PartyPendingStatus.PENDING);
-        partyPendingRepository.save(pending);
+        savePending(pending);
 
         publishBoard();
         return getBoard(actor);
@@ -467,7 +486,7 @@ public class PartyService {
         pending.setKind(PartyPendingKind.INVITE);
         pending.setInitiator(member);
         pending.setTarget(target);
-        partyPendingRepository.save(pending);
+        savePending(pending);
 
         publishBoard();
         return getBoard(actor);
@@ -499,7 +518,7 @@ public class PartyService {
             addMemberLocked(party, member);
             pending.setStatus(PartyPendingStatus.ACCEPTED);
         }
-        partyPendingRepository.save(pending);
+        savePending(pending);
         long joinedMemberId = pending.getKind() == PartyPendingKind.JOIN_REQUEST
                 ? pending.getInitiator().getId()
                 : member.getId();
@@ -521,7 +540,7 @@ public class PartyService {
 
         assertCanResolvePending(pending, member);
         pending.setStatus(PartyPendingStatus.REJECTED);
-        partyPendingRepository.save(pending);
+        savePending(pending);
 
         var map = pending.getParty().getMap();
         publishBoard();
@@ -541,7 +560,7 @@ public class PartyService {
         }
 
         pending.setStatus(PartyPendingStatus.CANCELLED);
-        partyPendingRepository.save(pending);
+        savePending(pending);
 
         var map = pending.getParty().getMap();
         publishBoard();
@@ -611,7 +630,7 @@ public class PartyService {
     private void cancelOtherPendingForMember(Long memberId) {
         for (var p : partyPendingRepository.findActiveForMember(memberId, PartyPendingStatus.PENDING)) {
             p.setStatus(PartyPendingStatus.CANCELLED);
-            partyPendingRepository.save(p);
+            savePending(p);
         }
     }
 
@@ -622,7 +641,7 @@ public class PartyService {
         partyPendingRepository.findByPartyIdAndStatus(partyId, PartyPendingStatus.PENDING).forEach(p -> {
             if (p.getKind() == PartyPendingKind.JOIN_REQUEST) {
                 p.setStatus(PartyPendingStatus.REJECTED);
-                partyPendingRepository.save(p);
+                savePending(p);
             }
         });
     }
@@ -631,7 +650,7 @@ public class PartyService {
         partyPendingRepository.findByPartyIdAndStatus(partyId, PartyPendingStatus.PENDING).forEach(p -> {
             if (p.getInitiator().getId().equals(memberId) || p.getTarget().getId().equals(memberId)) {
                 p.setStatus(PartyPendingStatus.CANCELLED);
-                partyPendingRepository.save(p);
+                savePending(p);
             }
         });
     }
@@ -758,6 +777,7 @@ public class PartyService {
         }
 
         return new MyPartyState(
+                member.getId(),
                 partyId,
                 partyNumber,
                 partyMap,
@@ -859,7 +879,13 @@ public class PartyService {
     }
 
     private void publishBoard() {
-        webSocketPublisher.publishPartyBoard();
+        partyBoardBroadcaster.boardChanged();
+    }
+
+    /** Every pending write goes through here so the involved members are told to refresh. */
+    private void savePending(PartyPending pending) {
+        partyPendingRepository.save(pending);
+        partyBoardBroadcaster.pendingChanged(pending);
     }
 
     private Map<Long, Integer> computeDisplayNumbers(List<Party> parties) {

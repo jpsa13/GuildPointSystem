@@ -3,6 +3,7 @@ package com.guild.app.websocket;
 import com.guild.app.auth.security.JwtService;
 import com.guild.app.auth.security.MemberDetailsService;
 import com.guild.app.auth.security.MemberPrincipal;
+import com.guild.app.common.enums.MemberStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
+
+    private static final String PARTY_TOPIC = "/topic/parties";
+    private static final String PARTY_MEMBER_TOPIC = "/topic/parties/member/";
 
     private final JwtService jwtService;
     private final MemberDetailsService memberDetailsService;
@@ -45,7 +49,27 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             }
         } else if (StompCommand.SEND.equals(accessor.getCommand()) && accessor.getUser() == null) {
             throw new IllegalStateException("Não autorizado. Faça login novamente.");
+        } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            checkPartySubscription(accessor);
         }
         return message;
+    }
+
+    /**
+     * The party topics carry the board (same visibility as {@code GET /parties/board}: approved members),
+     * and each member's notice topic is readable only by that member.
+     */
+    private void checkPartySubscription(StompHeaderAccessor accessor) {
+        var destination = accessor.getDestination();
+        if (destination == null || !destination.startsWith(PARTY_TOPIC)) return;
+
+        var member = accessor.getUser() instanceof UsernamePasswordAuthenticationToken auth
+                && auth.getPrincipal() instanceof MemberPrincipal principal ? principal : null;
+        if (member == null || member.getStatus() != MemberStatus.APROVADO) {
+            throw new IllegalStateException("Não autorizado.");
+        }
+        if (destination.startsWith(PARTY_MEMBER_TOPIC) && !destination.equals(PARTY_MEMBER_TOPIC + member.getId())) {
+            throw new IllegalStateException("Não autorizado.");
+        }
     }
 }

@@ -124,6 +124,7 @@ export interface PartyPendingItem {
 
 
 export interface MyPartyState {
+  memberId: number
 
   partyId: number | null
 
@@ -158,6 +159,19 @@ export interface PartyMemberNotice {
 }
 
 
+
+/** Board without personal state, as broadcast on /topic/parties. */
+export type PublicPartyBoard = Omit<PartyBoard, 'my'>
+
+export interface PartyBoardUpdate {
+  type: 'BOARD_UPDATED'
+  /** Null when the server could not build the snapshot: refetch. */
+  board: PublicPartyBoard | null
+  /** Members whose pending invites/requests changed and must refetch their own state. */
+  pendingMemberIds: number[]
+  /** A join request changed: organizers (who see every join request) must refetch too. */
+  joinRequestsChanged: boolean
+}
 
 export interface PartyBoard {
 

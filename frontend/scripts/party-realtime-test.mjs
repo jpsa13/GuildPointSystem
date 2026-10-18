@@ -63,7 +63,7 @@ const clients = await Promise.all(
           connectHeaders: { Authorization: `Bearer ${jwt(id)}` },
           heartbeatIncoming: 0, heartbeatOutgoing: 0, reconnectDelay: 0,
           onConnect: () => {
-            c.client.subscribe('/topic/parties', () => c.events.push(Date.now()))
+            c.client.subscribe('/topic/parties', (m) => { c.events.push(Date.now()); c.last = JSON.parse(m.body) })
             c.client.subscribe(`/topic/parties/member/${id}`, (m) => c.notices.push(JSON.parse(m.body)))
             resolve(c)
           },
@@ -97,10 +97,15 @@ let r = await broadcast('A cria PT', () => api(A, 'POST', '/parties', { map: 'ET
 const ptA = r.data.my.partyId
 let bd = await board(B)
 check('Outro membro vê a PT nova após o evento', bd.parties.some((p) => p.id === ptA))
+const lastOf = (id) => clients.find((c) => c.id === id).last
+check('Broadcast já traz o board com a PT nova (sem refetch)', lastOf(C)?.board?.parties.some((p) => p.id === ptA))
+check('Broadcast não traz estado pessoal', lastOf(C)?.board && !('my' in lastOf(C).board))
 
 r = await broadcast('B pede entrada', () => api(B, 'POST', `/parties/${ptA}/requests`))
 const pendingB = (await board(A)).my.pending.find((p) => p.kind === 'JOIN_REQUEST')
 check('Líder vê o pedido pendente', !!pendingB)
+check('Broadcast avisa só A e B para recarregar pendências', [A, B].every((id) => lastOf(C)?.pendingMemberIds?.includes(id))
+  && lastOf(C)?.pendingMemberIds?.length === 2 && lastOf(C)?.joinRequestsChanged === true)
 await broadcast('A aceita B', () => api(A, 'POST', `/parties/pending/${pendingB.id}/accept`))
 bd = await board(C)
 check('Todos veem B na PT', bd.parties.find((p) => p.id === ptA)?.members.some((m) => m.id === B))

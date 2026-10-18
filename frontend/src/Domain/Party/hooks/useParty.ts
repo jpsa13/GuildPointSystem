@@ -4,6 +4,11 @@ import { apiClient } from '@/Shared/api/client'
 import { onSocketReconnect, subscribeTopicEffect } from '@/Shared/websocket/socketClient'
 import { trackServerTime } from '@/Shared/utils/serverClock'
 import type { PartyBoard, PartyMap, PartyMemberNotice } from '@/Features/Party/Party.types'
+import {
+  applyPublicBoard,
+  needsPersonalRefetch,
+  parsePartyBoardUpdate,
+} from '@/Features/Party/utils/partyBoardUpdate'
 
 export const partyKeys = {
   board: ['party', 'board'] as const,
@@ -26,12 +31,17 @@ function setBoard(queryClient: ReturnType<typeof useQueryClient>, data: PartyBoa
 export function usePartyBoard() {
   const queryClient = useQueryClient()
 
-  // The board is personalised (my PT, my pending), so the server only signals "changed" and each
-  // client refetches its own view. Publishes happen after commit, so the refetch sees the change.
+  // The server broadcasts the public board (built once, after commit). Each client applies it and derives
+  // its own PT from it; only members whose pending invites/requests changed refetch their personal view.
   useEffect(
     () =>
-      subscribeTopicEffect('/topic/parties', () => {
-        queryClient.invalidateQueries({ queryKey: partyKeys.board, exact: true })
+      subscribeTopicEffect('/topic/parties', (message) => {
+        const update = parsePartyBoardUpdate(message.body)
+        const old = queryClient.getQueryData<PartyBoard>(partyKeys.board)
+        if (update?.board && old) setBoard(queryClient, applyPublicBoard(old, update.board))
+        if (!update || needsPersonalRefetch(old, update)) {
+          queryClient.invalidateQueries({ queryKey: partyKeys.board, exact: true })
+        }
       }),
     [queryClient],
   )

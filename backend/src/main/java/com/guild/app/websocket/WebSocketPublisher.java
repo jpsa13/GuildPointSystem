@@ -49,8 +49,8 @@ public class WebSocketPublisher {
         afterCommit(() -> messagingTemplate.convertAndSendToUser(user, destination, payload));
     }
 
-    public void publishPartyBoard() {
-        send("/topic/parties", Map.of("type", "BOARD_UPDATED"));
+    public void publishPartyBoard(Object payload) {
+        send("/topic/parties", payload);
     }
 
     public void publishPartyMemberNotice(Long memberId, Object payload) {

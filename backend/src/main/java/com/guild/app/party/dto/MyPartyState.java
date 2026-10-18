@@ -5,6 +5,7 @@ import com.guild.app.common.enums.PartyMap;
 import java.util.List;
 
 public record MyPartyState(
+        Long memberId,
         Long partyId,
         Integer partyNumber,
         PartyMap partyMap,

@@ -406,7 +406,8 @@ export function PartyPage() {
   )
   const onFail = { onError: failToast }
 
-  const my = board?.my ?? {
+  const my: MyPartyState = board?.my ?? {
+    memberId: user?.memberId ?? 0,
     partyId: null,
     partyNumber: null,
     partyMap: null,
