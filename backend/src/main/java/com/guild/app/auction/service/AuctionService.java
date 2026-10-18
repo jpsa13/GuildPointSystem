@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -68,6 +69,12 @@ public class AuctionService {
     private final PointsService pointsService;
     private final AuditLogService auditLogService;
     private final WebSocketPublisher webSocketPublisher;
+
+    /**
+     * Items of active auctions: they never change after creation, and the response is rebuilt on every
+     * bid and timer tick (inside the bid's row lock). Dropped once the auction leaves the active statuses.
+     */
+    private final Map<Long, List<AuctionResponse.AuctionItemResponse>> activeItems = new ConcurrentHashMap<>();
 
     @Transactional(readOnly = true)
     public List<AuctionResponse> listOpen() {
@@ -158,7 +165,7 @@ public class AuctionService {
             throw new AppException("Você já está com o maior lance (" + currentBid + ").", HttpStatus.CONFLICT);
         }
 
-        long available = pointsService.getAvailablePoints(actorId, auctionId);
+        long available = pointsService.getAvailablePoints(member, auctionId);
         if (amount > available) {
             throw new AppException("Saldo disponível insuficiente: você tem " + available + " pts.",
                     HttpStatus.BAD_REQUEST);
@@ -193,8 +200,12 @@ public class AuctionService {
         auction.bumpVersion();
         auctionRepository.save(auction);
 
-        addBidMessage(auction, member, amount, amount == currentBid);
-        var response = toResponse(auction);
+        boolean tie = amount == currentBid;
+        addBidMessage(auction, member, amount, tie);
+        // Holders of the new top bid, in the order they reached it: no need to query them again.
+        var leaders = new ArrayList<Long>(tie ? previousLeaders : List.of());
+        leaders.add(actorId);
+        var response = toResponse(auction, leaders);
         publishAuctionUpdate(response);
         publishPointsUpdate(actorId);
         // Outbid leaders get their reserve released (a tie keeps it reserved, but refresh anyway).
@@ -307,11 +318,7 @@ public class AuctionService {
     /** Active auctions where the member currently holds (or ties) the top bid. */
     @Transactional(readOnly = true)
     public List<Long> findActiveAuctionsLedBy(Long memberId) {
-        return auctionRepository.findByStatusInOrderByCreatedAtDesc(ACTIVE_STATUSES).stream()
-                .filter(a -> a.getCurrentBid() > 0)
-                .filter(a -> auctionBidRepository.findTiedMemberIds(a.getId(), a.getCurrentBid()).contains(memberId))
-                .map(Auction::getId)
-                .toList();
+        return auctionRepository.findIdsLedBy(memberId, ACTIVE_STATUSES);
     }
 
     @Transactional(readOnly = true)
@@ -521,7 +528,26 @@ public class AuctionService {
     }
 
     private AuctionResponse toResponse(Auction auction) {
-        var auctionItems = auctionItemRepository.findByAuctionIdWithItem(auction.getId());
+        var tiedIds = auction.getCurrentBid() > 0
+                ? auctionBidRepository.findTiedMemberIds(auction.getId(), auction.getCurrentBid())
+                : List.<Long>of();
+        return toResponse(auction, tiedIds);
+    }
+
+    private List<AuctionResponse.AuctionItemResponse> itemsOf(Auction auction) {
+        if (!ACTIVE_STATUSES.contains(auction.getStatus())) {
+            activeItems.remove(auction.getId());
+            return loadItems(auction.getId());
+        }
+        var cached = activeItems.get(auction.getId());
+        if (cached != null) return cached;
+        var items = loadItems(auction.getId());
+        activeItems.put(auction.getId(), items);
+        return items;
+    }
+
+    private List<AuctionResponse.AuctionItemResponse> loadItems(Long auctionId) {
+        var auctionItems = auctionItemRepository.findByAuctionIdWithItem(auctionId);
         var gameCodes = auctionItems.stream()
                 .map(ai -> ai.getItem().getGameCode())
                 .filter(code -> code != null && !code.isBlank())
@@ -530,7 +556,7 @@ public class AuctionService {
                 ? Map.<String, GameLuaItem>of()
                 : gameLuaItemRepository.findByGameCodeIn(gameCodes).stream()
                         .collect(Collectors.toMap(GameLuaItem::getGameCode, l -> l, (a, b) -> a));
-        var items = auctionItems.stream()
+        return auctionItems.stream()
                 .map(ai -> {
                     var lua = ai.getItem().getGameCode() != null ? luaByCode.get(ai.getItem().getGameCode()) : null;
                     return new AuctionResponse.AuctionItemResponse(
@@ -543,21 +569,24 @@ public class AuctionService {
                                     lua.getIconId(), lua.getSpriteSheet(), lua.getSpriteCols()));
                 })
                 .toList();
+    }
 
-        var tiedIds = auction.getCurrentBid() > 0
-                ? auctionBidRepository.findTiedMemberIds(auction.getId(), auction.getCurrentBid())
-                : List.<Long>of();
+    /** {@code tiedIds}: holders of the current top bid, in the order they reached it. */
+    private AuctionResponse toResponse(Auction auction, List<Long> tiedIds) {
+        var items = itemsOf(auction);
         boolean tied = tiedIds.size() > 1;
 
         List<String> tiedMemberNicknames = List.of();
         Long leaderId = null;
         String leaderNickname = null;
-        if (tied) {
-            tiedMemberNicknames = tiedMembers(tiedIds).stream().map(m -> (String) m.get("nickname")).toList();
-        } else if (!tiedIds.isEmpty()) {
-            var topBid = auctionBidRepository.findFirstByAuctionIdOrderByAmountDescIdAsc(auction.getId());
-            leaderId = topBid.map(b -> b.getMember().getId()).orElse(null);
-            leaderNickname = topBid.map(b -> b.getMember().getNickname()).orElse(null);
+        if (!tiedIds.isEmpty()) {
+            var nicknames = tiedMembers(tiedIds).stream().map(m -> (String) m.get("nickname")).toList();
+            if (tied) {
+                tiedMemberNicknames = nicknames;
+            } else {
+                leaderId = tiedIds.getFirst();
+                leaderNickname = nicknames.getFirst();
+            }
         }
 
         boolean closed = auction.getStatus() == AuctionStatus.CLOSED;

@@ -31,6 +31,36 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     @Query("SELECT a.id FROM Auction a WHERE a.status IN :statuses AND a.endsAt <= :now")
     List<Long> findDueIds(Collection<AuctionStatus> statuses, Instant now);
 
+    /**
+     * Points the member has reserved: the current bid of every auction in {@code statuses} where they hold
+     * (or tie on) the top bid. {@code excludeAuctionId} skips one auction (pass 0 to skip none).
+     */
+    @Query("""
+            SELECT COALESCE(SUM(a.currentBid), 0) FROM Auction a
+            WHERE a.status IN :statuses AND a.currentBid > 0 AND a.id <> :excludeAuctionId
+              AND EXISTS (SELECT 1 FROM AuctionBid b
+                          WHERE b.auction = a AND b.member.id = :memberId AND b.amount = a.currentBid)
+            """)
+    long sumReservedBy(Long memberId, Collection<AuctionStatus> statuses, Long excludeAuctionId);
+
+    /** Same reserve for every member at once, as {@code [memberId, reserved]} rows (members without one are absent). */
+    @Query("""
+            SELECT b.member.id, SUM(a.currentBid) FROM AuctionBid b JOIN b.auction a
+            WHERE a.status IN :statuses AND a.currentBid > 0 AND b.amount = a.currentBid
+            GROUP BY b.member.id
+            """)
+    List<Object[]> sumReservedByMember(Collection<AuctionStatus> statuses);
+
+    /** Auctions in {@code statuses} where the member holds (or ties on) the top bid. */
+    @Query("""
+            SELECT a.id FROM Auction a
+            WHERE a.status IN :statuses AND a.currentBid > 0
+              AND EXISTS (SELECT 1 FROM AuctionBid b
+                          WHERE b.auction = a AND b.member.id = :memberId AND b.amount = a.currentBid)
+            ORDER BY a.createdAt DESC
+            """)
+    List<Long> findIdsLedBy(Long memberId, Collection<AuctionStatus> statuses);
+
     /** Bulk delete: bids, items and messages go with it via ON DELETE CASCADE. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM Auction a WHERE a.id = :id")

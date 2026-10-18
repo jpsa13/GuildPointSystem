@@ -53,16 +53,15 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public List<MemberResponse> getRanking() {
-        return memberRepository.findByStatusOrderByPointsDesc(MemberStatus.APROVADO)
-                .stream().map(this::toResponse).toList();
+        return toResponses(memberRepository.findByStatusOrderByPointsDesc(MemberStatus.APROVADO));
     }
 
     @Transactional(readOnly = true)
     public List<MemberResponse> getPending() {
         SecurityUtils.requireRole(Role.MODERADOR);
-        return memberRepository.findAll().stream()
+        return toResponses(memberRepository.findAll().stream()
                 .filter(m -> m.getStatus() == MemberStatus.PENDENTE)
-                .map(this::toResponse).toList();
+                .toList());
     }
 
     @Transactional
@@ -276,6 +275,18 @@ public class MemberService {
     }
 
     private MemberResponse toResponse(Member member) {
+        return toResponse(member, pointsService.getAvailablePoints(member, null));
+    }
+
+    /** Lists resolve every member's auction reserve in one query instead of one per member. */
+    private List<MemberResponse> toResponses(List<Member> members) {
+        var reserved = pointsService.getReservedPointsByMember();
+        return members.stream()
+                .map(m -> toResponse(m, m.getPoints() - reserved.getOrDefault(m.getId(), 0L)))
+                .toList();
+    }
+
+    private MemberResponse toResponse(Member member, long availablePoints) {
         return new MemberResponse(
                 member.getId(),
                 member.getEmail(),
@@ -289,7 +300,7 @@ public class MemberService {
                 member.getRole(),
                 member.getStatus(),
                 member.getPoints(),
-                pointsService.getAvailablePoints(member.getId()),
+                availablePoints,
                 member.getLevel() != null ? member.getLevel() : 1,
                 member.isProfileComplete(),
                 member.getLastLoginAt());

@@ -5,6 +5,9 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/guild_points}
     username: ${SPRING_DATASOURCE_USERNAME:guild}
     password: ${SPRING_DATASOURCE_PASSWORD:guild}
+    hikari:
+      # Default is 10: a burst of bids waiting on an auction's row lock would hold all of them.
+      maximum-pool-size: ${DB_POOL_SIZE:20}
   jpa:
     hibernate:
       ddl-auto: validate

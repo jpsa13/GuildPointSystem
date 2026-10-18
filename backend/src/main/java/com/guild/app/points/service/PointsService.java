@@ -1,6 +1,5 @@
 package com.guild.app.points.service;
 
-import com.guild.app.auction.repository.AuctionBidRepository;
 import com.guild.app.auction.repository.AuctionRepository;
 import com.guild.app.common.enums.AuctionStatus;
 import com.guild.app.common.exception.AppException;
@@ -13,16 +12,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class PointsService {
 
+    private static final List<AuctionStatus> RESERVING_STATUSES =
+            List.of(AuctionStatus.OPEN, AuctionStatus.DOLE, AuctionStatus.TIE_BREAK);
+    /** Auction ids start at 1, so this excludes nothing. */
+    private static final long NO_AUCTION = 0L;
+
     private final MemberRepository memberRepository;
     private final PointsAdjustmentRepository pointsAdjustmentRepository;
     private final AuctionRepository auctionRepository;
-    private final AuctionBidRepository auctionBidRepository;
 
     public long getAvailablePoints(Long memberId) {
         return getAvailablePoints(memberId, null);
@@ -35,18 +40,23 @@ public class PointsService {
     public long getAvailablePoints(Long memberId, Long excludeAuctionId) {
         var member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
-        long reserved = 0;
-        var openStatuses = List.of(AuctionStatus.OPEN, AuctionStatus.DOLE, AuctionStatus.TIE_BREAK);
-        var auctions = auctionRepository.findByStatusInOrderByCreatedAtDesc(openStatuses);
-        for (var auction : auctions) {
-            if (auction.getCurrentBid() == 0) continue;
-            if (auction.getId().equals(excludeAuctionId)) continue;
-            var tied = auctionBidRepository.findTiedMemberIds(auction.getId(), auction.getCurrentBid());
-            if (tied.contains(memberId)) {
-                reserved += auction.getCurrentBid();
-            }
-        }
+        return getAvailablePoints(member, excludeAuctionId);
+    }
+
+    /** For an already loaded member (skips the lookup). */
+    public long getAvailablePoints(Member member, Long excludeAuctionId) {
+        long reserved = auctionRepository.sumReservedBy(member.getId(), RESERVING_STATUSES,
+                excludeAuctionId != null ? excludeAuctionId : NO_AUCTION);
         return member.getPoints() - reserved;
+    }
+
+    /** Reserved points per member in one query, for listings (members without a reserve are absent). */
+    public Map<Long, Long> getReservedPointsByMember() {
+        var reserved = new HashMap<Long, Long>();
+        for (var row : auctionRepository.sumReservedByMember(RESERVING_STATUSES)) {
+            reserved.put((Long) row[0], ((Number) row[1]).longValue());
+        }
+        return reserved;
     }
 
     @Transactional
