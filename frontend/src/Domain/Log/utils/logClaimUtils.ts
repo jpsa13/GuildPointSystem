@@ -1,4 +1,4 @@
-import type { AuditLogEntry } from '@/Domain/types/models'
+import type { AuditLogEntry, Page } from '@/Domain/types/models'
 
 export function getPayloadClaimId(payload: Record<string, unknown>): number | null {
   const id = payload.claimId
@@ -37,4 +37,20 @@ export function canDenyEventClaim(
   if (isClaimDenied(log, deniedClaimIds)) return false
   if (log.targetId === userMemberId) return false
   return true
+}
+
+/** Same page with the EVENT_CLAIMED entry for `claimId` flagged as denied. */
+export function markClaimDeniedInPage(
+  page: Page<AuditLogEntry> | undefined,
+  claimId: number,
+): Page<AuditLogEntry> | undefined {
+  if (!page) return page
+  return {
+    ...page,
+    content: page.content.map((log) =>
+      log.type === 'EVENT_CLAIMED' && getPayloadClaimId(log.payload) === claimId
+        ? { ...log, payload: { ...log.payload, claimDenied: true } }
+        : log,
+    ),
+  }
 }

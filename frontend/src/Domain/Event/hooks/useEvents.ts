@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
 import type { AuditLogEntry, GuildEvent, Page } from '@/Domain/types/models'
-import { getPayloadClaimId } from '@/Domain/Log/utils/logClaimUtils'
+import { markClaimDeniedInPage } from '@/Domain/Log/utils/logClaimUtils'
 import { memberKeys } from '@/Domain/Member/hooks/useMembers'
 
 export const eventKeys = {
@@ -91,21 +91,9 @@ export function useDenyEventClaim() {
         body: { reason },
       }),
     onSuccess: (_, { claimId }) => {
-      queryClient.setQueriesData<Page<AuditLogEntry>>({ queryKey: ['logs'] }, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          content: old.content.map((log) => {
-            if (log.type !== 'EVENT_CLAIMED') return log
-            const logClaimId = getPayloadClaimId(log.payload)
-            if (logClaimId !== claimId) return log
-            return {
-              ...log,
-              payload: { ...log.payload, claimDenied: true },
-            }
-          }),
-        }
-      })
+      queryClient.setQueriesData<Page<AuditLogEntry>>({ queryKey: ['logs'] }, (old) =>
+        markClaimDeniedInPage(old, claimId),
+      )
       queryClient.invalidateQueries({ queryKey: ['logs'] })
       queryClient.invalidateQueries({ queryKey: memberKeys.all })
       queryClient.invalidateQueries({ queryKey: ['members'] })

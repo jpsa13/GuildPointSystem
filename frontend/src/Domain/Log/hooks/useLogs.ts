@@ -1,33 +1,77 @@
 import { useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
-import { subscribeTopic } from '@/Shared/websocket/socketClient'
+import { onSocketReconnect, subscribeTopic, subscribeTopicEffect } from '@/Shared/websocket/socketClient'
 import { eventKeys, mergeEventIntoCache } from '@/Domain/Event/hooks/useEvents'
 import { memberKeys } from '@/Domain/Member/hooks/useMembers'
+import { getPayloadClaimId, markClaimDeniedInPage } from '@/Domain/Log/utils/logClaimUtils'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import type { AuditLogEntry, GuildEvent, Page } from '@/Domain/types/models'
 
+const logKeys = {
+  all: ['logs'] as const,
+}
+
 export function useLogs(page = 0, size = 50) {
   return useQuery({
-    queryKey: ['logs', page, size],
+    queryKey: [...logKeys.all, page, size],
     queryFn: () => apiClient<Page<AuditLogEntry>>(`/logs?page=${page}&size=${size}`),
+  })
+}
+
+/**
+ * Applies a broadcast log without a refetch: with hundreds of members claiming one event, refetching
+ * on every log would turn each claim into one GET /logs per connected client.
+ */
+function applyLogToCache(queryClient: QueryClient, log: AuditLogEntry) {
+  queryClient.setQueriesData<Page<AuditLogEntry>>({ queryKey: logKeys.all }, (old) => {
+    if (!old || old.number !== 0 || old.content.some((l) => l.id === log.id)) return old
+    const totalElements = old.totalElements + 1
+    return {
+      ...old,
+      content: [log, ...old.content].slice(0, old.size),
+      totalElements,
+      totalPages: Math.ceil(totalElements / old.size),
+    }
+  })
+
+  if (log.type === 'EVENT_DENIED') {
+    const claimId = getPayloadClaimId(log.payload)
+    if (claimId !== null) {
+      queryClient.setQueriesData<Page<AuditLogEntry>>({ queryKey: logKeys.all }, (old) =>
+        markClaimDeniedInPage(old, claimId),
+      )
+    }
+  }
+
+  // Older pages shifted by one entry: refresh them when next viewed, not now.
+  queryClient.invalidateQueries({
+    queryKey: logKeys.all,
+    predicate: (q) => (q.state.data as Page<AuditLogEntry> | undefined)?.number !== 0,
+    refetchType: 'none',
   })
 }
 
 export function useLogsSubscription() {
   const queryClient = useQueryClient()
 
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined
+  useEffect(
+    () =>
+      subscribeTopicEffect('/topic/logs', (message) => {
+        try {
+          applyLogToCache(queryClient, JSON.parse(message.body) as AuditLogEntry)
+        } catch {
+          queryClient.invalidateQueries({ queryKey: logKeys.all })
+        }
+      }),
+    [queryClient],
+  )
 
-    subscribeTopic('/topic/logs', () => {
-      queryClient.invalidateQueries({ queryKey: ['logs'] })
-    }).then((fn) => {
-      unsubscribe = fn
-    })
-
-    return () => unsubscribe?.()
-  }, [queryClient])
+  // Logs published while the socket was down never arrive — refetch on reconnect.
+  useEffect(
+    () => onSocketReconnect(() => queryClient.invalidateQueries({ queryKey: logKeys.all })),
+    [queryClient],
+  )
 }
 
 /** Toast + balance refresh when this member's event claim is denied. */
@@ -99,9 +143,11 @@ export function useEventSubscription(onEvent?: (event: GuildEvent) => void) {
       ) {
         return
       }
-      const event = parsed as GuildEvent
+      // claimedByMe is per member and a broadcast can't know it — keep what this client already has.
+      const known = queryClient.getQueryData<GuildEvent[]>(eventKeys.active)?.find((e) => e.id === parsed.id)
+      const event = { ...(parsed as GuildEvent), claimedByMe: known?.claimedByMe ?? false }
+      // The payload is the full event: apply it directly, no refetch fan-out across every client.
       mergeEventIntoCache(queryClient, event)
-      queryClient.invalidateQueries({ queryKey: eventKeys.active })
       onEvent?.(event)
     }).then((fn) => {
       if (cancelled) {

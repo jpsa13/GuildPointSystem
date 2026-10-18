@@ -92,6 +92,12 @@ public class EventService {
         if (!event.getPassword().equals(request.password())) {
             throw new AppException("Senha inválida", HttpStatus.BAD_REQUEST);
         }
+
+        // Lock the member before the checks: concurrent claims by the same member (double click, or two
+        // events of one LIMITADO objective) are serialized, so the daily cap can't be exceeded.
+        var member = memberRepository.findByIdForUpdate(actor.getId())
+                .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
+
         if (eventClaimRepository.existsByEventIdAndMemberId(eventId, actor.getId())) {
             throw new AppException("Você já resgatou este evento", HttpStatus.CONFLICT);
         }
@@ -105,8 +111,6 @@ public class EventService {
             }
         }
 
-        var member = memberRepository.findByIdForUpdate(actor.getId())
-                .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
         var actorEntity = memberRepository.getReferenceById(actor.getId());
 
         pointsService.adjustPoints(member, actorEntity, objective.getPoints(), PointsModality.EVENTO, "Event claim");
@@ -124,18 +128,9 @@ public class EventService {
                 "objectiveName", objective.getName(),
                 "points", objective.getPoints()));
 
-        var response = toResponse(event, actor.getId());
-        webSocketPublisher.publishEvent(new EventResponse(
-                response.id(),
-                response.objectiveId(),
-                response.objectiveName(),
-                response.points(),
-                response.durationMinutes(),
-                response.createdAt(),
-                response.expiresAt(),
-                response.active(),
-                false));
-        return response;
+        // No /topic/events broadcast: a claim changes nothing in the event itself, and with hundreds of
+        // members claiming at once every broadcast would fan out to every client. The log goes out instead.
+        return toResponse(event, actor.getId());
     }
 
     @Transactional

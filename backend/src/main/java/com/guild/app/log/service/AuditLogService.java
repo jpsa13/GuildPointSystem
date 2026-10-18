@@ -6,6 +6,7 @@ import com.guild.app.log.dto.AuditLogResponse;
 import com.guild.app.log.entity.AuditLog;
 import com.guild.app.log.repository.AuditLogRepository;
 import com.guild.app.member.entity.Member;
+import com.guild.app.member.repository.MemberRepository;
 import com.guild.app.websocket.WebSocketPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
     private final WebSocketPublisher webSocketPublisher;
+    private final MemberRepository memberRepository;
 
     @Transactional
     public AuditLog log(AuditLogType type, Member actor, Member target, Map<String, Object> payload) {
@@ -48,8 +50,7 @@ public class AuditLogService {
 
     @Transactional
     public AuditLog log(AuditLogType type, MemberPrincipal actor, Member target, Map<String, Object> payload) {
-        Member actorEntity = new Member();
-        actorEntity.setId(actor.getId());
-        return log(type, actorEntity, target, payload);
+        // A managed reference (not a bare new Member) so the broadcast log carries the actor's nickname.
+        return log(type, memberRepository.getReferenceById(actor.getId()), target, payload);
     }
 }
