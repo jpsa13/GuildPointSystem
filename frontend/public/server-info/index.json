@@ -1,130 +1,30 @@
 {
-  "updatedAt": "2026-09-26T14:01:18.173Z",
+  "translatedAt": "2026-10-18T23:04:10.301Z",
   "topics": [
-    {
-      "slug": "alpha-server-information-class-balance-changes.32426",
-      "title": "[Informações do servidor Alpha] Alterações de balanceamento de classes",
-      "sourceUrl": "https://cerberus-games.com/threads/alpha-server-information-class-balance-changes.32426/"
-    },
-    {
-      "slug": "server-information-adventurer-quests.32498",
-      "title": "[Informações do servidor] Adventurer Quests",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-adventurer-quests.32498/"
-    },
-    {
-      "slug": "server-information-mau-changes.32438",
-      "title": "[Informações do servidor] Alterações de MAU",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-mau-changes.32438/"
-    },
-    {
-      "slug": "server-information-cartella-quests.32499",
-      "title": "[Informações do servidor] Cartella Quests",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-cartella-quests.32499/"
-    },
-    {
-      "slug": "server-information-cash-shop.32436",
-      "title": "[Informações do servidor] Cash shop",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-cash-shop.32436/"
-    },
-    {
-      "slug": "server-information-catching-up-system.32431",
-      "title": "[Informações do servidor] Catching-up-system",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-catching-up-system.32431/"
-    },
-    {
-      "slug": "server-information-charshop-block.32427",
-      "title": "[Informações do servidor] Charshop Block",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-charshop-block.32427/"
-    },
-    {
-      "slug": "server-information-chip-war-and-ore.32443",
-      "title": "[Informações do servidor] Chip War e Ore",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-chip-war-and-ore.32443/"
-    },
-    {
-      "slug": "server-information-classes-30-and-40-level.32445",
-      "title": "[Informações do servidor] Classes nível 30 e 40",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-classes-30-and-40-level.32445/"
-    },
-    {
-      "slug": "server-information-gathering-resources-flower-cactus-ore.32447",
-      "title": "[Informações do servidor] COLETA DE RECURSOS (Flower, Cactus, Ore)",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-gathering-resources-flower-cactus-ore.32447/"
-    },
-    {
-      "slug": "server-information-desert-of-hunters-55.32429",
-      "title": "[Informações do servidor] Desert of Hunters (55+)",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-desert-of-hunters-55.32429/"
-    },
-    {
-      "slug": "server-information-dodge-accuracy-precisionaccuracy.32433",
-      "title": "[Informações do servidor] Dodge, Accuracy, PrecisionAccuracy",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-dodge-accuracy-precisionaccuracy.32433/"
-    },
-    {
-      "slug": "server-information-dungeon-turrets.32435",
-      "title": "[Informações do servidor] Dungeon Turrets",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-dungeon-turrets.32435/"
-    },
-    {
-      "slug": "server-information-hero-path-paragons-65lv.32428",
-      "title": "[Informações do servidor] Hero Path (Paragons)(65lv.)",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-hero-path-paragons-65lv.32428/"
-    },
     {
       "slug": "server-information-general-information.32501",
       "title": "[Informações do servidor] Informações gerais",
       "sourceUrl": "https://cerberus-games.com/threads/server-information-general-information.32501/"
     },
     {
-      "slug": "server-information-level-drop-system.32430",
-      "title": "[Informações do servidor] Level Drop System",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-level-drop-system.32430/"
+      "slug": "server-information-equipment-stats.32520",
+      "title": "[Informações do servidor] Atributos de equipamentos",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-equipment-stats.32520/"
     },
     {
-      "slug": "server-information-new-locations.32439",
-      "title": "[Informações do servidor] Novos locais",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-new-locations.32439/"
+      "slug": "server-information-phase-1-stages-of-1st-phase.32522",
+      "title": "[Informações do servidor] Fase 1. Etapas da 1ª fase.",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-phase-1-stages-of-1st-phase.32522/"
     },
     {
-      "slug": "server-information-premium-service.32437",
-      "title": "[Informações do servidor] Premium Service",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-premium-service.32437/"
+      "slug": "server-information-craft-and-upgrades-for-equipment.32518",
+      "title": "[Informações do servidor] Craft e upgrades de EQUIPAMENTOS",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-craft-and-upgrades-for-equipment.32518/"
     },
     {
-      "slug": "server-information-relics-relics-upgrade.32462",
-      "title": "[Informações do servidor] Relics / Upgrade de Relics",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-relics-relics-upgrade.32462/"
-    },
-    {
-      "slug": "server-information-rifts.32454",
-      "title": "[Informações do servidor] Rifts",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-rifts.32454/"
-    },
-    {
-      "slug": "server-information-server-box.32442",
-      "title": "[Informações do servidor] Server Box",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-server-box.32442/"
-    },
-    {
-      "slug": "server-information-pvp-point-gain-system.32432",
-      "title": "[Informações do servidor] Sistema de ganho de pontos PvP",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-pvp-point-gain-system.32432/"
-    },
-    {
-      "slug": "server-information-guild-progression-system-guild-points-guild-store-guild-skills.32459",
-      "title": "[Informações do servidor] Sistema de progressão da Guild (Guild Points, Guild Store, Guild skills)",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-guild-progression-system-guild-points-guild-store-guild-skills.32459/"
-    },
-    {
-      "slug": "server-information-race-leader-voting-system.32441",
-      "title": "[Informações do servidor] Sistema de votação do líder da raça",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-race-leader-voting-system.32441/"
-    },
-    {
-      "slug": "server-information-solo-bd-quests.32496",
-      "title": "[Informações do servidor] Solo BD Quests",
-      "sourceUrl": "https://cerberus-games.com/threads/server-information-solo-bd-quests.32496/"
+      "slug": "server-information-craft-and-combination-for-resources.32516",
+      "title": "[Informações do servidor] Craft e combinação de RECURSOS",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-craft-and-combination-for-resources.32516/"
     },
     {
       "slug": "server-information-all-new-quests.32513",
@@ -132,9 +32,129 @@
       "sourceUrl": "https://cerberus-games.com/threads/server-information-all-new-quests.32513/"
     },
     {
+      "slug": "server-information-cartella-quests.32499",
+      "title": "[Informações do servidor] Cartella Quests",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-cartella-quests.32499/"
+    },
+    {
+      "slug": "server-information-adventurer-quests.32498",
+      "title": "[Informações do servidor] Adventurer Quests",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-adventurer-quests.32498/"
+    },
+    {
+      "slug": "server-information-solo-bd-quests.32496",
+      "title": "[Informações do servidor] Solo BD Quests",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-solo-bd-quests.32496/"
+    },
+    {
+      "slug": "server-information-global-event-battle-for-ether.32493",
+      "title": "[Informações do servidor] Evento global - Batalha por Ether",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-global-event-battle-for-ether.32493/"
+    },
+    {
       "slug": "server-information-web-auction.32465",
       "title": "[Informações do servidor] Web-Auction",
       "sourceUrl": "https://cerberus-games.com/threads/server-information-web-auction.32465/"
+    },
+    {
+      "slug": "server-information-relics-relics-upgrade.32462",
+      "title": "[Informações do servidor] Relics / Upgrade de Relics",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-relics-relics-upgrade.32462/"
+    },
+    {
+      "slug": "server-information-guild-progression-system-guild-points-guild-store-guild-skills.32459",
+      "title": "[Informações do servidor] Sistema de progressão da Guild (Guild Points, Guild Store, Guild skills)",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-guild-progression-system-guild-points-guild-store-guild-skills.32459/"
+    },
+    {
+      "slug": "server-information-dungeons.32456",
+      "title": "[Informações do servidor] Dungeons",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-dungeons.32456/"
+    },
+    {
+      "slug": "server-information-rifts.32454",
+      "title": "[Informações do servidor] Rifts",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-rifts.32454/"
+    },
+    {
+      "slug": "server-information-monsters-heroic-metal-lucky-cube.32450",
+      "title": "[Informações do servidor] Monstros - Heroic / Metal / Lucky Cube",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-monsters-heroic-metal-lucky-cube.32450/"
+    },
+    {
+      "slug": "server-information-gathering-resources-flower-cactus-ore.32447",
+      "title": "[Informações do servidor] COLETA DE RECURSOS (Flower, Cactus, Ore)",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-gathering-resources-flower-cactus-ore.32447/"
+    },
+    {
+      "slug": "server-information-classes-30-and-40-level.32445",
+      "title": "[Informações do servidor] Classes nível 30 e 40",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-classes-30-and-40-level.32445/"
+    },
+    {
+      "slug": "server-information-chip-war-and-ore.32443",
+      "title": "[Informações do servidor] Chip War e Ore",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-chip-war-and-ore.32443/"
+    },
+    {
+      "slug": "server-information-server-box.32442",
+      "title": "[Informações do servidor] Server Box",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-server-box.32442/"
+    },
+    {
+      "slug": "server-information-race-leader-voting-system.32441",
+      "title": "[Informações do servidor] Sistema de votação do líder da raça",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-race-leader-voting-system.32441/"
+    },
+    {
+      "slug": "server-information-new-locations.32439",
+      "title": "[Informações do servidor] Novos locais",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-new-locations.32439/"
+    },
+    {
+      "slug": "server-information-mau-changes.32438",
+      "title": "[Informações do servidor] Alterações de MAU",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-mau-changes.32438/"
+    },
+    {
+      "slug": "server-information-premium-service.32437",
+      "title": "[Informações do servidor] Premium Service",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-premium-service.32437/"
+    },
+    {
+      "slug": "server-information-cash-shop.32436",
+      "title": "[Informações do servidor] Cash shop",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-cash-shop.32436/"
+    },
+    {
+      "slug": "server-information-dungeon-turrets.32435",
+      "title": "[Informações do servidor] Dungeon Turrets",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-dungeon-turrets.32435/"
+    },
+    {
+      "slug": "server-information-dodge-accuracy-precisionaccuracy.32433",
+      "title": "[Informações do servidor] Dodge, Accuracy, PrecisionAccuracy",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-dodge-accuracy-precisionaccuracy.32433/"
+    },
+    {
+      "slug": "server-information-pvp-point-gain-system.32432",
+      "title": "[Informações do servidor] Sistema de ganho de pontos PvP",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-pvp-point-gain-system.32432/"
+    },
+    {
+      "slug": "server-information-catching-up-system.32431",
+      "title": "[Informações do servidor] Catching-up-system",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-catching-up-system.32431/"
+    },
+    {
+      "slug": "server-information-level-drop-system.32430",
+      "title": "[Informações do servidor] Level Drop System",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-level-drop-system.32430/"
+    },
+    {
+      "slug": "server-information-desert-of-hunters-55.32429",
+      "title": "[Informações do servidor] Desert of Hunters (55+)",
+      "sourceUrl": "https://cerberus-games.com/threads/server-information-desert-of-hunters-55.32429/"
     }
   ]
 }

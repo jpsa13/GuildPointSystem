@@ -112,6 +112,12 @@ function titlePtFromEn(title) {
     .replace(/MAU Changes/i, 'Alterações de MAU')
     .replace(/PvP Point Gain System/i, 'Sistema de ganho de pontos PvP')
     .replace(/Class Balance Changes/i, 'Alterações de balanceamento de classes')
+    .replace(/Equipment Stats/i, 'Atributos de equipamentos')
+    .replace(/Craft and Upgrades for EQUIPMENT/i, 'Craft e upgrades de EQUIPAMENTOS')
+    .replace(/Craft and Combination for RESOURCES/i, 'Craft e combinação de RECURSOS')
+    .replace(/Global Event - Battle for Ether/i, 'Evento global - Batalha por Ether')
+    .replace(/Monsters - Heroic/i, 'Monstros - Heroic')
+    .replace(/Phase 1\. Stages of 1st phase\./i, 'Fase 1. Etapas da 1ª fase.')
 }
 
 let cache = {}
@@ -137,8 +143,10 @@ async function callTranslate(input) {
       return await translate(input, TRANSLATE_OPTS)
     } catch (e) {
       const msg = String(e?.message ?? e)
+      // "Partial Translation Request Fail" is a transient rejection too: the same string succeeds on retry.
       const rate =
-        msg.includes('429') || msg.includes('Too Many') || msg.includes('sorry/index')
+        msg.includes('429') || msg.includes('Too Many') || msg.includes('sorry/index') ||
+        msg.includes('Partial Translation Request Fail')
       if (!rate || attempt === 11) throw e
       const wait = Math.min(300_000, 15_000 * 2 ** attempt)
       console.warn(`  rate limit — pausa ${Math.round(wait / 1000)}s (tentativa ${attempt + 1}/12)`)
@@ -199,7 +207,36 @@ async function translateHtml(html, onProgress) {
     $(el).text(applyCachedText(text))
   }
 
-  return $('#wrap').html() ?? ''
+  // Second pass: loose text next to images/lists/tables (e.g. `<li><img> Added new PVE buff…</li>`)
+  // whose element the leaf pass skipped as a whole, plus the section-nav link labels (text only, so
+  // the anchors keep working).
+  const handled = new Set(work.map((w) => w.el))
+  const looseNodes = []
+  $('#wrap *').each((_, el) => {
+    if (['script', 'style'].includes(el.tagName)) return
+    if ($(el).closest('.bbImageWrapper').length) return
+    if ($(el).parents().toArray().some((p) => handled.has(p)) || handled.has(el)) return
+    for (const node of el.children ?? []) {
+      if (node.type === 'text' && /[A-Za-z]{2}/.test(node.data)) looseNodes.push(node)
+    }
+  })
+  await ensureCacheForStrings([...new Set(looseNodes.map((n) => n.data.trim()))], (done, total) => {
+    if (onProgress) onProgress(done, total, 'trechos soltos')
+  })
+  for (const node of looseNodes) node.data = applyCachedText(node.data)
+
+  return replaceForumUiLabels($('#wrap').html() ?? '')
+}
+
+/** XenForo UI strings the forum renders in Russian; they are markup, not post text, so the translator never sees them. */
+const FORUM_UI_LABELS = [
+  ['Нажмите для открытия или закрытия спойлера', 'Clique para abrir ou fechar o spoiler'],
+  ['Посмотреть вложение', 'Ver anexo'],
+  ['Спойлер:', 'Spoiler:'],
+]
+
+function replaceForumUiLabels(html) {
+  return FORUM_UI_LABELS.reduce((out, [ru, pt]) => out.split(ru).join(pt), html)
 }
 
 async function main() {

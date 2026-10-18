@@ -33,6 +33,12 @@ function titlePtFromEn(title) {
     .replace(/MAU Changes/i, 'Alterações de MAU')
     .replace(/PvP Point Gain System/i, 'Sistema de ganho de pontos PvP')
     .replace(/Class Balance Changes/i, 'Alterações de balanceamento de classes')
+    .replace(/Equipment Stats/i, 'Atributos de equipamentos')
+    .replace(/Craft and Upgrades for EQUIPMENT/i, 'Craft e upgrades de EQUIPAMENTOS')
+    .replace(/Craft and Combination for RESOURCES/i, 'Craft e combinação de RECURSOS')
+    .replace(/Global Event - Battle for Ether/i, 'Evento global - Batalha por Ether')
+    .replace(/Monsters - Heroic/i, 'Monstros - Heroic')
+    .replace(/Phase 1\. Stages of 1st phase\./i, 'Fase 1. Etapas da 1ª fase.')
 }
 
 const FORCE_BODIES = process.argv.includes('--force-bodies')
