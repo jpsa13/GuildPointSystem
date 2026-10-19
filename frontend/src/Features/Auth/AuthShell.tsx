@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCountdown'
+import { useCerberusLaunched } from '@/Features/ServerInfo/hooks/useCerberusLaunched'
 import './Auth.styles.scss'
 
 /**
@@ -11,6 +12,7 @@ import './Auth.styles.scss'
 export function AuthShell() {
   const { pathname } = useLocation()
   const isRegister = pathname.includes('register')
+  const cerberusLaunched = useCerberusLaunched()
 
   // ── Animated height ────────────────────────────────────────────────────────
   // The outer "body" wrapper gets an explicit height that CSS-transitions.
@@ -45,7 +47,7 @@ export function AuthShell() {
       </header>
 
       <section className="auth-cerberus">
-        <CerberusCountdown />
+        {!cerberusLaunched && <CerberusCountdown />}
         <Link to="/server-info" className="auth-cerberus__topics-link">
           Informações do servidor Cerberus (tópicos traduzidos)
         </Link>

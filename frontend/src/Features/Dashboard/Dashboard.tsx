@@ -5,6 +5,7 @@ import { useMatchBottom } from '@/Shared/utils/useMatchBottom'
 import { NewsPanel } from '@/Features/News/NewsPanel'
 import { DiscordMembersPanel } from '@/Features/Dashboard/components/DiscordMembersPanel'
 import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCountdown'
+import { useCerberusLaunched } from '@/Features/ServerInfo/hooks/useCerberusLaunched'
 import { useMemberRanking } from '@/Domain/Member/hooks/useMembers'
 import { useDiscordMembers, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
 import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
@@ -17,7 +18,7 @@ import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import './Dashboard.styles.scss'
 
 const EVENT_PER_PAGE = 4
-/** Ranking row (46px min-height + 1px border) and pagination block, used until measured. */
+/** Natural ranking row (46px + 1px border; stretched to fill the viewport) and pagination block. */
 const RANK_ROW_HEIGHT = 47
 const PAGINATION_HEIGHT = 46
 
@@ -73,6 +74,7 @@ function DiscordTag({ member, className }: { member?: DiscordMember; className: 
 
 export function DashboardPage() {
   const { data: ranking = [], isLoading } = useMemberRanking()
+  const cerberusLaunched = useCerberusLaunched()
   const { data: discord } = useDiscordMembers()
   const discordBySiteId = new Map<number, DiscordMember>()
   discord?.groups.forEach((g) =>
@@ -97,7 +99,7 @@ export function DashboardPage() {
   // Rows per page follow the viewport height so the dashboard never scrolls; extra rows paginate.
   const rankListRef = useRef<HTMLUListElement>(null)
   const rankPaginationRef = useRef<HTMLDivElement>(null)
-  const rankPerPage = useFitRows({
+  const { perPage: rankPerPage, rowHeight: rankRowHeight } = useFitRows({
     listRef: rankListRef,
     paginationRef: rankPaginationRef,
     totalRows: rest.length,
@@ -154,9 +156,12 @@ export function DashboardPage() {
 
   return (
     <div className="dashboard">
-      <div className="dashboard__cerberus">
-        <CerberusCountdown compact />
-      </div>
+      {/* Gone once the server opens; the columns move up into its space. */}
+      {!cerberusLaunched && (
+        <div className="dashboard__cerberus">
+          <CerberusCountdown compact />
+        </div>
+      )}
 
       {/* ── Left: Ranking ─────────────────────────────────────────────────── */}
       <div className="dashboard__col dashboard__col--ranking" ref={rankingRef}>
@@ -199,7 +204,11 @@ export function DashboardPage() {
               <span>Pontos</span>
               <span>Último login</span>
             </div>
-            <ul className="ranking-list" ref={rankListRef}>
+            <ul
+              className="ranking-list"
+              ref={rankListRef}
+              style={rankRowHeight ? ({ '--rank-row-h': `${rankRowHeight}px` } as React.CSSProperties) : undefined}
+            >
               {pagedRest.map((m, i) => (
                 <li key={m.id}>
                   <span className="ranking-list__pos">

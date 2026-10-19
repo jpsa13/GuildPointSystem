@@ -1,16 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { CERBERUS_LAUNCH } from '@/Features/ServerInfo/hooks/useCerberusLaunched'
 import './CerberusCountdown.styles.scss'
-
-/** Próximo 24 de outubro (horário de Brasília). */
-function getTargetDate(): Date {
-  const now = new Date()
-  const year = now.getFullYear()
-  const target = new Date(`${year}-10-24T00:00:00-03:00`)
-  if (now.getTime() >= target.getTime()) {
-    return new Date(`${year + 1}-10-24T00:00:00-03:00`)
-  }
-  return target
-}
 
 function pad(n: number) {
   return String(n).padStart(2, '0')
@@ -21,17 +11,18 @@ interface CerberusCountdownProps {
   compact?: boolean
 }
 
+/** Countdown to the Cerberus launch; renders nothing once it reaches zero. */
 export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
-  const target = useMemo(() => getTargetDate(), [])
+  const target = CERBERUS_LAUNCH
   const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState(() => Date.now() >= CERBERUS_LAUNCH.getTime())
 
   useEffect(() => {
     const tick = () => {
       const diff = target.getTime() - Date.now()
       if (diff <= 0) {
         setDone(true)
-        setParts({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+        window.clearInterval(id)
         return
       }
       const totalSec = Math.floor(diff / 1000)
@@ -42,10 +33,12 @@ export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
         seconds: totalSec % 60,
       })
     }
-    tick()
     const id = window.setInterval(tick, 1000)
+    tick()
     return () => window.clearInterval(id)
   }, [target])
+
+  if (done) return null
 
   const heading = (
     <>
@@ -72,31 +65,27 @@ export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
           {heading}
         </>
       )}
-      {done ? (
-        <p className="cerberus-banner__live">Evento em andamento</p>
-      ) : (
-        <div className="cerberus-banner__timer" role="timer">
-          <div className="cerberus-banner__unit">
-            <span className="cerberus-banner__value">{pad(parts.days)}</span>
-            <span className="cerberus-banner__label">dias</span>
-          </div>
-          <span className="cerberus-banner__sep">:</span>
-          <div className="cerberus-banner__unit">
-            <span className="cerberus-banner__value">{pad(parts.hours)}</span>
-            <span className="cerberus-banner__label">horas</span>
-          </div>
-          <span className="cerberus-banner__sep">:</span>
-          <div className="cerberus-banner__unit">
-            <span className="cerberus-banner__value">{pad(parts.minutes)}</span>
-            <span className="cerberus-banner__label">min</span>
-          </div>
-          <span className="cerberus-banner__sep">:</span>
-          <div className="cerberus-banner__unit">
-            <span className="cerberus-banner__value">{pad(parts.seconds)}</span>
-            <span className="cerberus-banner__label">seg</span>
-          </div>
+      <div className="cerberus-banner__timer" role="timer">
+        <div className="cerberus-banner__unit">
+          <span className="cerberus-banner__value">{pad(parts.days)}</span>
+          <span className="cerberus-banner__label">dias</span>
         </div>
-      )}
+        <span className="cerberus-banner__sep">:</span>
+        <div className="cerberus-banner__unit">
+          <span className="cerberus-banner__value">{pad(parts.hours)}</span>
+          <span className="cerberus-banner__label">horas</span>
+        </div>
+        <span className="cerberus-banner__sep">:</span>
+        <div className="cerberus-banner__unit">
+          <span className="cerberus-banner__value">{pad(parts.minutes)}</span>
+          <span className="cerberus-banner__label">min</span>
+        </div>
+        <span className="cerberus-banner__sep">:</span>
+        <div className="cerberus-banner__unit">
+          <span className="cerberus-banner__value">{pad(parts.seconds)}</span>
+          <span className="cerberus-banner__label">seg</span>
+        </div>
+      </div>
     </section>
   )
 }

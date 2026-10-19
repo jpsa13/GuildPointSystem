@@ -215,7 +215,8 @@
   margin: 0;
 
   li {
-    min-height: 46px;
+    // --rank-row-h (border included) stretches rows so the ranking reaches the viewport bottom.
+    min-height: calc(var(--rank-row-h, 47px) - 1px);
     border-bottom: 1px solid theme.$color-border;
     font-size: theme.$font-size-base;
     font-weight: 500;

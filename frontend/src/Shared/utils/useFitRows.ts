@@ -6,7 +6,7 @@ interface FitRowsOptions {
   /** Element right after the rows that only shows with more than one page (e.g. pagination). */
   paginationRef: RefObject<HTMLElement | null>
   totalRows: number
-  /** Used until a real row exists to measure. */
+  /** Natural (minimum) row height, border included; rows are counted with it. */
   fallbackRowHeight: number
   /** Height the pagination will take once it appears. */
   fallbackPaginationHeight: number
@@ -14,6 +14,15 @@ interface FitRowsOptions {
   /** Below this viewport width the layout stacks and the page scrolls anyway. */
   stackedBelowPx?: number
   stackedRows?: number
+}
+
+export interface FitRows {
+  perPage: number
+  /**
+   * When paginated, the row height that spreads the leftover (less than one row) over the rows so
+   * the list ends exactly at the viewport bottom. Undefined when rows keep their natural height.
+   */
+  rowHeight?: number
 }
 
 /**
@@ -29,8 +38,8 @@ export function useFitRows({
   minRows = 3,
   stackedBelowPx = 1100,
   stackedRows = 10,
-}: FitRowsOptions): number {
-  const [perPage, setPerPage] = useState(stackedRows)
+}: FitRowsOptions): FitRows {
+  const [fit, setFit] = useState<FitRows>({ perPage: stackedRows })
 
   useLayoutEffect(() => {
     const list = listRef.current
@@ -38,13 +47,13 @@ export function useFitRows({
 
     const measure = () => {
       if (window.innerWidth < stackedBelowPx) {
-        setPerPage(stackedRows)
+        setFit({ perPage: stackedRows })
         return
       }
       const listRect = list.getBoundingClientRect()
       const listTop = listRect.top + window.scrollY
-      const firstRow = list.firstElementChild as HTMLElement | null
-      const rowHeight = firstRow?.getBoundingClientRect().height || fallbackRowHeight
+      // Counted with the natural height, not the measured one: rows may already be stretched.
+      const rowHeight = fallbackRowHeight
 
       // Chrome below the rows inside the panel (padding, border), excluding the pagination itself.
       const panel = list.closest('.panel') ?? list.parentElement
@@ -60,11 +69,16 @@ export function useFitRows({
       const space = window.innerHeight - listTop - chromeBelow - mainPadding
       const fitAll = Math.floor(space / rowHeight)
       if (totalRows <= fitAll) {
-        setPerPage(Math.max(minRows, totalRows))
+        setFit({ perPage: Math.max(minRows, totalRows) })
         return
       }
-      const withPagination = Math.floor((space - (paginationHeight || fallbackPaginationHeight)) / rowHeight)
-      setPerPage(Math.max(minRows, withPagination))
+      const rowsSpace = space - (paginationHeight || fallbackPaginationHeight)
+      const perPage = Math.max(minRows, Math.floor(rowsSpace / rowHeight))
+      const stretched = Math.floor(rowsSpace / perPage)
+      setFit((prev) => {
+        const next = { perPage, rowHeight: stretched > rowHeight ? stretched : undefined }
+        return prev.perPage === next.perPage && prev.rowHeight === next.rowHeight ? prev : next
+      })
     }
 
     measure()
@@ -73,11 +87,14 @@ export function useFitRows({
     const observer = new ResizeObserver(measure)
     const panel = list.closest('.panel')
     if (panel) observer.observe(panel)
+    // Content removed above the panel (e.g. the Cerberus banner going away) shrinks the page root.
+    const pageRoot = list.closest('main')?.firstElementChild
+    if (pageRoot) observer.observe(pageRoot)
     return () => {
       window.removeEventListener('resize', measure)
       observer.disconnect()
     }
   }, [listRef, paginationRef, totalRows, fallbackRowHeight, fallbackPaginationHeight, minRows, stackedBelowPx, stackedRows])
 
-  return perPage
+  return fit
 }
