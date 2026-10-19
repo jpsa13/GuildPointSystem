@@ -70,6 +70,11 @@ public class WebSocketPublisher {
         send("/topic/donations", payload);
     }
 
+    /** Leadership-only topic (guarded in {@link WebSocketAuthInterceptor}). */
+    public void publishPresence(Object payload) {
+        send("/topic/presence", payload);
+    }
+
     public void publishScheduleAlert(Object payload) {
         send("/topic/schedule", payload);
     }

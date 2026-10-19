@@ -1,0 +1,166 @@
+.online-page {
+  display: flex;
+  flex-direction: column;
+  gap: theme.$spacing-lg;
+
+  &__empty {
+    color: theme.$color-text-muted;
+    font-size: theme.$font-size-base;
+    padding: theme.$spacing-lg;
+    margin: 0;
+  }
+}
+
+.online-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: theme.$spacing-md;
+
+  &__stat {
+    @include theme.card;
+    flex: 1 1 160px;
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-xs;
+  }
+
+  &__label {
+    @include theme.field-label;
+  }
+
+  &__value {
+    font-family: theme.$font-heading;
+    font-size: theme.$font-size-display;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+}
+
+.online-pages {
+  list-style: none;
+  margin: theme.$spacing-md 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: theme.$spacing-sm;
+
+  &__chip {
+    @include theme.tag(theme.$color-text);
+    gap: theme.$spacing-sm;
+
+    strong {
+      color: theme.$color-primary;
+    }
+  }
+}
+
+.online-sort {
+  display: flex;
+  gap: theme.$spacing-xs;
+
+  &__btn {
+    @include theme.tag;
+    cursor: pointer;
+
+    &--active {
+      color: theme.$color-primary;
+      border-color: theme.$color-primary;
+    }
+
+    &:focus-visible {
+      outline: 2px solid theme.$color-primary;
+      outline-offset: 2px;
+    }
+  }
+}
+
+.online-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  &__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) auto;
+    align-items: center;
+    gap: theme.$spacing-md;
+    padding: 12px theme.$spacing-lg;
+    border-bottom: 1px solid theme.$color-border;
+
+    &--hidden {
+      opacity: 0.6;
+    }
+
+    @media (max-width: 640px) {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+
+      .online-list__where {
+        grid-column: 2 / -1;
+        grid-row: 2;
+      }
+    }
+  }
+
+  &__icon {
+    width: 40px;
+    display: grid;
+    place-items: center;
+  }
+
+  &__who,
+  &__where {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    small {
+      color: theme.$color-text-muted;
+      font-size: theme.$font-size-base;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__name {
+    font-family: theme.$font-heading;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: theme.$color-text;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    &:hover {
+      color: theme.$color-primary;
+    }
+  }
+
+  &__page {
+    color: theme.$color-text;
+  }
+
+  &__tags {
+    display: flex;
+    align-items: center;
+    gap: theme.$spacing-sm;
+  }
+
+  &__tag {
+    @include theme.tag(theme.$color-warning);
+  }
+
+  &__ping {
+    @include theme.readout;
+    min-width: 72px;
+    text-align: right;
+  }
+}
+
+.online-ping {
+  &--good { color: theme.$color-success; }
+  &--fair { color: theme.$color-warning; }
+  &--bad { color: theme.$color-danger; }
+  &--unknown { color: theme.$color-text-muted; }
+}

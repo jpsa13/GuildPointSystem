@@ -79,8 +79,11 @@ management:
         http.server.requests: 0.5,0.95,0.99
         guild.auction.bid: 0.5,0.95,0.99
         guild.party.board.broadcast: 0.5,0.95,0.99
+        guild.client.rtt: 0.5,0.95,0.99
       # Fixed buckets so Grafana can compute p95 over any range (histogram_quantile) and the share of
       # bids under 100ms; a handful of series, unlike a full histogram.
       slo:
         guild.auction.bid: 10ms,25ms,50ms,100ms,250ms,500ms,1s
         guild.party.board.broadcast: 10ms,25ms,50ms,100ms,250ms,500ms,1s
+        # Members' real ping (browser → server → browser over the socket).
+        guild.client.rtt: 25ms,50ms,100ms,200ms,500ms,1s

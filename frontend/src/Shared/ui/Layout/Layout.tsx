@@ -13,6 +13,7 @@ import { SERVER_TIME_ZONE } from '@/Shared/utils/scheduleTimeZone'
 import { ScheduleAlertListener } from '@/Features/Schedule/ScheduleAlertListener'
 import { AuctionCreatedListener } from '@/Features/Auction/AuctionCreatedListener'
 import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
+import type { Role } from '@/Domain/types/models'
 import './Layout.styles.scss'
 
 const NAV_ITEMS = [
@@ -28,7 +29,10 @@ const NAV_ITEMS = [
   { to: '/server-info', label: 'Cerberus' },
 ]
 
-const ADMIN_ITEM = { to: '/admin/approvals', label: 'Aprovações' }
+const ADMIN_ITEMS: { to: string; label: string; minRole: Role }[] = [
+  { to: '/admin/approvals', label: 'Aprovações', minRole: 'MODERADOR' },
+  { to: '/admin/online', label: 'Online agora', minRole: 'ADMINISTRADOR' },
+]
 
 const SOCKET_LABEL: Record<SocketState, string> = {
   connected: 'Online',
@@ -76,9 +80,9 @@ function LayoutShell() {
   usePointsSubscription(user?.memberId)
   useMemberLogNotifications(user?.memberId)
 
-  const isModerator = hasRole('MODERADOR')
+  const adminItems = ADMIN_ITEMS.filter((item) => hasRole(item.minRole))
   const currentLabel =
-    [...NAV_ITEMS, ADMIN_ITEM].find((item) => isActive(location.pathname, item.to))?.label ??
+    [...NAV_ITEMS, ...ADMIN_ITEMS].find((item) => isActive(location.pathname, item.to))?.label ??
     'Terminal'
   const availableRatio =
     member && member.points > 0
@@ -147,16 +151,19 @@ function LayoutShell() {
             </Link>
           ))}
 
-          {isModerator && (
+          {adminItems.length > 0 && (
             <div className="layout__admin">
               <span className="layout__admin-strip" aria-hidden="true" />
-              <Link
-                to={ADMIN_ITEM.to}
-                className={`layout__nav-link layout__nav-link--admin${isActive(location.pathname, ADMIN_ITEM.to) ? ' layout__nav-link--active' : ''}`}
-              >
-                <span className="layout__nav-key">ADM</span>
-                <span className="layout__nav-label">{ADMIN_ITEM.label}</span>
-              </Link>
+              {adminItems.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`layout__nav-link layout__nav-link--admin${isActive(location.pathname, item.to) ? ' layout__nav-link--active' : ''}`}
+                >
+                  <span className="layout__nav-key">ADM</span>
+                  <span className="layout__nav-label">{item.label}</span>
+                </Link>
+              ))}
             </div>
           )}
         </nav>

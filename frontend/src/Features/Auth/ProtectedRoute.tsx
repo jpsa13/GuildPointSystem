@@ -51,3 +51,12 @@ export function ModeratorRoute() {
   }
   return <Outlet />
 }
+
+/** Administrador and Líder (e.g. who is online and where). */
+export function AdminRoute() {
+  const { hasRole } = useAuthContext()
+  if (!hasRole('ADMINISTRADOR')) {
+    return <Navigate to="/" replace />
+  }
+  return <Outlet />
+}

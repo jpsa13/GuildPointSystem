@@ -110,6 +110,8 @@ The frontend connects with a native WebSocket to `/ws/websocket` and falls back 
 | `guild.websocket.sessions?tag=transport:all` | Sockets open right now (`websocket` = native, `sockjs-*` = fallback) |
 | `guild.websocket.sessions.opened` | Sessions opened since startup (reconnect churn when it climbs fast) |
 | `guild.websocket.sessions.limit-exceeded` | Sockets closed so far for being too slow to receive |
+| `guild.presence.members?tag=page:all` | Members online now (also per page: `page:auctions`, `page:party`, …) |
+| `guild.client.rtt` | Members' real ping, browser → server → browser over the socket (reported every 15 s) |
 | `executor.queued?tag=name:clientInboundChannelExecutor` | STOMP frames waiting for a thread (should stay ~0) |
 | `hikaricp.connections.pending` | Requests waiting for a DB connection (should stay ~0; raise `DB_POOL_SIZE` if not) |
 | `http.server.requests.percentile?tag=phi:0.95` | REST p95 (filter further with `&tag=uri:/api/...`) |
@@ -134,6 +136,9 @@ The backend publishes the same metrics in Prometheus format at `/actuator/promet
 | Accepted bids under 100 ms | `sum(rate(guild_auction_bid_seconds_bucket{outcome="accepted",le="0.1"}[5m])) / sum(rate(guild_auction_bid_seconds_count{outcome="accepted"}[5m]))` |
 | Bids per second | `sum by (outcome) (rate(guild_auction_bid_seconds_count[1m]))` |
 | Party board push p95 | `histogram_quantile(0.95, sum by (le) (rate(guild_party_board_broadcast_seconds_bucket[5m])))` |
+| Members online / per page | `guild_presence_members{page="all"}` · `guild_presence_members{page!="all"}` (stacked) |
+| Members' ping p95 | `histogram_quantile(0.95, sum by (le) (rate(guild_client_rtt_seconds_bucket[5m])))` |
+| Members under 100 ms | `sum(rate(guild_client_rtt_seconds_bucket{le="0.1"}[5m])) / sum(rate(guild_client_rtt_seconds_count[5m]))` |
 | Open sockets | `guild_websocket_sessions{transport="all"}` |
 | New sockets per minute (reconnects) | `rate(guild_websocket_sessions_opened_total[5m]) * 60` |
 | Slow clients dropped | `increase(guild_websocket_sessions_limit_exceeded_total[1h])` |
@@ -141,7 +146,9 @@ The backend publishes the same metrics in Prometheus format at `/actuator/promet
 | Requests waiting for a DB connection | `hikaricp_connections_pending` |
 | REST p95 per endpoint | `max by (uri) (http_server_requests_seconds{quantile="0.95"})` |
 
-Suggested alerts: bid p95 above 250 ms for 5 min, `hikaricp_connections_pending > 0` for 2 min, `executor_queued_tasks{name="clientInboundChannelExecutor"} > 10`.
+Who is online by name (page, ping, tabs) stays in the app, not in Grafana: **ADM → Online agora** (Administrador/Líder).
+
+Suggested alerts: bid p95 above 250 ms for 5 min, members' ping p95 above 300 ms for 10 min, `hikaricp_connections_pending > 0` for 2 min, `executor_queued_tasks{name="clientInboundChannelExecutor"} > 10`.
 
 ---
 

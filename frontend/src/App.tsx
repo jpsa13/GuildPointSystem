@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from '@/Shared/ui/Layout/Layout'
 import { AuthProvider } from '@/Features/Auth/contexts/AuthContext'
-import { ProtectedRoute, ModeratorRoute } from '@/Features/Auth/ProtectedRoute'
+import { ProtectedRoute, ModeratorRoute, AdminRoute } from '@/Features/Auth/ProtectedRoute'
 import { AuthShell } from '@/Features/Auth/AuthShell'
 import { LoginPage } from '@/Features/Auth/LoginPage'
 import { RegisterPage } from '@/Features/Auth/RegisterPage'
@@ -15,17 +15,20 @@ import { ItemsPage } from '@/Features/Items/Items'
 import { AuctionListPage } from '@/Features/Auction/AuctionList'
 import { AuctionDetailPage } from '@/Features/Auction/AuctionDetail'
 import { ApprovalsPage } from '@/Features/Admin/Approvals/Approvals'
+import { OnlinePage } from '@/Features/Admin/Online/Online'
 import { ProfilePage } from '@/Features/Profile/Profile'
 import { GuildLeagueRagPage } from '@/Features/GuildLeagueRag/GuildLeagueRagPage'
 import { ServerInfoListPage } from '@/Features/ServerInfo/ServerInfoListPage'
 import { ServerInfoTopicPage } from '@/Features/ServerInfo/ServerInfoTopicPage'
 import { PartyPage } from '@/Features/Party/Party'
+import { PresenceReporter } from '@/Features/Presence/PresenceReporter'
 import './App.styles.scss'
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <PresenceReporter />
         <Routes>
           <Route element={<AuthShell />}>
             <Route path="/login" element={<LoginPage />} />
@@ -52,6 +55,9 @@ function App() {
               <Route path="profile/:id" element={<ProfilePage />} />
               <Route element={<ModeratorRoute />}>
                 <Route path="admin/approvals" element={<ApprovalsPage />} />
+              </Route>
+              <Route element={<AdminRoute />}>
+                <Route path="admin/online" element={<OnlinePage />} />
               </Route>
             </Route>
           </Route>

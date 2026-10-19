@@ -42,7 +42,21 @@ let connectTimeoutId: ReturnType<typeof setTimeout> | null = null
 
 const subscriptions = new Map<symbol, SubscriptionEntry>()
 const reconnectListeners = new Set<() => void>()
+const connectListeners = new Set<() => void>()
 let hasConnectedBefore = false
+
+/** Transport the socket uses (or will use on its next attempt). */
+export function getSocketTransport(): 'websocket' | 'sockjs' {
+  return useSockJs ? 'sockjs' : 'websocket'
+}
+
+/** Fires on every successful connection, the first one included (see {@link onSocketReconnect}). */
+export function onSocketConnect(listener: () => void): () => void {
+  connectListeners.add(listener)
+  return () => {
+    connectListeners.delete(listener)
+  }
+}
 
 /**
  * Fires after the socket comes back from a drop. Events published while offline are lost,
@@ -110,6 +124,7 @@ function getOrCreateClient(): Client {
       resolvePendingConnect(stompClient!)
       if (hasConnectedBefore) reconnectListeners.forEach((listener) => listener())
       hasConnectedBefore = true
+      connectListeners.forEach((listener) => listener())
     },
     onStompError: (frame) => {
       console.error('[WS] STOMP error:', frame.headers.message)
