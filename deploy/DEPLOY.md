@@ -96,6 +96,23 @@ Alternative reference stack: [`deploy/docker-compose.prod.yml`](docker-compose.p
 
 Coolify/Caddy proxies WebSocket upgrades by default. After deploy, verify `https://backend.guildsystem.com.br/ws/info` returns SockJS info JSON.
 
+The frontend connects with a native WebSocket to `/ws/websocket` and falls back to SockJS only if that fails. The `/ws` endpoint accepts only the origins in `CORS_ORIGINS`, so a wrong value there rejects every socket.
+
+### Metrics (realtime health)
+
+`/actuator/metrics` is restricted to Administrador/Líder: call it with a leader's JWT (`Authorization: Bearer …`, the token the app stores after login). Percentiles cover roughly the last 2 minutes.
+
+| Metric | What it tells you |
+|---|---|
+| `guild.auction.bid?tag=outcome:accepted` / `rejected` / `error` | WS bid end to end (row-lock wait, commit, fan-out), as the bidder feels it |
+| `guild.auction.bid.percentile?tag=phi:0.95` | p95 of the above (also `0.5`, `0.99`) |
+| `guild.party.board.broadcast` | Time to build and push the party board to everyone |
+| `guild.websocket.sessions?tag=transport:all` | Open sockets (`websocket` = native, `sockjs-*` = fallback) |
+| `guild.websocket.sessions.limit-exceeded` | Sockets closed for being too slow to receive |
+| `executor.queued?tag=name:clientInboundChannelExecutor` | STOMP frames waiting for a thread (should stay ~0) |
+| `hikaricp.connections.pending` | Requests waiting for a DB connection (should stay ~0; raise `DB_POOL_SIZE` if not) |
+| `http.server.requests.percentile?tag=phi:0.95` | REST p95 (filter further with `&tag=uri:/api/...`) |
+
 ---
 
 ## 4. Vercel — Frontend

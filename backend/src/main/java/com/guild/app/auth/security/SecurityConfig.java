@@ -1,5 +1,6 @@
 package com.guild.app.auth.security;
 
+import com.guild.app.common.enums.Role;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -55,6 +56,9 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        // Latency, pool and socket metrics: leadership only.
+                        .requestMatchers("/actuator/metrics", "/actuator/metrics/**")
+                        .hasAnyRole(Role.ADMINISTRADOR.name(), Role.LIDER.name())
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seeds/**").permitAll()

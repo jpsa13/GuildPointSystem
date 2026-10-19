@@ -6,6 +6,8 @@ import com.guild.app.party.dto.PartyBoardSnapshot;
 import com.guild.app.party.dto.PartyBoardUpdateMessage;
 import com.guild.app.party.entity.PartyPending;
 import com.guild.app.websocket.WebSocketPublisher;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +50,7 @@ public class PartyBoardBroadcaster {
     // Lazy: PartyService builds the snapshot and also depends on this broadcaster.
     private final ObjectProvider<PartyService> partyService;
     private final WebSocketPublisher webSocketPublisher;
+    private final MeterRegistry meterRegistry;
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
         var thread = new Thread(r, "party-board-broadcast");
@@ -120,6 +123,7 @@ public class PartyBoardBroadcaster {
             it.remove();
         }
         boolean joinRequests = joinRequestsChanged.getAndSet(false);
+        var sample = Timer.start(meterRegistry);
 
         PartyBoardSnapshot board = null;
         try {
@@ -132,6 +136,7 @@ public class PartyBoardBroadcaster {
         } catch (Exception e) {
             log.error("Failed to broadcast the party board", e);
         }
+        sample.stop(meterRegistry.timer("guild.party.board.broadcast"));
     }
 
     @PreDestroy

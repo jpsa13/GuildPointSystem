@@ -6,6 +6,8 @@ import com.guild.app.auction.service.AuctionService;
 import com.guild.app.auth.security.MemberPrincipal;
 import com.guild.app.common.exception.AppException;
 import com.guild.app.websocket.WebSocketPublisher;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -26,9 +28,12 @@ import java.security.Principal;
 public class AuctionWsController {
 
     static final String BID_REPLY_QUEUE = "/queue/auction-bids";
+    /** Bid handling as the bidder feels it: lock wait, validation, commit and the WS fan-out. */
+    static final String BID_TIMER = "guild.auction.bid";
 
     private final AuctionService auctionService;
     private final WebSocketPublisher webSocketPublisher;
+    private final MeterRegistry meterRegistry;
 
     @MessageMapping("/auctions/{auctionId}/bid")
     public void bid(@DestinationVariable Long auctionId, @Payload WsBidRequest request, Principal principal) {
@@ -36,18 +41,23 @@ public class AuctionWsController {
             return;
         }
         long amount = request.amount() != null ? request.amount() : 0;
+        var sample = Timer.start(meterRegistry);
+        String outcome = "accepted";
         BidResult result;
         try {
             var auction = auctionService.placeBid(auctionId, amount, member.getId());
             result = new BidResult(request.requestId(), auctionId, amount, true, null, auction);
         } catch (AppException e) {
+            outcome = "rejected";
             result = new BidResult(request.requestId(), auctionId, amount, false, e.getMessage(), currentState(auctionId));
         } catch (Exception e) {
+            outcome = "error";
             log.error("WS bid failed (auction {}, member {})", auctionId, member.getId(), e);
             result = new BidResult(request.requestId(), auctionId, amount, false,
                     "Erro ao processar o lance. Tente novamente.", currentState(auctionId));
         }
         webSocketPublisher.publishToUser(principal.getName(), BID_REPLY_QUEUE, result);
+        sample.stop(meterRegistry.timer(BID_TIMER, "outcome", outcome));
     }
 
     private com.guild.app.auction.dto.AuctionResponse currentState(Long auctionId) {

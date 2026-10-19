@@ -63,4 +63,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # /actuator/metrics is restricted to Administrador/Líder in SecurityConfig.
+        include: health,info,metrics
+  metrics:
+    distribution:
+      # Latency percentiles show up in /actuator/metrics as <name>.percentile (tag phi).
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+        guild.auction.bid: 0.5,0.95,0.99
+        guild.party.board.broadcast: 0.5,0.95,0.99
