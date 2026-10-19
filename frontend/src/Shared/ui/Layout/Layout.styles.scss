@@ -86,6 +86,25 @@ $drawer-breakpoint: 960px;
     align-items: center;
     gap: theme.$spacing-sm;
     min-width: 0;
+    margin: -4px;
+    padding: 4px;
+    color: inherit;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: border-color 0.1s, background 0.1s;
+
+    &:hover,
+    &--active {
+      border-color: theme.$color-border-strong;
+      background: rgba(theme.$color-primary, 0.06);
+
+      .layout__member-name { color: theme.$color-primary; }
+    }
+
+    &:focus-visible {
+      outline: 2px solid theme.$color-primary;
+      outline-offset: 2px;
+    }
   }
 
   &__member-slot {
@@ -258,6 +277,7 @@ $drawer-breakpoint: 960px;
       .layout__nav-key {
         background: theme.$color-amber;
         border-color: theme.$color-amber;
+        color: theme.$color-on-primary;
       }
     }
   }

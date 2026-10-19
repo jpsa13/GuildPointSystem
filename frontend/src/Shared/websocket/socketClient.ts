@@ -104,8 +104,28 @@ function resubscribeAll() {
   })
 }
 
+let pageLifecycleInstalled = false
+
+/**
+ * F5 / closing the tab: the browser drops its socket, but a proxy may keep the server side open until the
+ * missed heartbeats are noticed (~40s), and the member keeps counting as online meanwhile. Saying goodbye
+ * with a STOMP DISCONNECT (a regular frame the proxy forwards) ends the session at once.
+ */
+function installPageLifecycle() {
+  if (pageLifecycleInstalled || typeof window === 'undefined') return
+  pageLifecycleInstalled = true
+  window.addEventListener('pagehide', () => {
+    if (stompClient?.connected) void stompClient.deactivate()
+  })
+  // Restored from the back/forward cache: the socket was closed on pagehide, open it again.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted && stompClient && !stompClient.active) stompClient.activate()
+  })
+}
+
 function getOrCreateClient(): Client {
   if (stompClient) return stompClient
+  installPageLifecycle()
 
   stompClient = new Client({
     webSocketFactory: () => (useSockJs ? new SockJS(getWsUrl()) : new WebSocket(getNativeWsUrl())),

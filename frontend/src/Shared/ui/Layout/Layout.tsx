@@ -25,9 +25,11 @@ const NAV_ITEMS = [
   { to: '/party', label: 'Party' },
   { to: '/items', label: 'Itens' },
   { to: '/auctions', label: 'Leilões' },
-  { to: '/profile', label: 'Perfil' },
   { to: '/server-info', label: 'Cerberus' },
 ]
+
+/** Reached from the member card at the top of the sidebar, not from the nav list. */
+const PROFILE_ITEM = { to: '/profile', label: 'Perfil' }
 
 const ADMIN_ITEMS: { to: string; label: string; minRole: Role }[] = [
   { to: '/admin/approvals', label: 'Aprovações', minRole: 'MODERADOR' },
@@ -82,7 +84,7 @@ function LayoutShell() {
 
   const adminItems = ADMIN_ITEMS.filter((item) => hasRole(item.minRole))
   const currentLabel =
-    [...NAV_ITEMS, ...ADMIN_ITEMS].find((item) => isActive(location.pathname, item.to))?.label ??
+    [...NAV_ITEMS, PROFILE_ITEM, ...ADMIN_ITEMS].find((item) => isActive(location.pathname, item.to))?.label ??
     'Terminal'
   const availableRatio =
     member && member.points > 0
@@ -104,7 +106,11 @@ function LayoutShell() {
         </div>
 
         <div className="layout__member">
-          <div className="layout__member-head">
+          <Link
+            to={PROFILE_ITEM.to}
+            className={`layout__member-head${location.pathname === PROFILE_ITEM.to ? ' layout__member-head--active' : ''}`}
+            title="Abrir meu perfil"
+          >
             {member?.classImageUrl ? (
               <MemberClassIcon
                 classImageUrl={member.classImageUrl}
@@ -118,7 +124,7 @@ function LayoutShell() {
               <span className="layout__member-name">{user?.nickname ?? 'Membro'}</span>
               <span className="layout__member-class">{member?.className ?? '—'}</span>
             </div>
-          </div>
+          </Link>
 
           {member && (
             <div className="layout__gauge">
