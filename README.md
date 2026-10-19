@@ -44,6 +44,9 @@ source scripts/dev-env.sh          # JDK 21 na sessão
 |---|---|
 | `DISCORD_CLIENT_ID` | OAuth Discord |
 | `DISCORD_CLIENT_SECRET` | OAuth Discord |
+| `DISCORD_BOT_TOKEN` | Bot da lista de membros do Dashboard (vazio = desligado) |
+| `DISCORD_GUILD_ID` | Servidor do Discord (opcional) |
+| `DISCORD_MEMBER_ROLES` | Cargos exibidos (padrão `Leader,Cerberus`) |
 | `OAUTH_FRONTEND_URL` | URL do frontend após login Discord (prod: `https://blacklist.guildsystem.com.br`) |
 | `JWT_SECRET` | Chave JWT (min. 256 bits) |
 | `CORS_ORIGINS` | Origens permitidas (default dev: `http://localhost:5173`) |

@@ -70,6 +70,10 @@ public class WebSocketPublisher {
         send("/topic/schedule", payload);
     }
 
+    public void publishDiscordMembers(Object payload) {
+        send("/topic/discord/members", payload);
+    }
+
     private void send(String destination, Object payload) {
         afterCommit(() -> messagingTemplate.convertAndSend(destination, payload));
     }

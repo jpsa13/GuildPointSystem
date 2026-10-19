@@ -85,6 +85,8 @@ If deploy builds but healthcheck fails (`Could not connect to localhost:8080`):
    | `OAUTH_FRONTEND_URL` | `https://blacklist.guildsystem.com.br` |
    | `DISCORD_CLIENT_ID` | Client ID do Discord |
    | `DISCORD_CLIENT_SECRET` | Client Secret do Discord |
+   | `DISCORD_BOT_TOKEN` | Token do bot (lista de membros no Dashboard) |
+   | `DISCORD_GUILD_ID` | ID do servidor do Discord (opcional) |
 
 8. **Auto Deploy:** enable webhook on push to `main`.
 

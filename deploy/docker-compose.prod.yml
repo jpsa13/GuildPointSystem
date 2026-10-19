@@ -37,6 +37,9 @@ services:
       UPLOAD_PATH: /data/uploads
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_MEMBER_ROLES: ${DISCORD_MEMBER_ROLES:-Leader,Cerberus}
       OAUTH_FRONTEND_URL: ${OAUTH_FRONTEND_URL:-https://blacklist.guildsystem.com.br}
     volumes:
       - uploads_data:/data/uploads

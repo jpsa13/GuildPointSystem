@@ -1,6 +1,9 @@
 spring:
   application:
     name: guild-points
+  config:
+    # Local secrets (gitignored), e.g. DISCORD_BOT_TOKEN=... — real env vars still win.
+    import: optional:file:.env[.properties]
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/guild_points}
     username: ${SPRING_DATASOURCE_USERNAME:guild}
@@ -40,6 +43,14 @@ guild:
     max-avatar-size: 2097152
     max-item-size: 2097152
     max-chat-size: 1048576
+  discord:
+    bot:
+      # Empty token disables the Discord member list.
+      token: ${DISCORD_BOT_TOKEN:}
+      # Empty = first server the bot is in.
+      guild-id: ${DISCORD_GUILD_ID:}
+      # Role names shown in the list, in display order.
+      roles: ${DISCORD_MEMBER_ROLES:Leader,Cerberus}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173}
 

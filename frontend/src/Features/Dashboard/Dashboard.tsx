@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useFitRows } from '@/Shared/utils/useFitRows'
 import { useMatchBottom } from '@/Shared/utils/useMatchBottom'
 import { NewsPanel } from '@/Features/News/NewsPanel'
+import { DiscordMembersPanel } from '@/Features/Dashboard/components/DiscordMembersPanel'
 import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCountdown'
 import { useMemberRanking } from '@/Domain/Member/hooks/useMembers'
 import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
@@ -60,7 +61,7 @@ export function DashboardPage() {
   const [rankPage, setRankPage] = useState(0)
   const [eventPage, setEventPage] = useState(0)
 
-  // Right column ends exactly where the ranking panel ends; events and news split it in half.
+  // Side columns end exactly where the ranking panel ends; events and news split theirs in half.
   const sideRef = useRef<HTMLDivElement>(null)
   const rankingRef = useRef<HTMLDivElement>(null)
   const sideHeight = useMatchBottom(sideRef, rankingRef, !isLoading)
@@ -285,6 +286,14 @@ export function DashboardPage() {
       </Panel>
 
       <NewsPanel className="dashboard__col dashboard__col--news" />
+      </div>
+
+      {/* ── Far right: Discord members (same height as the ranking) ─────────── */}
+      <div
+        className="dashboard__discord"
+        style={sideHeight ? ({ '--side-height': `${sideHeight}px` } as React.CSSProperties) : undefined}
+      >
+        <DiscordMembersPanel />
       </div>
     </div>
   )

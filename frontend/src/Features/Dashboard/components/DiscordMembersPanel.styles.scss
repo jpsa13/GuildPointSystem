@@ -1,0 +1,120 @@
+// Discord server sidebar mirror (Dashboard right column)
+.discord-panel {
+  > .panel__body {
+    overflow-y: auto;
+  }
+
+  &__empty {
+    @include theme.readout(theme.$color-text-muted);
+    display: block;
+    text-align: center;
+    font-size: theme.$font-size-base;
+    padding: theme.$spacing-lg 0;
+    margin: 0;
+  }
+}
+
+.discord-list {
+  display: flex;
+  flex-direction: column;
+  gap: theme.$spacing-md;
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__role {
+    margin: 0 0 theme.$spacing-xs;
+    font-family: theme.$font-heading;
+    font-size: theme.$font-size-heading;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: theme.$color-text-muted;
+  }
+
+  &__role-total {
+    color: theme.$color-text-faint;
+  }
+
+  &__member {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.1s;
+
+    &:hover { background: rgba(255, 255, 255, 0.04); }
+
+    &--offline { opacity: 0.4; }
+  }
+
+  &__avatar {
+    position: relative;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+
+    img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  }
+
+  // Status dot cut into the avatar's corner, like Discord.
+  &__status {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid theme.$color-bg-elevated;
+    background: #80848e;
+
+    &--online { background: #23a55a; }
+    &--idle { background: #f0b232; }
+    &--dnd { background: #f23f43; }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__link {
+    text-decoration: none;
+    min-width: 0;
+
+    &:hover .discord-list__name { text-decoration: underline; }
+  }
+
+  &__name {
+    display: block;
+    font-size: theme.$font-size-base;
+    font-weight: 600;
+    color: theme.$color-text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__sub {
+    font-size: 13px;
+    color: theme.$color-text-muted;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &--voice { color: #23a55a; }
+  }
+}

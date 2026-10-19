@@ -1,5 +1,6 @@
 package com.guild.app;
 
+import com.guild.app.discord.DiscordBotProperties;
 import com.guild.app.schedule.ScheduleTestAlertProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(exclude = OAuth2ClientAutoConfiguration.class)
 @EnableScheduling
-@EnableConfigurationProperties(ScheduleTestAlertProperties.class)
+@EnableConfigurationProperties({ScheduleTestAlertProperties.class, DiscordBotProperties.class})
 public class GuildAppApplication {
 
     public static void main(String[] args) {

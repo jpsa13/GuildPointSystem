@@ -17,6 +17,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByDiscordId(String discordId);
 
+    List<Member> findByDiscordIdIn(Collection<String> discordIds);
+
     boolean existsByEmail(String email);
 
     boolean existsByDiscordId(String discordId);
