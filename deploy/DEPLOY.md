@@ -119,10 +119,10 @@ The backend publishes the same metrics in Prometheus format at `/actuator/promet
 
 1. **Grafana Cloud:** create a free stack. In *Connections → Prometheus* (or the stack's *Details* page) copy the **Remote Write Endpoint** (`…/api/prom/push`) and the **Username / Instance ID**. Create an **access policy token** with the `metrics:write` scope.
 2. **Backend (Coolify):** set `METRICS_SCRAPE_TOKEN` to a random value (`openssl rand -hex 32`) and redeploy.
-3. **Alloy (Coolify → New resource → Docker image `grafana/alloy:v1.5.1`)**, on the same network as the backend:
-   - Command: `run /etc/alloy/config.alloy --storage.path=/var/lib/alloy/data`
-   - Mount [`deploy/alloy/config.alloy`](alloy/config.alloy) at `/etc/alloy/config.alloy` and a volume at `/var/lib/alloy/data`.
-   - Env: `BACKEND_METRICS_TARGET` (backend container host:8080), `METRICS_SCRAPE_TOKEN`, `GRAFANA_CLOUD_PROM_URL`, `GRAFANA_CLOUD_PROM_USER`, `GRAFANA_CLOUD_API_TOKEN`.
+3. **Alloy (Coolify → New resource → Docker image `grafana/alloy:v1.5.1`)**, no domain:
+   - The image's default command already runs `/etc/alloy/config.alloy`; no start command needed.
+   - Storage: a **file mount** at `/etc/alloy/config.alloy` with the content of [`deploy/alloy/config.alloy`](alloy/config.alloy), and a volume at `/var/lib/alloy/data`.
+   - Env: `BACKEND_METRICS_TARGET` + `BACKEND_METRICS_SCHEME` (simplest: `backend.guildsystem.com.br:443` + `https`; inside the Docker network: `<backend container>:8080` + `http`), `METRICS_SCRAPE_TOKEN`, `GRAFANA_CLOUD_PROM_URL`, `GRAFANA_CLOUD_PROM_USER`, `GRAFANA_CLOUD_API_TOKEN`.
    - With the reference compose instead: `docker compose -f deploy/docker-compose.prod.yml --profile metrics up -d`.
 4. **Check:** in Grafana → *Explore*, `up{job="guild-backend"}` should be `1`.
 5. **Dashboards:** import the community *JVM (Micrometer)* dashboard (ID `4701`) for memory/GC/threads; it filters by the `application="guild-points"` label the backend adds. Realtime panels (PromQL):

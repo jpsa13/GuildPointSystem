@@ -2,7 +2,9 @@
 // Runs next to the backend on the VPS; nothing here is exposed publicly.
 //
 // Environment (set in Coolify, see deploy/DEPLOY.md → "Grafana Cloud"):
-//   BACKEND_METRICS_TARGET     host:port of the backend inside the Docker network, e.g. backend:8080
+//   BACKEND_METRICS_TARGET     host:port of the backend: the public domain (backend.guildsystem.com.br:443)
+//                              or, inside the Docker network, the backend container (e.g. backend:8080)
+//   BACKEND_METRICS_SCHEME     https for the public domain, http (default) inside the Docker network
 //   METRICS_SCRAPE_TOKEN       same value as the backend's METRICS_SCRAPE_TOKEN
 //   GRAFANA_CLOUD_PROM_URL     Grafana Cloud → Prometheus → "Remote Write Endpoint" (…/api/prom/push)
 //   GRAFANA_CLOUD_PROM_USER    Grafana Cloud → Prometheus → "Username / Instance ID" (a number)
@@ -14,7 +16,7 @@ prometheus.scrape "guild_backend" {
     job         = "guild-backend",
   }]
   metrics_path    = "/actuator/prometheus"
-  scheme          = "http"
+  scheme          = coalesce(sys.env("BACKEND_METRICS_SCHEME"), "http")
   scrape_interval = "15s"
   scrape_timeout  = "10s"
   bearer_token    = sys.env("METRICS_SCRAPE_TOKEN")
