@@ -8,6 +8,7 @@ import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCoun
 import { useMemberRanking } from '@/Domain/Member/hooks/useMembers'
 import { useDiscordMembers, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
 import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
+import { discordProfileUrl, openInDiscordApp } from '@/Shared/utils/discordLink'
 import { useActiveEvents, useClaimEvent } from '@/Domain/Event/hooks/useEvents'
 import { Button } from '@/Shared/ui/components/Button/Button'
 import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberClassIcon'
@@ -52,13 +53,21 @@ function Pagination({ page, total, onChange, ref }: PaginationProps) {
   )
 }
 
-/** "(Discord name)" in the member's Discord role color, for site accounts linked to Discord. */
+/** "(Discord name)" in the member's Discord role color; opens their profile in the Discord app. */
 function DiscordTag({ member, className }: { member?: DiscordMember; className: string }) {
   if (!member) return null
   return (
-    <span className={className} style={member.color ? { color: member.color } : undefined} title="Discord">
+    <a
+      href={discordProfileUrl(member.id)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className}
+      style={member.color ? { color: member.color } : undefined}
+      title={`Abrir ${member.name} no Discord`}
+      onClick={(e) => openInDiscordApp(e, member.id)}
+    >
       ({member.name})
-    </span>
+    </a>
   )
 }
 
