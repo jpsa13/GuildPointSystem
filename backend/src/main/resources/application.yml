@@ -27,6 +27,11 @@ spring:
       max-request-size: 2MB
 server:
   port: 8080
+  compression:
+    # JSON only: SockJS streaming frames (application/javascript) must not be buffered by gzip.
+    enabled: true
+    mime-types: application/json
+    min-response-size: 1KB
 
 guild:
   schedule:
