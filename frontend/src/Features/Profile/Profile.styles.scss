@@ -25,6 +25,12 @@
 
     &--staff {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      // Panels side by side share the row height; each one's action button sits at the bottom.
+      align-items: stretch;
+
+      > .profile-form > .btn:last-child {
+        margin-top: auto;
+      }
     }
 
     @media (max-width: 1000px) {

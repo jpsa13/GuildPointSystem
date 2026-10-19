@@ -111,9 +111,7 @@ function LayoutShell() {
             )}
             <div className="layout__member-id">
               <span className="layout__member-name">{user?.nickname ?? 'Membro'}</span>
-              <span className="layout__member-role">
-                {member ? `${member.role} · ${member.className}` : '—'}
-              </span>
+              <span className="layout__member-class">{member?.className ?? '—'}</span>
             </div>
           </div>
 

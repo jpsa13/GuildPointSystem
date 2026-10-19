@@ -246,35 +246,10 @@ export function ProfilePage() {
             </Button>
           </form>
 
+          {/* Staff layout (2 columns): Editar Perfil | Ajustar Pontos, Resgates | Conceder Evento,
+              then Papel do Membro alone. */}
           {isStaff && !isOwn && (
             <>
-              {isLeader && (
-                <form className="profile-form" onSubmit={handleUpdateRole}>
-                  <h3>Papel do Membro</h3>
-                  <label>
-                    Papel
-                    <select
-                      value={memberRole}
-                      onChange={(e) => setMemberRole(e.target.value as Role)}
-                    >
-                      {ROLE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {memberRole === 'LIDER' && profile.role !== 'LIDER' && (
-                    <p className="profile-form__hint">
-                      Ao promover a Líder, você passará a ser Administrador.
-                    </p>
-                  )}
-                  <Button type="submit" loading={updateMemberRole.isPending}>
-                    Salvar papel
-                  </Button>
-                </form>
-              )}
-
               <form className="profile-form" onSubmit={handleAdjustPoints}>
                 <h3>Ajustar Pontos</h3>
                 <label>
@@ -399,6 +374,33 @@ export function ProfilePage() {
                   Conceder
                 </Button>
               </form>
+
+              {isLeader && (
+                <form className="profile-form" onSubmit={handleUpdateRole}>
+                  <h3>Papel do Membro</h3>
+                  <label>
+                    Papel
+                    <select
+                      value={memberRole}
+                      onChange={(e) => setMemberRole(e.target.value as Role)}
+                    >
+                      {ROLE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {memberRole === 'LIDER' && profile.role !== 'LIDER' && (
+                    <p className="profile-form__hint">
+                      Ao promover a Líder, você passará a ser Administrador.
+                    </p>
+                  )}
+                  <Button type="submit" loading={updateMemberRole.isPending}>
+                    Salvar papel
+                  </Button>
+                </form>
+              )}
             </>
           )}
         </div>
