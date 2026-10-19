@@ -41,9 +41,30 @@ services:
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
       DISCORD_MEMBER_ROLES: ${DISCORD_MEMBER_ROLES:-Leader,Cerberus}
       OAUTH_FRONTEND_URL: ${OAUTH_FRONTEND_URL:-https://blacklist.guildsystem.com.br}
+      METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
     volumes:
       - uploads_data:/data/uploads
+
+  # Optional: ships backend metrics to Grafana Cloud (free tier). Starts only with
+  # `docker compose --profile metrics up -d`; see deploy/DEPLOY.md → "Grafana Cloud".
+  alloy:
+    image: grafana/alloy:v1.5.1
+    profiles: ['metrics']
+    restart: unless-stopped
+    depends_on:
+      - backend
+    command: ['run', '/etc/alloy/config.alloy', '--storage.path=/var/lib/alloy/data']
+    environment:
+      BACKEND_METRICS_TARGET: backend:8080
+      METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:-}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:-}
+      GRAFANA_CLOUD_API_TOKEN: ${GRAFANA_CLOUD_API_TOKEN:-}
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
 
 volumes:
   postgres_data:
   uploads_data:
+  alloy_data:

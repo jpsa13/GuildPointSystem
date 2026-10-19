@@ -1,0 +1,33 @@
+// Grafana Alloy: scrapes the backend's /actuator/prometheus and ships it to Grafana Cloud (free tier).
+// Runs next to the backend on the VPS; nothing here is exposed publicly.
+//
+// Environment (set in Coolify, see deploy/DEPLOY.md → "Grafana Cloud"):
+//   BACKEND_METRICS_TARGET     host:port of the backend inside the Docker network, e.g. backend:8080
+//   METRICS_SCRAPE_TOKEN       same value as the backend's METRICS_SCRAPE_TOKEN
+//   GRAFANA_CLOUD_PROM_URL     Grafana Cloud → Prometheus → "Remote Write Endpoint" (…/api/prom/push)
+//   GRAFANA_CLOUD_PROM_USER    Grafana Cloud → Prometheus → "Username / Instance ID" (a number)
+//   GRAFANA_CLOUD_API_TOKEN    Grafana Cloud access policy token with the metrics:write scope
+
+prometheus.scrape "guild_backend" {
+  targets = [{
+    __address__ = sys.env("BACKEND_METRICS_TARGET"),
+    job         = "guild-backend",
+  }]
+  metrics_path    = "/actuator/prometheus"
+  scheme          = "http"
+  scrape_interval = "15s"
+  scrape_timeout  = "10s"
+  bearer_token    = sys.env("METRICS_SCRAPE_TOKEN")
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROM_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROM_USER")
+      password = sys.env("GRAFANA_CLOUD_API_TOKEN")
+    }
+  }
+}

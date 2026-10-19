@@ -32,14 +32,17 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final RestSecurityHandlers restSecurityHandlers;
     private final String allowedOrigins;
+    private final String metricsScrapeToken;
 
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
             RestSecurityHandlers restSecurityHandlers,
-            @Value("${guild.cors.allowed-origins}") String allowedOrigins) {
+            @Value("${guild.cors.allowed-origins}") String allowedOrigins,
+            @Value("${guild.metrics.scrape-token:}") String metricsScrapeToken) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.restSecurityHandlers = restSecurityHandlers;
         this.allowedOrigins = allowedOrigins;
+        this.metricsScrapeToken = metricsScrapeToken;
     }
 
     @Bean
@@ -59,6 +62,9 @@ public class SecurityConfig {
                         // Latency, pool and socket metrics: leadership only.
                         .requestMatchers("/actuator/metrics", "/actuator/metrics/**")
                         .hasAnyRole(Role.ADMINISTRADOR.name(), Role.LIDER.name())
+                        // Prometheus format for the collector (Grafana Alloy): static scrape token only.
+                        .requestMatchers("/actuator/prometheus")
+                        .access(new ScrapeTokenAuthorizationManager(metricsScrapeToken))
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seeds/**").permitAll()

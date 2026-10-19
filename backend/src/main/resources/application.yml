@@ -34,6 +34,9 @@ server:
     min-response-size: 1KB
 
 guild:
+  metrics:
+    # Static bearer token for /actuator/prometheus (Grafana Alloy). Empty = endpoint closed.
+    scrape-token: ${METRICS_SCRAPE_TOKEN:}
   schedule:
     test-alert:
       enabled: ${SCHEDULE_TEST_ALERT:true}
@@ -63,12 +66,21 @@ management:
   endpoints:
     web:
       exposure:
-        # /actuator/metrics is restricted to Administrador/Líder in SecurityConfig.
-        include: health,info,metrics
+        # /actuator/metrics is restricted to Administrador/Líder and /actuator/prometheus to the
+        # collector's scrape token (guild.metrics.scrape-token) in SecurityConfig.
+        include: health,info,metrics,prometheus
   metrics:
+    tags:
+      # Grafana's Spring Boot / JVM dashboards filter by this label.
+      application: ${spring.application.name}
     distribution:
       # Latency percentiles show up in /actuator/metrics as <name>.percentile (tag phi).
       percentiles:
         http.server.requests: 0.5,0.95,0.99
         guild.auction.bid: 0.5,0.95,0.99
         guild.party.board.broadcast: 0.5,0.95,0.99
+      # Fixed buckets so Grafana can compute p95 over any range (histogram_quantile) and the share of
+      # bids under 100ms; a handful of series, unlike a full histogram.
+      slo:
+        guild.auction.bid: 10ms,25ms,50ms,100ms,250ms,500ms,1s
+        guild.party.board.broadcast: 10ms,25ms,50ms,100ms,250ms,500ms,1s

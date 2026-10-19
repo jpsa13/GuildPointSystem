@@ -113,6 +113,33 @@ The frontend connects with a native WebSocket to `/ws/websocket` and falls back 
 | `hikaricp.connections.pending` | Requests waiting for a DB connection (should stay ~0; raise `DB_POOL_SIZE` if not) |
 | `http.server.requests.percentile?tag=phi:0.95` | REST p95 (filter further with `&tag=uri:/api/...`) |
 
+### Grafana Cloud (free tier)
+
+The backend publishes the same metrics in Prometheus format at `/actuator/prometheus`, readable only with `Authorization: Bearer $METRICS_SCRAPE_TOKEN` (empty token = endpoint closed). [Grafana Alloy](alloy/config.alloy) runs next to the backend, scrapes it every 15s over the Docker network and pushes to Grafana Cloud. Nothing new is exposed publicly. Expect a few hundred series, well within the free tier.
+
+1. **Grafana Cloud:** create a free stack. In *Connections → Prometheus* (or the stack's *Details* page) copy the **Remote Write Endpoint** (`…/api/prom/push`) and the **Username / Instance ID**. Create an **access policy token** with the `metrics:write` scope.
+2. **Backend (Coolify):** set `METRICS_SCRAPE_TOKEN` to a random value (`openssl rand -hex 32`) and redeploy.
+3. **Alloy (Coolify → New resource → Docker image `grafana/alloy:v1.5.1`)**, on the same network as the backend:
+   - Command: `run /etc/alloy/config.alloy --storage.path=/var/lib/alloy/data`
+   - Mount [`deploy/alloy/config.alloy`](alloy/config.alloy) at `/etc/alloy/config.alloy` and a volume at `/var/lib/alloy/data`.
+   - Env: `BACKEND_METRICS_TARGET` (backend container host:8080), `METRICS_SCRAPE_TOKEN`, `GRAFANA_CLOUD_PROM_URL`, `GRAFANA_CLOUD_PROM_USER`, `GRAFANA_CLOUD_API_TOKEN`.
+   - With the reference compose instead: `docker compose -f deploy/docker-compose.prod.yml --profile metrics up -d`.
+4. **Check:** in Grafana → *Explore*, `up{job="guild-backend"}` should be `1`.
+5. **Dashboards:** import the community *JVM (Micrometer)* dashboard (ID `4701`) for memory/GC/threads; it filters by the `application="guild-points"` label the backend adds. Realtime panels (PromQL):
+
+| Panel | Query |
+|---|---|
+| Bid p95 by outcome | `histogram_quantile(0.95, sum by (le, outcome) (rate(guild_auction_bid_seconds_bucket[5m])))` |
+| Accepted bids under 100 ms | `sum(rate(guild_auction_bid_seconds_bucket{outcome="accepted",le="0.1"}[5m])) / sum(rate(guild_auction_bid_seconds_count{outcome="accepted"}[5m]))` |
+| Bids per second | `sum by (outcome) (rate(guild_auction_bid_seconds_count[1m]))` |
+| Party board push p95 | `histogram_quantile(0.95, sum by (le) (rate(guild_party_board_broadcast_seconds_bucket[5m])))` |
+| Open sockets | `guild_websocket_sessions{transport="all"}` |
+| STOMP inbound backlog | `executor_queued_tasks{name="clientInboundChannelExecutor"}` |
+| Requests waiting for a DB connection | `hikaricp_connections_pending` |
+| REST p95 per endpoint | `max by (uri) (http_server_requests_seconds{quantile="0.95"})` |
+
+Suggested alerts: bid p95 above 250 ms for 5 min, `hikaricp_connections_pending > 0` for 2 min, `executor_queued_tasks{name="clientInboundChannelExecutor"} > 10`.
+
 ---
 
 ## 4. Vercel — Frontend
