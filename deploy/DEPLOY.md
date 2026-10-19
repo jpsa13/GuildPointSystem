@@ -107,8 +107,9 @@ The frontend connects with a native WebSocket to `/ws/websocket` and falls back 
 | `guild.auction.bid?tag=outcome:accepted` / `rejected` / `error` | WS bid end to end (row-lock wait, commit, fan-out), as the bidder feels it |
 | `guild.auction.bid.percentile?tag=phi:0.95` | p95 of the above (also `0.5`, `0.99`) |
 | `guild.party.board.broadcast` | Time to build and push the party board to everyone |
-| `guild.websocket.sessions?tag=transport:all` | Open sockets (`websocket` = native, `sockjs-*` = fallback) |
-| `guild.websocket.sessions.limit-exceeded` | Sockets closed for being too slow to receive |
+| `guild.websocket.sessions?tag=transport:all` | Sockets open right now (`websocket` = native, `sockjs-*` = fallback) |
+| `guild.websocket.sessions.opened` | Sessions opened since startup (reconnect churn when it climbs fast) |
+| `guild.websocket.sessions.limit-exceeded` | Sockets closed so far for being too slow to receive |
 | `executor.queued?tag=name:clientInboundChannelExecutor` | STOMP frames waiting for a thread (should stay ~0) |
 | `hikaricp.connections.pending` | Requests waiting for a DB connection (should stay ~0; raise `DB_POOL_SIZE` if not) |
 | `http.server.requests.percentile?tag=phi:0.95` | REST p95 (filter further with `&tag=uri:/api/...`) |
@@ -134,6 +135,8 @@ The backend publishes the same metrics in Prometheus format at `/actuator/promet
 | Bids per second | `sum by (outcome) (rate(guild_auction_bid_seconds_count[1m]))` |
 | Party board push p95 | `histogram_quantile(0.95, sum by (le) (rate(guild_party_board_broadcast_seconds_bucket[5m])))` |
 | Open sockets | `guild_websocket_sessions{transport="all"}` |
+| New sockets per minute (reconnects) | `rate(guild_websocket_sessions_opened_total[5m]) * 60` |
+| Slow clients dropped | `increase(guild_websocket_sessions_limit_exceeded_total[1h])` |
 | STOMP inbound backlog | `executor_queued_tasks{name="clientInboundChannelExecutor"}` |
 | Requests waiting for a DB connection | `hikaricp_connections_pending` |
 | REST p95 per endpoint | `max by (uri) (http_server_requests_seconds{quantile="0.95"})` |
