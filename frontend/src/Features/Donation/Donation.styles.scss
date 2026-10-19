@@ -1,0 +1,192 @@
+.donation-page {
+  display: flex;
+  flex-direction: column;
+  gap: theme.$spacing-lg;
+}
+
+.donation-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: theme.$spacing-md;
+  align-items: flex-end;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 180px;
+    max-width: 320px;
+
+    > span {
+      @include theme.field-label;
+    }
+  }
+
+  // Input with a fixed unit ("kk", "pts") inside the right edge.
+  &__input {
+    position: relative;
+
+    input {
+      @include theme.field-input;
+      @include theme.field-control-height;
+      width: 100%;
+      padding-right: 48px;
+      font-family: theme.$font-mono;
+      font-size: theme.$font-size-lg;
+      -moz-appearance: textfield;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    }
+  }
+
+  &__suffix {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-section;
+    color: theme.$color-amber;
+    pointer-events: none;
+  }
+
+  > .btn {
+    @include theme.field-control-height;
+    padding-inline: 26px;
+    flex-shrink: 0;
+  }
+
+  &__hint {
+    margin: theme.$spacing-md 0 0;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+
+    strong {
+      font-family: theme.$font-mono;
+      font-weight: 400;
+      color: theme.$color-primary;
+    }
+  }
+}
+
+.donation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  &__empty {
+    color: theme.$color-text-muted;
+    font-size: theme.$font-size-base;
+    padding: theme.$spacing-lg;
+    margin: 0;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: theme.$spacing-md;
+    padding: 10px theme.$spacing-lg;
+    border-bottom: 1px solid theme.$color-border;
+    transition: background 0.1s;
+
+    &:nth-child(even) { background: rgba(255, 255, 255, 0.015); }
+
+    &:hover {
+      background: linear-gradient(90deg, rgba(theme.$color-amber, 0.06), transparent 60%);
+    }
+  }
+
+  &__kk {
+    @include theme.slot;
+    min-width: 88px;
+    height: 46px;
+    padding-inline: theme.$spacing-sm;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    font-family: theme.$font-mono;
+    font-size: 20px;
+    color: theme.$color-amber;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    strong {
+      font-family: theme.$font-heading;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: theme.$color-text;
+    }
+
+    small {
+      font-size: theme.$font-size-base;
+      color: theme.$color-text-muted;
+    }
+  }
+
+  &__status {
+    @include theme.tag;
+
+    &--pendente {
+      color: theme.$color-amber;
+      border-color: rgba(theme.$color-amber, 0.4);
+    }
+
+    &--aceita {
+      color: theme.$color-success;
+      border-color: rgba(theme.$color-success, 0.4);
+    }
+
+    &--recusada {
+      color: theme.$color-danger;
+      border-color: rgba(theme.$color-danger, 0.4);
+    }
+  }
+
+  &__points {
+    @include theme.readout(theme.$color-success);
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: theme.$spacing-sm;
+    flex-shrink: 0;
+  }
+
+  &__pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: theme.$spacing-md;
+    padding: theme.$spacing-md;
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+  }
+
+  @media (max-width: 600px) {
+    &__item {
+      flex-wrap: wrap;
+    }
+
+    &__actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+}

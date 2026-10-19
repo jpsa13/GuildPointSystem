@@ -4,5 +4,6 @@ public enum PointsModality {
     AJUSTE,
     LEILAO,
     EVENTO,
-    REVERSAO
+    REVERSAO,
+    DOACAO
 }

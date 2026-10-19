@@ -7,6 +7,7 @@ import { LoginPage } from '@/Features/Auth/LoginPage'
 import { RegisterPage } from '@/Features/Auth/RegisterPage'
 import { DiscordCallbackPage } from '@/Features/Auth/DiscordCallbackPage'
 import { DashboardPage } from '@/Features/Dashboard/Dashboard'
+import { DonationPage } from '@/Features/Donation/Donation'
 import { LogsPage } from '@/Features/Logs/Logs'
 import { ObjectivesPage } from '@/Features/Objectives/Objectives'
 import { EventsPage } from '@/Features/Events/Events'
@@ -39,6 +40,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route index element={<DashboardPage />} />
+              <Route path="donate" element={<DonationPage />} />
               <Route path="logs" element={<LogsPage />} />
               <Route path="objectives" element={<ObjectivesPage />} />
               <Route path="events" element={<EventsPage />} />

@@ -6,7 +6,8 @@ export type AuctionStatus = 'OPEN' | 'DOLE' | 'TIE_BREAK' | 'CLOSED' | 'CANCELLE
 /** Finished auctions: no more bids; CANCELLED = force-closed by leadership, nobody charged. */
 export const isAuctionFinished = (status: AuctionStatus) => status === 'CLOSED' || status === 'CANCELLED'
 export type ItemType = 'WEAPON' | 'ARMOR' | 'ACCESSORY' | 'MISC'
-export type PointsModality = 'AJUSTE' | 'LEILAO' | 'EVENTO' | 'REVERSAO'
+export type PointsModality = 'AJUSTE' | 'LEILAO' | 'EVENTO' | 'REVERSAO' | 'DOACAO'
+export type DonationStatus = 'PENDENTE' | 'ACEITA' | 'RECUSADA'
 
 export type AuditLogType =
   | 'OBJECTIVE_CREATED'
@@ -25,6 +26,9 @@ export type AuditLogType =
   | 'NEWS_CREATED'
   | 'NEWS_UPDATED'
   | 'NEWS_DELETED'
+  | 'DONATION_ACCEPTED'
+  | 'DONATION_REJECTED'
+  | 'DONATION_RATE_UPDATED'
   | 'PROFILE_UPDATED'
   | 'MEMBER_APPROVED'
   | 'MEMBER_REJECTED'
@@ -312,6 +316,27 @@ export interface News {
   createdAt: string
   editorNickname: string | null
   updatedAt: string | null
+}
+
+export interface DonationSettings {
+  /** Points credited per 1kk (1 million) of Disena. */
+  pointsPerKk: number
+  updatedByNickname: string | null
+  updatedAt: string | null
+}
+
+export interface Donation {
+  id: number
+  memberId: number
+  memberNickname: string | null
+  amountKk: number
+  status: DonationStatus
+  createdAt: string
+  reviewedByNickname: string | null
+  reviewedAt: string | null
+  /** Set once accepted: the rate in force at that moment. */
+  pointsPerKk: number | null
+  pointsAwarded: number | null
 }
 
 export interface AuctionBidResult {

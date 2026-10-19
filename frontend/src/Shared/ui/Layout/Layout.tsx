@@ -17,6 +17,7 @@ import './Layout.styles.scss'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard' },
+  { to: '/donate', label: 'Doar Disena' },
   { to: '/logs', label: 'Logs' },
   { to: '/objectives', label: 'Objetivos' },
   { to: '/events', label: 'Eventos' },
