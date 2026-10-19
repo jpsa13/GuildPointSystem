@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 public class MemberDetailsService implements UserDetailsService {
 
     private final MemberRepository memberRepository;
+    private final MemberPrincipalCache memberPrincipalCache;
 
     @Override
     public UserDetails loadUserByUsername(String username) {
@@ -22,11 +23,14 @@ public class MemberDetailsService implements UserDetailsService {
         return new MemberPrincipal(member);
     }
 
-    /** Used for every JWT (REST + WebSocket): a deleted account's still-valid token stops working at once. */
+    /**
+     * Used for every JWT (REST + WebSocket), served from {@link MemberPrincipalCache}. Deleting an account
+     * evicts it after commit, so its still-valid token stops working on the next request.
+     */
     public UserDetails loadById(Long id) {
-        var member = memberRepository.findById(id)
+        return memberPrincipalCache.get(id, () -> memberRepository.findById(id)
                 .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO)
-                .orElseThrow(() -> new UsernameNotFoundException("Member not found"));
-        return new MemberPrincipal(member);
+                .map(MemberPrincipal::new)
+                .orElseThrow(() -> new UsernameNotFoundException("Member not found")));
     }
 }

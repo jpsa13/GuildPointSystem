@@ -1,5 +1,6 @@
 package com.guild.app.member.entity;
 
+import com.guild.app.auth.security.MemberCacheEvictionListener;
 import com.guild.app.common.enums.MemberStatus;
 import com.guild.app.common.enums.Role;
 import jakarta.persistence.*;
@@ -10,6 +11,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "member")
+@EntityListeners(MemberCacheEvictionListener.class)
 @Getter
 @Setter
 public class Member {
