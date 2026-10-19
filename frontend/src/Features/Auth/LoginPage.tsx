@@ -12,6 +12,10 @@ export function LoginPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (searchParams.get('expired') === '1') {
+      setError('Sua sessão expirou. Entre novamente.')
+      return
+    }
     if (searchParams.get('error') === 'discord') {
       setError(
         searchParams.get('message') ??

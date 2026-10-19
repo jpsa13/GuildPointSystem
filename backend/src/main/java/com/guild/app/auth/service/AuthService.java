@@ -143,6 +143,22 @@ public class AuthService {
         return buildAuthResponse(member);
     }
 
+    /**
+     * Renews the token of a member who is using the app, keeping the original login time. Fails (401) once
+     * the session reached its maximum age, or for a rejected/deleted account: the member logs in again.
+     */
+    @Transactional(readOnly = true)
+    public AuthResponse refresh(MemberPrincipal principal, String token) {
+        var member = memberRepository.findById(principal.getId())
+                .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO && m.getStatus() != MemberStatus.REJEITADO)
+                .orElseThrow(() -> new AppException("Sessão expirada. Entre novamente.", HttpStatus.UNAUTHORIZED));
+        // Role/nickname/status come from the database, not from the old token.
+        var renewed = jwtService.renew(token, new MemberPrincipal(member))
+                .orElseThrow(() -> new AppException("Sessão expirada. Entre novamente.", HttpStatus.UNAUTHORIZED));
+        return new AuthResponse(renewed, member.getId(), member.getNickname(), member.getRole(),
+                member.getStatus(), resolveLevel(member), member.isProfileComplete());
+    }
+
     private void touchLastLogin(Member member) {
         member.setLastLoginAt(Instant.now());
         memberRepository.save(member);

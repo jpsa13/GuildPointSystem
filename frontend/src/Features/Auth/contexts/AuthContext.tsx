@@ -10,6 +10,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { getToken, setToken } from '@/Shared/api/client'
+import { onSessionExpired } from '@/Shared/api/session'
 import { authKeys, useAuthMe } from '@/Domain/Auth/hooks/useAuth'
 import type { AuthResponse, Role } from '@/Domain/types/models'
 import { connectSocket, disconnectSocket } from '@/Shared/websocket/socketClient'
@@ -33,14 +34,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasToken = sessionVersion >= 0 && !!getToken()
   const { data: user, isLoading } = useAuthMe(hasToken)
 
-  const logout = useCallback(() => {
-    setToken(null)
-    disconnectSocket()
-    queryClient.removeQueries({ queryKey: authKeys.me })
-    queryClient.clear()
-    setSessionVersion((v) => v + 1)
-    navigate('/login', { replace: true })
-  }, [queryClient, navigate])
+  const endSession = useCallback(
+    (loginPath: string) => {
+      setToken(null)
+      disconnectSocket()
+      queryClient.removeQueries({ queryKey: authKeys.me })
+      queryClient.clear()
+      setSessionVersion((v) => v + 1)
+      navigate(loginPath, { replace: true })
+    },
+    [queryClient, navigate],
+  )
+
+  const logout = useCallback(() => endSession('/login'), [endSession])
+
+  // The server stopped accepting the stored login (unused for 24h, 30-day limit, account removed):
+  // leave the broken screen for the login page and say why.
+  useEffect(() => onSessionExpired(() => endSession('/login?expired=1')), [endSession])
 
   const hasRole = useCallback(
     (minRole: Role) => {

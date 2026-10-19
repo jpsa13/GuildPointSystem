@@ -7,6 +7,7 @@ import com.guild.app.common.security.SecurityUtils;
 import jakarta.validation.Valid;
 import com.guild.app.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,14 @@ public class AuthController {
     @PostMapping("/discord/complete-profile")
     public AuthResponse completeDiscordProfile(@Valid @RequestBody DiscordProfileRequest request) {
         return authService.completeDiscordProfile(SecurityUtils.currentMember(), request);
+    }
+
+    /** New token for the same login while the member is active (see JwtService). */
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        var member = SecurityUtils.currentMember(); // 401 without a valid token
+        var token = authorization.startsWith("Bearer ") ? authorization.substring(7) : authorization;
+        return authService.refresh(member, token);
     }
 
     @GetMapping("/me")

@@ -1,5 +1,6 @@
 import { formatApiError } from '@/Shared/utils/formatApiError'
 import { getApiBaseUrl } from '@/Shared/utils/env'
+import { notifySessionExpired, RENEW_RETRY_MS, shouldRenew } from '@/Shared/api/session'
 
 const API_BASE = getApiBaseUrl()
 const TOKEN_KEY = 'guild_points_token'
@@ -36,9 +37,39 @@ export function withRequestCode(message: string, status: number, requestId: stri
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
+/** Login/registration answer 401 for wrong credentials: that is not an expired session. */
+const CREDENTIAL_PATHS = ['/auth/login', '/auth/register']
+
+let renewing = false
+let lastRenewFailureAt = 0
+
+/**
+ * Swaps the token for a fresh one in the background while the member is active (see session.ts).
+ * Never blocks the request that triggered it; concurrent calls share one renewal.
+ */
+function renewInBackground(token: string) {
+  const now = Date.now()
+  if (renewing || now - lastRenewFailureAt < RENEW_RETRY_MS || !shouldRenew(token, now)) return
+  renewing = true
+  fetch(`${API_BASE}/auth/refresh`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`refresh ${response.status}`)
+      const data = (await response.json()) as { token?: string }
+      // Don't overwrite a login/logout that happened meanwhile.
+      if (data.token && getToken() === token) setToken(data.token)
+    })
+    .catch(() => {
+      lastRenewFailureAt = Date.now()
+    })
+    .finally(() => {
+      renewing = false
+    })
+}
+
 export async function apiClient<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body: payload, headers, method = 'GET', ...rest } = options
   const token = getToken()
+  if (token && !path.startsWith('/auth/')) renewInBackground(token)
 
   const response = await fetch(`${API_BASE}${path}`, {
     method,
@@ -50,6 +81,12 @@ export async function apiClient<T>(path: string, options: RequestOptions = {}): 
     },
     body: payload !== undefined ? JSON.stringify(payload) : undefined,
   })
+
+  if (response.status === 401 && token && getToken() === token && !CREDENTIAL_PATHS.some((p) => path.startsWith(p))) {
+    // The stored login is no longer accepted: drop it and send the member to the login screen.
+    setToken(null)
+    notifySessionExpired()
+  }
 
   if (!response.ok) {
     let message = response.statusText
