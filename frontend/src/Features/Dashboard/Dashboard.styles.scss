@@ -123,6 +123,17 @@
     color: theme.$color-text-muted;
   }
 
+  &__discord {
+    max-width: 100%;
+    margin-top: -4px;
+    font-size: theme.$font-size-heading;
+    font-weight: 600;
+    color: theme.$color-text-muted;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &__points {
     @include theme.readout;
     font-size: 18px;
@@ -168,7 +179,7 @@
 .ranking-list__head,
 .ranking-list li {
   display: grid;
-  grid-template-columns: 36px 32px minmax(0, 1fr) 40px minmax(6.5rem, 1.1fr) minmax(4.5rem, auto);
+  grid-template-columns: 36px 32px minmax(0, 1fr) 40px minmax(4.5rem, auto) minmax(6.5rem, 1.1fr);
   align-items: center;
   gap: theme.$spacing-md;
   padding: 0 theme.$spacing-lg;
@@ -179,6 +190,7 @@
   height: 32px;
   border-top: 1px solid theme.$color-border-strong;
 
+  // Lv and Pontos centered; Último login (last) right-aligned.
   span:nth-child(4),
   span:nth-child(5) {
     text-align: center;
@@ -239,7 +251,28 @@
     opacity: 0.5;
   }
 
+  // Nickname + "(Discord name)" share the member cell.
+  &__who {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  &__discord {
+    min-width: 0;
+    font-size: theme.$font-size-heading;
+    font-weight: 600;
+    color: theme.$color-text-muted;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &__name {
+    flex-shrink: 0;
+    max-width: 100%;
     min-width: 0;
     font-weight: 600;
     color: theme.$color-text;
@@ -258,7 +291,7 @@
   }
 
   &__login {
-    text-align: center;
+    text-align: right;
     font-family: theme.$font-mono;
     font-size: theme.$font-size-heading;
     color: theme.$color-text-muted;
@@ -268,7 +301,7 @@
   }
 
   &__pts {
-    text-align: right;
+    text-align: center;
     font-family: theme.$font-mono;
     font-size: 18px;
     color: theme.$color-primary;

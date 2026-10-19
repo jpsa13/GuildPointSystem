@@ -45,14 +45,59 @@
   &__member {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 6px;
+    gap: 4px;
+    padding: 0 6px 0 0;
     border-radius: 4px;
     transition: background 0.1s;
 
-    &:hover { background: rgba(255, 255, 255, 0.04); }
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
 
-    &--offline { opacity: 0.4; }
+      .discord-list__site { opacity: 1; }
+    }
+
+    &--offline .discord-list__open { opacity: 0.4; }
+  }
+
+  // Whole row (avatar + name) opens the member on Discord.
+  &__open {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover .discord-list__name { text-decoration: underline; }
+  }
+
+  // Shown on hover when the member is linked to a site account.
+  &__site {
+    flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: theme.$color-text-muted;
+    text-decoration: none;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s, background 0.1s;
+
+    &:hover,
+    &:focus-visible {
+      opacity: 1;
+      color: theme.$color-primary;
+      background: rgba(255, 255, 255, 0.06);
+    }
   }
 
   &__avatar {
@@ -91,13 +136,6 @@
     min-width: 0;
   }
 
-  &__link {
-    text-decoration: none;
-    min-width: 0;
-
-    &:hover .discord-list__name { text-decoration: underline; }
-  }
-
   &__name {
     display: block;
     font-size: theme.$font-size-base;
@@ -116,5 +154,20 @@
     text-overflow: ellipsis;
 
     &--voice { color: #23a55a; }
+  }
+}
+
+// Link dialog body
+.discord-link {
+  display: flex;
+  flex-direction: column;
+  gap: theme.$spacing-sm;
+
+  p { margin: 0; }
+
+  &__select {
+    @include theme.field-input;
+    @include theme.field-control-height;
+    width: 100%;
   }
 }

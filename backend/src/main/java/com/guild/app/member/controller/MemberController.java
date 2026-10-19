@@ -5,6 +5,7 @@ import com.guild.app.event.dto.EventClaimResponse;
 import com.guild.app.event.dto.ManualEventRequest;
 import com.guild.app.event.service.EventService;
 import com.guild.app.member.dto.ApprovalRequest;
+import com.guild.app.member.dto.LinkDiscordRequest;
 import com.guild.app.member.dto.MemberResponse;
 import com.guild.app.member.dto.UpdateProfileRequest;
 import com.guild.app.member.dto.UpdateRoleRequest;
@@ -81,6 +82,12 @@ public class MemberController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(@PathVariable Long id) {
         memberService.deleteAccount(id, SecurityUtils.currentMember());
+    }
+
+    /** Líder/Administrador: link or unlink (blank id) the member's Discord account. */
+    @PutMapping("/{id}/discord")
+    public MemberResponse linkDiscord(@PathVariable Long id, @Valid @RequestBody LinkDiscordRequest request) {
+        return memberService.linkDiscord(id, request, SecurityUtils.currentMember());
     }
 
     @PatchMapping("/{id}/role")

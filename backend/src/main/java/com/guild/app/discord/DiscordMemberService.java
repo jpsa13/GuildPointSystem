@@ -24,6 +24,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -87,6 +89,20 @@ public class DiscordMemberService {
 
     public DiscordMembersResponse snapshot() {
         return snapshot;
+    }
+
+    /** A site account's Discord link changed: rebuild once the change is committed and readable. */
+    public void refreshAfterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dirty.set(true);
+                }
+            });
+        } else {
+            dirty.set(true);
+        }
     }
 
     @Scheduled(fixedDelay = 2000)

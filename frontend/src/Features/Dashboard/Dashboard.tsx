@@ -6,6 +6,7 @@ import { NewsPanel } from '@/Features/News/NewsPanel'
 import { DiscordMembersPanel } from '@/Features/Dashboard/components/DiscordMembersPanel'
 import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCountdown'
 import { useMemberRanking } from '@/Domain/Member/hooks/useMembers'
+import { useDiscordMembers, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
 import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
 import { useActiveEvents, useClaimEvent } from '@/Domain/Event/hooks/useEvents'
 import { Button } from '@/Shared/ui/components/Button/Button'
@@ -51,8 +52,23 @@ function Pagination({ page, total, onChange, ref }: PaginationProps) {
   )
 }
 
+/** "(Discord name)" in the member's Discord role color, for site accounts linked to Discord. */
+function DiscordTag({ member, className }: { member?: DiscordMember; className: string }) {
+  if (!member) return null
+  return (
+    <span className={className} style={member.color ? { color: member.color } : undefined} title="Discord">
+      ({member.name})
+    </span>
+  )
+}
+
 export function DashboardPage() {
   const { data: ranking = [], isLoading } = useMemberRanking()
+  const { data: discord } = useDiscordMembers()
+  const discordBySiteId = new Map<number, DiscordMember>()
+  discord?.groups.forEach((g) =>
+    g.members.forEach((m) => m.siteMemberId && discordBySiteId.set(m.siteMemberId, m)),
+  )
   const { data: events = [] } = useActiveEvents()
   const claimEvent = useClaimEvent()
   const { showToast } = useAppToast()
@@ -152,6 +168,7 @@ export function DashboardPage() {
                   <Link to={`/profile/${member.id}`} className="podium__name podium__name--link">
                     {member.nickname}
                   </Link>
+                  <DiscordTag member={discordBySiteId.get(member.id)} className="podium__discord" />
                   <span className="podium__level">Lv {member.level ?? 1}</span>
                   <span className="podium__points">{member.points}</span>
                 </div>
@@ -170,8 +187,8 @@ export function DashboardPage() {
               <span className="ranking-list__head-icon" />
               <span>Membro</span>
               <span>Lv</span>
-              <span>Último login</span>
               <span>Pontos</span>
+              <span>Último login</span>
             </div>
             <ul className="ranking-list" ref={rankListRef}>
               {pagedRest.map((m, i) => (
@@ -185,14 +202,17 @@ export function DashboardPage() {
                     // Keep the icon column even without a class, or the row's cells shift left.
                     <span className="ranking-list__empty-icon" aria-hidden="true" />
                   )}
-                  <Link to={`/profile/${m.id}`} className="ranking-list__name">
-                    {m.nickname}
-                  </Link>
+                  <span className="ranking-list__who">
+                    <Link to={`/profile/${m.id}`} className="ranking-list__name">
+                      {m.nickname}
+                    </Link>
+                    <DiscordTag member={discordBySiteId.get(m.id)} className="ranking-list__discord" />
+                  </span>
                   <span className="ranking-list__level">{m.level ?? 1}</span>
+                  <span className="ranking-list__pts">{m.points}</span>
                   <span className="ranking-list__login" title={formatLastLogin(m.lastLoginAt)}>
                     {formatLastLogin(m.lastLoginAt)}
                   </span>
-                  <span className="ranking-list__pts">{m.points}</span>
                 </li>
               ))}
               {Array.from({ length: emptyRankRows }, (_, i) => (

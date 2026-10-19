@@ -9,8 +9,10 @@ import com.guild.app.common.enums.MemberStatus;
 import com.guild.app.common.enums.Role;
 import com.guild.app.common.exception.AppException;
 import com.guild.app.common.security.SecurityUtils;
+import com.guild.app.discord.DiscordMemberService;
 import com.guild.app.log.service.AuditLogService;
 import com.guild.app.member.dto.ApprovalRequest;
+import com.guild.app.member.dto.LinkDiscordRequest;
 import com.guild.app.member.dto.MemberResponse;
 import com.guild.app.member.dto.UpdateProfileRequest;
 import com.guild.app.member.dto.UpdateRoleRequest;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +46,7 @@ public class MemberService {
     private final AuctionService auctionService;
     private final PartyService partyService;
     private final WebSocketPublisher webSocketPublisher;
+    private final DiscordMemberService discordMemberService;
 
     @Transactional(readOnly = true)
     public MemberResponse getById(Long id) {
@@ -195,6 +199,41 @@ public class MemberService {
         member.setRole(request.role());
         memberRepository.save(member);
         logRoleChange(actor, member, oldRole, request.role());
+        return toResponse(member);
+    }
+
+    /**
+     * Líder/Administrador: links a member to a Discord account (for the Dashboard's Discord list),
+     * or unlinks it with a blank id. Independent of Discord login.
+     */
+    @Transactional
+    public MemberResponse linkDiscord(Long memberId, LinkDiscordRequest request, MemberPrincipal actor) {
+        SecurityUtils.requireRole(Role.ADMINISTRADOR);
+        var member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
+        requireNotDeleted(member);
+
+        String discordId = request.discordId() == null || request.discordId().isBlank()
+                ? null
+                : request.discordId().trim();
+        String oldDiscordId = member.getDiscordId();
+        if (Objects.equals(oldDiscordId, discordId)) {
+            return toResponse(member);
+        }
+        if (discordId != null) {
+            memberRepository.findByDiscordId(discordId)
+                    .filter(other -> !other.getId().equals(memberId))
+                    .ifPresent(other -> {
+                        throw new AppException(
+                                "Esta conta do Discord já está vinculada a " + other.getNickname() + ".",
+                                HttpStatus.CONFLICT);
+                    });
+        }
+
+        member.setDiscordId(discordId);
+        memberRepository.save(member);
+        logProfileChange(member, actor, "discord", oldDiscordId, discordId != null ? discordId : "");
+        discordMemberService.refreshAfterCommit();
         return toResponse(member);
     }
 

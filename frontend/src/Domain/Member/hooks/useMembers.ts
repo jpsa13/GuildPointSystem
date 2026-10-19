@@ -151,3 +151,18 @@ export function useUpdateMemberRole() {
     },
   })
 }
+
+/** Líder/Administrador: link a member to a Discord account, or unlink with `discordId: null`. */
+export function useLinkDiscord() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, discordId }: { id: number; discordId: string | null }) =>
+      apiClient<Member>(`/members/${id}/discord`, { method: 'PUT', body: { discordId } }),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: memberKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: ['logs'] })
+      // The backend pushes the refreshed Discord list over the socket; this covers a dropped socket.
+      window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['discord', 'members'] }), 2500)
+    },
+  })
+}
