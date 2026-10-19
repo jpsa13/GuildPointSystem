@@ -15,9 +15,33 @@ const STATUS_LABEL: Record<DiscordMember['status'], string> = {
   offline: 'Offline',
 }
 
-/** discord.com/users/{id} opens the profile in the Discord app (if installed) or on the web. */
 function discordProfileUrl(id: string) {
   return `https://discord.com/users/${id}`
+}
+
+/**
+ * Opens the profile straight in the Discord app via its `discord://` protocol. If the app doesn't
+ * take focus shortly after (not installed), falls back to the web profile in a new tab.
+ */
+function openInDiscordApp(event: React.MouseEvent<HTMLAnchorElement>, id: string) {
+  // Ctrl/middle click etc. keep the normal "open link in new tab" behaviour.
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+
+  let appOpened = false
+  const markOpened = () => {
+    appOpened = true
+  }
+  window.addEventListener('blur', markOpened, { once: true })
+  document.addEventListener('visibilitychange', markOpened, { once: true })
+
+  window.location.href = `discord://-/users/${id}`
+
+  window.setTimeout(() => {
+    window.removeEventListener('blur', markOpened)
+    document.removeEventListener('visibilitychange', markOpened)
+    if (!appOpened) window.open(discordProfileUrl(id), '_blank', 'noopener,noreferrer')
+  }, 1500)
 }
 
 interface MemberRowProps {
@@ -36,6 +60,7 @@ function MemberRow({ member, onLink }: MemberRowProps) {
         rel="noopener noreferrer"
         className="discord-list__open"
         title={`Abrir perfil de ${member.name} no Discord`}
+        onClick={(e) => openInDiscordApp(e, member.id)}
       >
         <span className="discord-list__avatar" title={STATUS_LABEL[member.status]}>
           <img src={member.avatarUrl} alt="" loading="lazy" />
