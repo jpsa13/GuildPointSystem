@@ -516,7 +516,8 @@ public class AuctionService {
     }
 
     private void publishAuctionUpdate(AuctionResponse response) {
-        var payload = Map.of("type", "AUCTION_UPDATE", "auction", response);
+        // Sent on every bid and timer tick to every viewer: leave out the items (and their icons).
+        var payload = Map.of("type", "AUCTION_UPDATE", "auction", response.withoutItems());
         webSocketPublisher.publishAuction(response.id(), payload);
         webSocketPublisher.publishAuctionList(payload);
     }

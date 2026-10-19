@@ -123,7 +123,7 @@ class Bot {
       auctionId,
       this.client.subscribe(`/topic/auctions/${auctionId}`, (m) => {
         const p = JSON.parse(m.body)
-        this.events.get(auctionId).push({ type: p.type, payload: p, at: Date.now() })
+        this.events.get(auctionId).push({ type: p.type, payload: p, at: Date.now(), bytes: m.body.length })
         if (p.type === 'AUCTION_UPDATE') this.track(p.auction)
       }),
     )
@@ -424,6 +424,12 @@ async function scenarioTie(ctx) {
     .filter((e) => e.type === 'BOT' || e.type === 'CHAT')
     .some((e) => /Vencedor/.test(e.payload.message.content))
   check('Nome do vencedor NÃO aparece antes da roleta parar', !leaked && !leakedChat)
+  const updates = ev.filter((e) => e.type === 'AUCTION_UPDATE')
+  check(
+    'AUCTION_UPDATE não reenvia os itens (só mudam na criação)',
+    updates.length > 0 && updates.every((e) => e.payload.auction.items == null),
+    `${updates.length} updates · média ${Math.round(updates.reduce((n, e) => n + e.bytes, 0) / updates.length)} bytes`,
+  )
   const winner = start.payload.tiedMembers[result.payload.winnerIndex]
   check('Vencedor final = segmento sorteado da roleta', closed.payload.winnerId === winner.id, winner.nickname)
   const winnerBot = [A, B, D].find((b) => b.id === winner.id)

@@ -124,6 +124,12 @@ export function useMemberLogNotifications(memberId: number | undefined) {
 export function useEventSubscription(onEvent?: (event: GuildEvent) => void) {
   const queryClient = useQueryClient()
 
+  // Creations/cancellations published while the socket was down never arrive — refetch on reconnect.
+  useEffect(
+    () => onSocketReconnect(() => queryClient.invalidateQueries({ queryKey: eventKeys.active })),
+    [queryClient],
+  )
+
   useEffect(() => {
     let cancelled = false
     let unsubscribe: (() => void) | undefined

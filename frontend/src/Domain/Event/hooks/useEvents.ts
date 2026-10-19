@@ -1,5 +1,7 @@
+import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
+import { serverNow } from '@/Shared/utils/serverClock'
 import type { AuditLogEntry, GuildEvent, Page } from '@/Domain/types/models'
 import { markClaimDeniedInPage } from '@/Domain/Log/utils/logClaimUtils'
 import { memberKeys } from '@/Domain/Member/hooks/useMembers'
@@ -8,12 +10,36 @@ export const eventKeys = {
   active: ['events', 'active'] as const,
 }
 
+/**
+ * Creations and cancellations arrive over WS (and a reconnect refetches), so polling is only a safety
+ * net. Expiry is handled here: an event leaves the list the moment it expires on the server clock,
+ * without every client polling to find out.
+ */
 export function useActiveEvents() {
-  return useQuery({
+  const [now, setNow] = useState(serverNow)
+  const query = useQuery({
     queryKey: eventKeys.active,
     queryFn: () => apiClient<GuildEvent[]>('/events'),
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
+    select: useCallback(
+      (events: GuildEvent[]) => events.filter((e) => Date.parse(e.expiresAt) > now),
+      [now],
+    ),
   })
+
+  const queryClient = useQueryClient()
+  const { dataUpdatedAt } = query
+  useEffect(() => {
+    const nextExpiry = (queryClient.getQueryData<GuildEvent[]>(eventKeys.active) ?? [])
+      .map((e) => Date.parse(e.expiresAt))
+      .filter((at) => at > now)
+      .reduce((min, at) => Math.min(min, at), Infinity)
+    if (nextExpiry === Infinity) return
+    const timer = window.setTimeout(() => setNow(serverNow()), nextExpiry - serverNow() + 50)
+    return () => window.clearTimeout(timer)
+  }, [queryClient, dataUpdatedAt, now])
+
+  return query
 }
 
 function mergeEventIntoCache(

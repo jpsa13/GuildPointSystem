@@ -37,11 +37,24 @@ function newer(old: Auction | undefined, next: Auction): Auction {
   return next
 }
 
-function applyAuction(queryClient: QueryClient, auction: Auction) {
-  trackAuctionTime(auction)
-  queryClient.setQueryData<Auction>(auctionKeys.detail(auction.id), (old) => newer(old, auction))
+/** AUCTION_UPDATE pushes leave `items` out: they never change after creation. */
+type AuctionState = Omit<Auction, 'items'> & { items: Auction['items'] | null }
+
+/** Fills a pushed state's items from the cached auction; without one there is nothing to show yet. */
+function withItems(old: Auction | undefined, next: AuctionState): Auction | undefined {
+  if (next.items) return next as Auction
+  return old ? { ...next, items: old.items } : undefined
+}
+
+function applyAuction(queryClient: QueryClient, auction: AuctionState) {
+  trackServerTime(auction.serverTime)
+  queryClient.setQueryData<Auction>(auctionKeys.detail(auction.id), (old) => {
+    const full = withItems(old, auction)
+    // No cached detail yet: leave it to the detail query, which fetches the full auction.
+    return full ? newer(old, full) : old
+  })
   queryClient.setQueryData<Auction[]>(auctionKeys.all, (old) =>
-    old?.map((a) => (a.id === auction.id ? newer(a, auction) : a)),
+    old?.map((a) => (a.id === auction.id ? newer(a, withItems(a, auction)!) : a)),
   )
 }
 
@@ -53,7 +66,7 @@ export function useAuctions() {
   useEffect(
     () =>
       subscribeTopicEffect('/topic/auctions', (message) => {
-        const payload = JSON.parse(message.body) as { type: string; auction?: Auction }
+        const payload = JSON.parse(message.body) as { type: string; auction?: AuctionState }
         if (payload.type === 'AUCTION_UPDATE' && payload.auction) {
           const known = queryClient
             .getQueryData<Auction[]>(auctionKeys.all)
@@ -101,8 +114,9 @@ export function useAuction(id: number, onDeleted?: () => void) {
       return auction
     },
     enabled: id > 0,
-    // Safety net for missed WS frames; the version guard keeps a slow response from rolling state back.
-    refetchInterval: (q) => (q.state.data && !isAuctionFinished(q.state.data.status) ? 10_000 : false),
+    // Safety net for missed WS frames (server heartbeats + reconnect refetch catch dropped sockets);
+    // the version guard keeps a slow response from rolling state back.
+    refetchInterval: (q) => (q.state.data && !isAuctionFinished(q.state.data.status) ? 30_000 : false),
     structuralSharing: (oldData, newData) =>
       newer(oldData as Auction | undefined, newData as Auction),
   })
@@ -121,7 +135,7 @@ export function useAuction(id: number, onDeleted?: () => void) {
     return subscribeTopicEffect(`/topic/auctions/${id}`, (message) => {
       const payload = JSON.parse(message.body) as {
         type: string
-        auction?: Auction
+        auction?: AuctionState
         message?: AuctionMessage
         winnerIndex?: number
         landingMs?: number
@@ -187,7 +201,7 @@ export function useAuctionMessages(id: number) {
     queryKey: auctionKeys.messages(id),
     queryFn: () => apiClient<AuctionMessage[]>(`/auctions/${id}/messages`),
     enabled: id > 0,
-    refetchInterval: 30000, // fallback for missed WS events (reconnect recovery)
+    refetchInterval: 60_000, // fallback for missed WS events (a reconnect also refetches)
   })
 }
 
