@@ -355,7 +355,7 @@ $drawer-breakpoint: 960px;
 
   &__event-timer-label {
     font-family: theme.$font-heading;
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 800;
     letter-spacing: 0.4px;
     text-transform: uppercase;
@@ -403,7 +403,23 @@ $drawer-breakpoint: 960px;
 
   &__clock {
     @include theme.readout(theme.$color-text);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
     font-size: theme.$font-size-base;
+
+    &--server {
+      color: theme.$color-amber;
+    }
+  }
+
+  &__clock-label {
+    font-family: theme.$font-heading;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: theme.$color-text-muted;
   }
 
   &__menu-toggle {

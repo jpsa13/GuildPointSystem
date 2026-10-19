@@ -1,6 +1,9 @@
 /** Fuso dos eventos de servidor (alinhado ao backend). */
 export const SCHEDULE_TIME_ZONE = 'America/Sao_Paulo'
 
+/** Fuso do servidor Cerberus (Moscou, UTC+3): 00:00 lá = 18:00 em Brasília. */
+export const SERVER_TIME_ZONE = 'Europe/Moscow'
+
 interface ZonedParts {
   year: number
   month: number

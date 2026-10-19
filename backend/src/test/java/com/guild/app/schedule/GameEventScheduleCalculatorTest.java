@@ -29,6 +29,16 @@ class GameEventScheduleCalculatorTest {
     }
 
     @Test
+    void serverZoneCwAt22MoscowIs16Brasilia() {
+        ZonedDateTime now = ZonedDateTime.of(2026, 3, 26, 15, 0, 0, 0, SCHEDULE_ZONE);
+        var event = new GameEventDefinitions.DailyGameEvent(
+                "cw3", "CW3", 22, 0, GameEventDefinitions.SERVER_ZONE);
+        ZonedDateTime next = calculator.nextOccurrence(event, now);
+        assertEquals(26, next.getDayOfMonth());
+        assertEquals(16, next.getHour());
+    }
+
+    @Test
     void intervalAtAnchorMovesByFourDays() {
         ZonedDateTime anchor = ZonedDateTime.of(2026, 9, 27, 19, 0, 0, 0, SCHEDULE_ZONE);
         var event = new GameEventDefinitions.IntervalGameEvent("pbs-major", "PB Major", 4, anchor);

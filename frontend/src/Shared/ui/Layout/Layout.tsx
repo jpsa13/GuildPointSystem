@@ -9,6 +9,7 @@ import { AppToastProvider } from '@/Shared/ui/components/AppToast/AppToast'
 import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberClassIcon'
 import { getSocketState, type SocketState } from '@/Shared/websocket/socketClient'
 import { EventHeaderTimers } from '@/Shared/ui/Layout/EventHeaderTimers'
+import { SERVER_TIME_ZONE } from '@/Shared/utils/scheduleTimeZone'
 import { ScheduleAlertListener } from '@/Features/Schedule/ScheduleAlertListener'
 import { AuctionCreatedListener } from '@/Features/Auction/AuctionCreatedListener'
 import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
@@ -192,7 +193,12 @@ function LayoutShell() {
             <span className={`layout__socket layout__socket--${socket}`}>
               {SOCKET_LABEL[socket]}
             </span>
-            <span className="layout__clock">
+            <span className="layout__clock layout__clock--server" title="Horário do servidor Cerberus (Moscou, UTC+3)">
+              <span className="layout__clock-label">Server</span>
+              {now.toLocaleTimeString('pt-BR', { timeZone: SERVER_TIME_ZONE, hour12: false })}
+            </span>
+            <span className="layout__clock" title="Seu horário local">
+              <span className="layout__clock-label">Local</span>
               {now.toLocaleTimeString('pt-BR', { hour12: false })}
             </span>
           </div>

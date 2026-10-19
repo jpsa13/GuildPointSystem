@@ -1,15 +1,25 @@
-import { getZonedParts, SCHEDULE_TIME_ZONE, zonedLocalToUtc } from '@/Shared/utils/scheduleTimeZone'
+import {
+  getZonedParts,
+  SCHEDULE_TIME_ZONE,
+  SERVER_TIME_ZONE,
+  zonedLocalToUtc,
+} from '@/Shared/utils/scheduleTimeZone'
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 const TZ = SCHEDULE_TIME_ZONE
 
-export function getNextDailyOccurrence(hour: number, minute: number, now: Date): Date {
-  const z = getZonedParts(now, TZ)
-  let candidate = zonedLocalToUtc(z.year, z.month, z.day, hour, minute, TZ)
+export function getNextDailyOccurrence(
+  hour: number,
+  minute: number,
+  now: Date,
+  timeZone: string = TZ,
+): Date {
+  const z = getZonedParts(now, timeZone)
+  let candidate = zonedLocalToUtc(z.year, z.month, z.day, hour, minute, timeZone)
   if (now.getTime() >= candidate.getTime()) {
     const tomorrow = new Date(candidate.getTime() + MS_PER_DAY)
-    const tz = getZonedParts(tomorrow, TZ)
-    candidate = zonedLocalToUtc(tz.year, tz.month, tz.day, hour, minute, TZ)
+    const tz = getZonedParts(tomorrow, timeZone)
+    candidate = zonedLocalToUtc(tz.year, tz.month, tz.day, hour, minute, timeZone)
   }
   return candidate
 }
@@ -57,6 +67,8 @@ export type DailyScheduledEvent = {
   label: string
   hour: number
   minute: number
+  /** Fuso em que hour/minute são definidos; padrão Brasília. */
+  timeZone?: string
 }
 
 export type IntervalScheduledEvent = {
@@ -72,7 +84,7 @@ export type ScheduledEvent = DailyScheduledEvent | IntervalScheduledEvent
 
 export function getScheduledOccurrenceStart(event: ScheduledEvent, now: Date): Date {
   if (event.kind === 'daily') {
-    return getNextDailyOccurrence(event.hour, event.minute, now)
+    return getNextDailyOccurrence(event.hour, event.minute, now, event.timeZone)
   }
   return getNextIntervalOccurrence(event.anchor, event.intervalDays, now)
 }
@@ -103,9 +115,10 @@ const devTestEvent = devTestScheduleEvent()
 
 export const HEADER_SCHEDULED_EVENTS: ScheduledEvent[] = [
   ...(devTestEvent ? [devTestEvent] : []),
-  { kind: 'daily', id: 'cw1', label: 'CW1', hour: 8, minute: 0 },
-  { kind: 'daily', id: 'cw2', label: 'CW2', hour: 16, minute: 0 },
-  { kind: 'daily', id: 'cw3', label: 'CW3', hour: 0, minute: 0 },
+  // CW no horário do servidor: 06:00 / 14:00 / 22:00 (= 00:00 / 08:00 / 16:00 Brasília).
+  { kind: 'daily', id: 'cw1', label: 'CW1', hour: 6, minute: 0, timeZone: SERVER_TIME_ZONE },
+  { kind: 'daily', id: 'cw2', label: 'CW2', hour: 14, minute: 0, timeZone: SERVER_TIME_ZONE },
+  { kind: 'daily', id: 'cw3', label: 'CW3', hour: 22, minute: 0, timeZone: SERVER_TIME_ZONE },
   { kind: 'daily', id: 'pbs-elan', label: 'PB Elan', hour: 19, minute: 0 },
   {
     kind: 'interval',

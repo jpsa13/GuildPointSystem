@@ -18,7 +18,8 @@ public class GameEventScheduleCalculator {
     public ZonedDateTime nextOccurrence(GameEvent event, ZonedDateTime now) {
         ZonedDateTime zonedNow = now.withZoneSameInstant(SCHEDULE_ZONE);
         if (event instanceof DailyGameEvent daily) {
-            return nextDaily(daily.hour(), daily.minute(), zonedNow);
+            return nextDaily(daily.hour(), daily.minute(), zonedNow.withZoneSameInstant(daily.zone()))
+                    .withZoneSameInstant(SCHEDULE_ZONE);
         }
         if (event instanceof IntervalGameEvent interval) {
             return nextInterval(interval.anchor(), interval.intervalDays(), zonedNow);
@@ -32,7 +33,7 @@ public class GameEventScheduleCalculator {
     }
 
     static ZonedDateTime nextDaily(int hour, int minute, ZonedDateTime now) {
-        ZonedDateTime candidate = now.toLocalDate().atTime(hour, minute).atZone(SCHEDULE_ZONE);
+        ZonedDateTime candidate = now.toLocalDate().atTime(hour, minute).atZone(now.getZone());
         if (!now.isBefore(candidate)) {
             candidate = candidate.plusDays(1);
         }
