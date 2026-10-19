@@ -14,6 +14,8 @@ import java.util.List;
 public class MemberPrincipal implements UserDetails {
 
     private final Long id;
+    /** For logs and presence: who did it, without exposing the e-mail. */
+    private final String nickname;
     private final String email;
     private final String passwordHash;
     private final Role role;
@@ -22,6 +24,7 @@ public class MemberPrincipal implements UserDetails {
 
     public MemberPrincipal(Member member) {
         this.id = member.getId();
+        this.nickname = member.getNickname();
         this.email = member.getEmail() != null ? member.getEmail() : member.getDiscordId();
         this.passwordHash = member.getPasswordHash();
         this.role = member.getRole();

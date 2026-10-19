@@ -1,6 +1,7 @@
 package com.guild.app.auth.security;
 
 import com.guild.app.common.enums.Role;
+import com.guild.app.common.logging.RequestLogContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -88,7 +89,8 @@ public class SecurityConfig {
                 .toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization"));
+        // X-Request-Id: shown on server errors so a member can report the exact request.
+        config.setExposedHeaders(List.of("Authorization", RequestLogContext.REQUEST_ID_HEADER));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
         var source = new UrlBasedCorsConfigurationSource();

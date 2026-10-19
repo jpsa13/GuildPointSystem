@@ -47,8 +47,10 @@ public class AuctionWsController {
         try {
             var auction = auctionService.placeBid(auctionId, amount, member.getId());
             result = new BidResult(request.requestId(), auctionId, amount, true, null, auction);
+            log.info("Bid of {} on auction {} accepted", amount, auctionId);
         } catch (AppException e) {
             outcome = "rejected";
+            log.info("Bid of {} on auction {} rejected: {}", amount, auctionId, e.getMessage());
             result = new BidResult(request.requestId(), auctionId, amount, false, e.getMessage(), currentState(auctionId));
         } catch (Exception e) {
             outcome = "error";

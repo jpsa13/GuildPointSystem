@@ -1,5 +1,6 @@
 package com.guild.app.websocket;
 
+import com.guild.app.common.logging.WebSocketLogInterceptor;
 import com.guild.app.presence.PresenceChannelInterceptor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final PresenceChannelInterceptor presenceChannelInterceptor;
+    private final WebSocketLogInterceptor webSocketLogInterceptor;
     private final TaskScheduler messageBrokerTaskScheduler;
     private final int inboundThreads;
     private final int outboundThreads;
@@ -31,12 +33,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public WebSocketConfig(
             WebSocketAuthInterceptor webSocketAuthInterceptor,
             PresenceChannelInterceptor presenceChannelInterceptor,
+            WebSocketLogInterceptor webSocketLogInterceptor,
             @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler,
             @Value("${guild.websocket.inbound-threads:32}") int inboundThreads,
             @Value("${guild.websocket.outbound-threads:16}") int outboundThreads,
             @Value("${guild.cors.allowed-origins}") String allowedOrigins) {
         this.webSocketAuthInterceptor = webSocketAuthInterceptor;
         this.presenceChannelInterceptor = presenceChannelInterceptor;
+        this.webSocketLogInterceptor = webSocketLogInterceptor;
         this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
         this.inboundThreads = inboundThreads;
         this.outboundThreads = outboundThreads;
@@ -70,7 +74,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(webSocketAuthInterceptor, presenceChannelInterceptor);
+        registration.interceptors(webSocketAuthInterceptor, presenceChannelInterceptor, webSocketLogInterceptor);
         // Bids run on these threads and may wait on an auction's row lock: keep enough of them that a
         // contested auction can't stall every other inbound frame (default is 2 × CPU cores).
         registration.taskExecutor().corePoolSize(inboundThreads).maxPoolSize(inboundThreads);

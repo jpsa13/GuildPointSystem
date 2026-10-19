@@ -148,6 +148,28 @@ The backend publishes the same metrics in Prometheus format at `/actuator/promet
 
 Who is online by name (page, ping, tabs) stays in the app, not in Grafana: **ADM → Online agora** (Administrador/Líder).
 
+### Logs: who did what, failures and errors (Grafana Cloud Loki)
+
+Every API request is logged once (`guild.access`): member, method, path, status, duration, client IP and browser. WebSocket SENDs (bids, …) are logged too (`guild.ws`), with the reason when a bid is refused; presence pings are not. Every API response carries `X-Request-Id`, and on server errors the app shows it to the member ("… (código abc23xyz9k)") so you can find that exact request and its stack trace.
+
+The backend pushes logs straight to Loki when `LOKI_URL` is set (no Alloy change needed):
+
+1. Grafana Cloud → **Connections → Add new connection → Hosted logs** (or the stack's Loki *Details*): copy the **URL** and **User**. The `glc_…` token created for Alloy (`set:alloy-data-write`) also writes logs.
+2. Backend env (Coolify): `LOKI_URL=https://<host>/loki/api/v1/push`, `LOKI_USER=<number>`, `LOKI_TOKEN=<glc_… token>`. Redeploy. Optional: `LOKI_ENV` (default `prod`).
+3. Grafana → **Explore → Loki**. Lines are JSON; request fields are `mdc_*`:
+
+| What | LogQL |
+|---|---|
+| Server errors (with stack traces) | `{app="guild-points", level="ERROR"}` |
+| Failed requests (4xx/5xx) | `{app="guild-points"} \| json \| mdc_status >= 400` |
+| Everything one member did | `{app="guild-points"} \| json \| mdc_member="Nick"` |
+| One request a member reported | `{app="guild-points"} \| json \| mdc_requestId="abc23xyz9k"` |
+| Slow requests | `{app="guild-points"} \| json \| mdc_durationMs > 1000` |
+| Refused bids | `{app="guild-points"} \|= "rejected"` |
+| Error rate (for an alert) | `sum(count_over_time({app="guild-points", level="ERROR"}[5m]))` |
+
+Labels are only `app`, `env` and `level` (cheap); everything else is filtered from the JSON. Note: a lost race on a unique key (e.g. double click) returns 409 to the member but Hibernate still logs it as ERROR.
+
 Suggested alerts: bid p95 above 250 ms for 5 min, members' ping p95 above 300 ms for 10 min, `hikaricp_connections_pending > 0` for 2 min, `executor_queued_tasks{name="clientInboundChannelExecutor"} > 10`.
 
 ---

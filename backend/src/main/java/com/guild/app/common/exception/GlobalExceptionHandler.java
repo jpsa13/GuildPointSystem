@@ -1,8 +1,17 @@
 package com.guild.app.common.exception;
 
+import com.guild.app.common.logging.RequestLogContext;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -13,6 +22,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -56,5 +66,37 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleBadCredentials() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("message", "Email ou senha incorretos."));
+    }
+
+    /** Malformed JSON body or a path/query value of the wrong type (e.g. /auctions/abc). */
+    @ExceptionHandler({HttpMessageNotReadableException.class, TypeMismatchException.class})
+    public ResponseEntity<Map<String, String>> handleBadRequest() {
+        return ResponseEntity.badRequest().body(Map.of("message", "Requisição inválida."));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleUploadTooLarge() {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of("message", "Arquivo grande demais."));
+    }
+
+    /**
+     * Anything unexpected: logged with its stack trace (the MDC ties it to the request id and member) and
+     * answered as JSON, so the response keeps X-Request-Id and the member can report the code.
+     * Spring's own MVC exceptions keep their status (404, 405, …); security exceptions are left to
+     * Spring Security (401/403).
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpected(Exception ex) throws Exception {
+        if (ex instanceof AccessDeniedException || ex instanceof AuthenticationException) throw ex;
+        if (ex instanceof ErrorResponse errorResponse) {
+            var status = errorResponse.getStatusCode();
+            var detail = errorResponse.getBody().getDetail();
+            return ResponseEntity.status(status).body(Map.of("message", detail != null ? detail : "Requisição inválida."));
+        }
+        log.error("Unexpected error handling the request", ex);
+        var requestId = MDC.get(RequestLogContext.REQUEST_ID);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "message", "Erro inesperado no servidor. Tente de novo.",
+                "requestId", requestId != null ? requestId : ""));
     }
 }

@@ -1,10 +1,12 @@
 package com.guild.app.common.config;
 
+import com.guild.app.common.logging.AccessLogFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,6 +44,15 @@ public class WebConfig implements WebMvcConfigurer {
         filter.setWriteWeakETag(true);
         var registration = new FilterRegistrationBean<ShallowEtagHeaderFilter>(filter);
         registration.addUrlPatterns("/api/catalog/*", "/api/seeds/*");
+        return registration;
+    }
+
+    /** Runs before Spring Security (order -100) so 401/403 responses are logged too. */
+    @Bean
+    FilterRegistrationBean<AccessLogFilter> accessLogFilter() {
+        var registration = new FilterRegistrationBean<>(new AccessLogFilter());
+        registration.addUrlPatterns("/api/*");
+        registration.setOrder(SecurityProperties.DEFAULT_FILTER_ORDER - 10);
         return registration;
     }
 

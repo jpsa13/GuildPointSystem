@@ -18,12 +18,20 @@ export function setToken(token: string | null): void {
 
 export class ApiError extends Error {
   status: number
+  /** Server-side request id (X-Request-Id): finds this exact request in the logs. */
+  requestId: string | null
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, requestId: string | null = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.requestId = requestId
   }
+}
+
+/** Server errors carry the request id so a member can report it; validation errors (4xx) don't need it. */
+export function withRequestCode(message: string, status: number, requestId: string | null): string {
+  return status >= 500 && requestId ? `${message} (código ${requestId})` : message
 }
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
@@ -52,7 +60,12 @@ export async function apiClient<T>(path: string, options: RequestOptions = {}): 
     } catch {
       /* ignore */
     }
-    throw new ApiError(formatApiError(message), response.status)
+    const requestId = response.headers.get('X-Request-Id')
+    throw new ApiError(
+      withRequestCode(formatApiError(message), response.status, requestId),
+      response.status,
+      requestId,
+    )
   }
 
   // No body (204, or e.g. a 201 from a void endpoint): parsing would throw on success.

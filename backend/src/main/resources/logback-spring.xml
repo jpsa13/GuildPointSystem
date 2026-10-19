@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Console: Spring Boot's default (what Coolify shows).
+  Loki (Grafana Cloud): only when LOKI_URL is set. Each line is JSON with level, logger, message, stack trace
+  and the request context as mdc_* fields (mdc_requestId, mdc_member, mdc_memberId, mdc_status, mdc_path, …).
+  Labels stay few on purpose (app, env, level): everything else is queried from the JSON.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="guild-points"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <if condition='!property("LOKI_URL").isEmpty()'>
+        <then>
+            <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+                <!-- Ship at least every 2s so logs show up in Grafana almost live. -->
+                <batchTimeoutMs>2000</batchTimeoutMs>
+                <http>
+                    <url>${LOKI_URL}</url>
+                    <auth>
+                        <username>${LOKI_USER:-}</username>
+                        <password>${LOKI_TOKEN:-}</password>
+                    </auth>
+                </http>
+                <format>
+                    <label>
+                        <pattern>app=${APP_NAME},env=${LOKI_ENV:-prod},level=%level</pattern>
+                    </label>
+                    <message class="com.github.loki4j.logback.JsonLayout"/>
+                </format>
+            </appender>
+            <root level="INFO">
+                <appender-ref ref="LOKI"/>
+            </root>
+        </then>
+    </if>
+</configuration>

@@ -1,5 +1,7 @@
 package com.guild.app.auth.security;
 
+import com.guild.app.common.logging.AccessLogFilter;
+import com.guild.app.common.logging.RequestLogContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,11 +35,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     var auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    // Logs written while handling this request (and the access log) name the member.
+                    request.setAttribute(AccessLogFilter.MEMBER_ATTRIBUTE, principal);
+                    RequestLogContext.putMember(principal);
                 }
             } catch (Exception ignored) {
                 SecurityContextHolder.clearContext();
             }
         }
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            // Tomcat threads are reused: never let this member leak into the next request's logs.
+            RequestLogContext.clearMember();
+        }
     }
 }
