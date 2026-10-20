@@ -79,6 +79,11 @@ public class WebSocketPublisher {
         send("/topic/schedule", payload);
     }
 
+    /** Guild emojis were added or removed: clients refetch the list. */
+    public void publishEmojis(Object payload) {
+        send("/topic/emojis", payload);
+    }
+
     public void publishDiscordMembers(Object payload) {
         send("/topic/discord/members", payload);
     }

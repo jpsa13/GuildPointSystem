@@ -25,6 +25,11 @@ public class AuctionMessage {
     @JoinColumn(name = "member_id")
     private Member member;
 
+    /** Message this one replies to (same auction); null when it is not a reply. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_id")
+    private AuctionMessage replyTo;
+
     @Column(nullable = false, length = 20)
     private String type = "TEXT";
 

@@ -10,7 +10,7 @@ import {
 } from '@/Shared/websocket/socketClient'
 import { serverNow, trackServerTime } from '@/Shared/utils/serverClock'
 import { isAuctionFinished } from '@/Domain/types/models'
-import type { Auction, AuctionBidResult, AuctionMessage } from '@/Domain/types/models'
+import type { Auction, AuctionBidResult, AuctionMessage, AuctionMessageReaction } from '@/Domain/types/models'
 import { memberKeys } from '@/Domain/Member/hooks/useMembers'
 
 export const auctionKeys = {
@@ -137,6 +137,8 @@ export function useAuction(id: number, onDeleted?: () => void) {
         type: string
         auction?: AuctionState
         message?: AuctionMessage
+        messageId?: number
+        reactions?: AuctionMessageReaction[]
         winnerIndex?: number
         landingMs?: number
       }
@@ -149,6 +151,11 @@ export function useAuction(id: number, onDeleted?: () => void) {
         case 'BOT':
         case 'BID':
           if (payload.message) appendMessage(queryClient, id, payload.message)
+          break
+        case 'REACTION':
+          if (payload.messageId != null && payload.reactions) {
+            setReactions(queryClient, id, payload.messageId, () => payload.reactions!)
+          }
           break
         case 'TIE_BREAK_START':
         case 'TIE_BREAK_SPIN':
@@ -193,6 +200,42 @@ function appendMessage(queryClient: QueryClient, id: number, message: AuctionMes
     if (old.some((m) => m.id === message.id)) return old
     // Publishes from concurrent transactions can arrive slightly out of order; ids are monotonic.
     return [...old, message].sort((a, b) => a.id - b.id)
+  })
+}
+
+function setReactions(
+  queryClient: QueryClient,
+  auctionId: number,
+  messageId: number,
+  update: (reactions: AuctionMessageReaction[]) => AuctionMessageReaction[],
+) {
+  queryClient.setQueryData(auctionKeys.messages(auctionId), (old: AuctionMessage[] | undefined) =>
+    old?.map((m) => (m.id === messageId ? { ...m, reactions: update(m.reactions ?? []) } : m)),
+  )
+}
+
+/** Adds the emoji or removes it if already there; applied locally first, the REACTION push settles it. */
+export function useToggleReaction(auctionId: number, me: { id: number; nickname: string } | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string }) =>
+      apiClient<void>(`/auctions/${auctionId}/messages/${messageId}/reactions`, {
+        method: 'POST',
+        body: { emoji },
+      }),
+    onMutate: ({ messageId, emoji }) => {
+      if (!me) return
+      setReactions(queryClient, auctionId, messageId, (reactions) => {
+        const current = reactions.find((r) => r.emoji === emoji)
+        if (!current) return [...reactions, { emoji, members: [me] }]
+        const mine = current.members.some((m) => m.id === me.id)
+        const members = mine ? current.members.filter((m) => m.id !== me.id) : [...current.members, me]
+        return members.length === 0
+          ? reactions.filter((r) => r.emoji !== emoji)
+          : reactions.map((r) => (r.emoji === emoji ? { ...r, members } : r))
+      })
+    },
+    onError: () => queryClient.invalidateQueries({ queryKey: auctionKeys.messages(auctionId), exact: true }),
   })
 }
 
@@ -280,10 +323,20 @@ export function usePlaceBid() {
 
 export function useSendAuctionMessage() {
   return useMutation({
-    mutationFn: ({ id, content, imageUrl }: { id: number; content: string; imageUrl?: string }) =>
+    mutationFn: ({
+      id,
+      content,
+      imageUrl,
+      replyToId,
+    }: {
+      id: number
+      content: string
+      imageUrl?: string
+      replyToId?: number
+    }) =>
       apiClient<void>(`/auctions/${id}/messages`, {
         method: 'POST',
-        body: { content, imageUrl },
+        body: { content, imageUrl, replyToId },
       }),
     // No invalidation needed — the sender receives their own WS CHAT push
     // which appends directly via setQueryData in useAuction.
@@ -306,6 +359,15 @@ export function useCancelAuction() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => apiClient<Auction>(`/auctions/${id}/cancel`, { method: 'POST' }),
+    onSuccess: (auction) => applyAuction(queryClient, auction),
+  })
+}
+
+/** Líder/Administrador: add 5 minutes to an open auction (DOLE goes back to OPEN). */
+export function useExtendAuction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiClient<Auction>(`/auctions/${id}/extend`, { method: 'POST' }),
     onSuccess: (auction) => applyAuction(queryClient, auction),
   })
 }

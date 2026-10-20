@@ -25,6 +25,8 @@ const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
   DONATION_ACCEPTED: 'Doação aceita',
   DONATION_REJECTED: 'Doação recusada',
   DONATION_RATE_UPDATED: 'Valor da doação alterado',
+  EMOJI_CREATED: 'Emoji criado',
+  EMOJI_DELETED: 'Emoji excluído',
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -115,6 +117,9 @@ export function formatLogDetails(log: AuditLogEntry): string {
       return `${str(p.amountKk)}kk de disena · +${str(p.points)} pts`
     case 'DONATION_REJECTED':
       return `${str(p.amountKk)}kk de disena`
+    case 'EMOJI_CREATED':
+    case 'EMOJI_DELETED':
+      return `:${str(p.name)}:`
     case 'DONATION_RATE_UPDATED':
       return `1kk = ${str(p.oldPointsPerKk)} → ${str(p.newPointsPerKk)} pts`
     case 'MEMBER_DELETED':

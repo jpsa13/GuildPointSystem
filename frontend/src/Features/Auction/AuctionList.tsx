@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuctions, useCreateAuction, useDeleteAuction } from '@/Domain/Auction/hooks/useAuction'
+import { useDiscordBySiteMember, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
 import { isAuctionFinished } from '@/Domain/types/models'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
@@ -10,6 +11,7 @@ import { AuctionItemIcon } from '@/Features/Auction/components/AuctionItemIcon/A
 import { Button } from '@/Shared/ui/components/Button/Button'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import type { Auction } from '@/Domain/types/models'
+import { formatTime, useCountdown } from '@/Features/Auction/hooks/useCountdown'
 import './Auction.styles.scss'
 
 const DURATIONS = [
@@ -36,6 +38,61 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: 'Cancelado',
 }
 
+function AuctionListTimer({ endsAt }: { endsAt: string }) {
+  const remaining = useCountdown(endsAt)
+  return <span className="auction-list__timer">{formatTime(remaining)}</span>
+}
+
+/** Site profile link, with the Discord name (in the member's role color) in parentheses. */
+function MemberLink({ id, nickname, discord }: { id: number; nickname: string; discord?: DiscordMember }) {
+  return (
+    <Link to={`/profile/${id}`} className="auction-list__member">
+      {nickname}
+      {discord && (
+        <>
+          {' ('}
+          <span style={discord.color ? { color: discord.color } : undefined}>{discord.name}</span>
+          {')'}
+        </>
+      )}
+    </Link>
+  )
+}
+
+/** Active: who is leading (or how many are tied). Finished: the winner. */
+function AuctionSubtitle({ auction, discordBySite }: { auction: Auction; discordBySite: Map<number, DiscordMember> }) {
+  const finished = isAuctionFinished(auction.status)
+  if (!finished && auction.tied && auction.tiedCount > 1) {
+    if (auction.tiedCount > 3 || auction.tiedMemberIds.length !== auction.tiedCount) {
+      return <small>{auction.tiedCount} empatados</small>
+    }
+    return (
+      <small>
+        Empatados:{' '}
+        {auction.tiedMemberIds.map((tiedId, i) => (
+          <Fragment key={tiedId}>
+            {i > 0 && ', '}
+            <MemberLink
+              id={tiedId}
+              nickname={auction.tiedMemberNicknames[i]}
+              discord={discordBySite.get(tiedId)}
+            />
+          </Fragment>
+        ))}
+      </small>
+    )
+  }
+  const id = finished ? auction.winnerId : auction.leaderId
+  const nickname = finished ? auction.winnerNickname : auction.leaderNickname
+  if (id == null || !nickname) return finished ? null : <small>Sem lances</small>
+  return (
+    <small>
+      {finished ? 'Vencedor: ' : 'Vencendo: '}
+      <MemberLink id={id} nickname={nickname} discord={discordBySite.get(id)} />
+    </small>
+  )
+}
+
 function AuctionListSection({
   title,
   auctions,
@@ -50,6 +107,8 @@ function AuctionListSection({
   onDelete?: (auction: Auction) => void
   deletingId?: number | null
 }) {
+  const discordBySite = useDiscordBySiteMember()
+
   if (auctions.length === 0 && !emptyText) return null
 
   return (
@@ -69,20 +128,16 @@ function AuctionListSection({
                 <strong>
                   {auction.items.map((i) => i.itemName).join(', ') || `Leilão #${auction.id}`}
                 </strong>
-                <small>
-                  {[
-                    auction.winnerNickname ? `Vencedor: ${auction.winnerNickname}` : '',
-                    auction.tiedCount > 1 ? `${auction.tiedCount} empatados` : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </small>
+                <AuctionSubtitle auction={auction} discordBySite={discordBySite} />
               </div>
               <span
                 className={`auction-list__status auction-list__status--${auction.status.toLowerCase()}`}
               >
                 {STATUS_LABEL[auction.status] ?? auction.status}
               </span>
+              {(auction.status === 'OPEN' || auction.status === 'DOLE') && (
+                <AuctionListTimer endsAt={auction.endsAt} />
+              )}
               <span className="auction-list__bid">{auction.currentBid}</span>
               <div className="auction-list__actions">
                 <Link to={`/auctions/${auction.id}`}>

@@ -1,0 +1,128 @@
+.guild-emoji-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: theme.$spacing-sm;
+  text-align: left;
+
+  &__drop {
+    @include theme.slot;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 160px;
+    color: theme.$color-text-muted;
+    cursor: pointer;
+
+    &:hover { color: theme.$color-primary; }
+  }
+
+  &__drop input,
+  &__change input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &__crop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__change {
+    position: relative;
+    font-size: 13px;
+    color: theme.$color-text-muted;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:hover { color: theme.$color-primary; }
+  }
+
+  &__previews {
+    display: flex;
+    align-items: flex-end;
+    gap: theme.$spacing-md;
+  }
+
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    font-family: theme.$font-mono;
+    color: theme.$color-text-muted;
+
+    input {
+      @include theme.field-input;
+      flex: 1;
+      min-width: 0;
+      font-family: theme.$font-mono;
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    width: 100%;
+    font-size: 14px;
+    color: theme.$color-text-muted;
+
+    &--error { color: theme.$color-danger; }
+  }
+}
+
+.image-cropper {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  // Checkerboard shows transparent areas.
+  background: repeating-conic-gradient(#2a2f3a 0% 25%, #1c2029 0% 50%) 0 0 / 16px 16px;
+
+  > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  &__selection {
+    position: absolute;
+    cursor: move;
+    border: 2px solid theme.$color-primary;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+  }
+
+  &__handle {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    background: theme.$color-primary;
+    border: 2px solid theme.$color-bg;
+    border-radius: 50%;
+    cursor: nwse-resize;
+  }
+}
+
+.crop-preview {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: repeating-conic-gradient(#2a2f3a 0% 25%, #1c2029 0% 50%) 0 0 / 8px 8px;
+
+  img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: none;
+    transform-origin: 0 0;
+  }
+}

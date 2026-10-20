@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
 import { onSocketReconnect, subscribeTopicEffect } from '@/Shared/websocket/socketClient'
@@ -56,4 +56,16 @@ export function useDiscordMembers() {
     queryFn: () => apiClient<DiscordMembers>('/discord/members'),
     staleTime: Infinity,
   })
+}
+
+/** Discord member (name, role color, avatar) of each linked site account, keyed by site member id. */
+export function useDiscordBySiteMember() {
+  const { data } = useDiscordMembers()
+  return useMemo(() => {
+    const bySite = new Map<number, DiscordMember>()
+    data?.groups.forEach((g) =>
+      g.members.forEach((m) => m.siteMemberId != null && bySite.set(m.siteMemberId, m)),
+    )
+    return bySite
+  }, [data])
 }

@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  serverNow,
   useAuction,
-  useAuctionMessages,
   useAuctionTieBreak,
   useCancelAuction,
   useDeleteAuction,
+  useExtendAuction,
   usePlaceBid,
-  useSendAuctionMessage,
 } from '@/Domain/Auction/hooks/useAuction'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
@@ -23,30 +21,9 @@ import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialo
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { ItemCard } from '@/Features/Items/components/ItemCard/ItemCard'
 import type { AuctionItem, SeedOption } from '@/Domain/types/models'
+import { formatTime, useCountdown } from '@/Features/Auction/hooks/useCountdown'
+import { AuctionChat } from '@/Features/Auction/components/AuctionChat/AuctionChat'
 import './Auction.styles.scss'
-
-// ─── Live countdown (server clock) ────────────────────────────────────────────
-
-function useCountdown(endsAt: string) {
-  const [remaining, setRemaining] = useState(0)
-  useEffect(() => {
-    if (!endsAt) return
-    const tick = () => {
-      setRemaining(Math.max(0, Math.ceil((new Date(endsAt).getTime() - serverNow()) / 1000)))
-    }
-    tick()
-    const timer = setInterval(tick, 200)
-    return () => clearInterval(timer)
-  }, [endsAt])
-  return remaining
-}
-
-function formatTime(seconds: number) {
-  if (seconds <= 0) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 // ─── Single auction item card (fetches full data) ─────────────────────────────
 
@@ -112,28 +89,21 @@ export function AuctionDetailPage() {
 
   const { data: auction, isLoading, isError } = useAuction(auctionId, onDeleted)
   const tieBreak = useAuctionTieBreak(auctionId)
-  const { data: messages = [] } = useAuctionMessages(auctionId)
   const { data: member } = useCurrentMember()
   const { data: weaponCasts = [] } = useItemSeeds('WEAPON_CAST')
   const placeBid = usePlaceBid()
-  const sendMessage = useSendAuctionMessage()
   const cancelAuction = useCancelAuction()
   const deleteAuction = useDeleteAuction()
+  const extendAuction = useExtendAuction()
 
   const [bidAmount, setBidAmount] = useState('')
-  const [chatText, setChatText] = useState('')
   const [feedback, setFeedback] = useState<BidFeedback | null>(null)
   const [rouletteShown, setRouletteShown] = useState(false)
   const [rouletteStopped, setRouletteStopped] = useState(false)
   const [confirm, setConfirm] = useState<'cancel' | 'delete' | null>(null)
   const closeConfirm = useCallback(() => setConfirm(null), [])
-  const chatEndRef = useRef<HTMLDivElement>(null)
 
   const remaining = useCountdown(auction?.endsAt ?? '')
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   useEffect(() => {
     if (!feedback) return
@@ -178,6 +148,15 @@ export function AuctionDetailPage() {
     }
   }
 
+  const handleExtend = async () => {
+    try {
+      await extendAuction.mutateAsync(auctionId)
+      showToast('+5 minutos adicionados ao leilão.', 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Não foi possível adicionar tempo.', 'error')
+    }
+  }
+
   const handleDelete = async () => {
     try {
       await deleteAuction.mutateAsync(auctionId)
@@ -186,17 +165,6 @@ export function AuctionDetailPage() {
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Não foi possível excluir o leilão.', 'error')
       setConfirm(null)
-    }
-  }
-
-  const handleChat = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!chatText.trim()) return
-    try {
-      await sendMessage.mutateAsync({ id: auctionId, content: chatText })
-      setChatText('')
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Não foi possível enviar a mensagem.', 'error')
     }
   }
 
@@ -316,7 +284,7 @@ export function AuctionDetailPage() {
               className={`auction-console__display auction-console__display--timer${isUrgent ? ' auction-console__display--urgent' : ''}`}
             >
               <span className="auction-console__label">Tempo</span>
-              <span className="auction-console__value">
+              <span className={`auction-console__value${remaining >= 3600 ? ' auction-console__value--long' : ''}`}>
                 {isFinished || isTieBreak ? '--:--' : formatTime(remaining)}
               </span>
             </div>
@@ -366,20 +334,23 @@ export function AuctionDetailPage() {
                 </dd>
               </div>
             )}
-            {isClosed && (
+            {isClosed && revealWinner && !auction.winnerNickname ? (
+              <div>
+                <dd className="auction-console__mono">Encerrado sem vencedor</dd>
+              </div>
+            ) : isClosed && (
               <div>
                 <dt>Vencedor</dt>
                 <dd>
                   <span className="auction-detail__winner-name">
-                    {!revealWinner ? '...' : auction.winnerNickname ?? 'Sem lances'}
+                    {!revealWinner ? '...' : auction.winnerNickname}
                   </span>
                 </dd>
               </div>
             )}
             {isCancelled && (
               <div>
-                <dt>Resultado</dt>
-                <dd className="auction-console__mono">Encerrado sem vencedor · ninguém cobrado</dd>
+                <dd className="auction-console__mono">Encerrado pela administração</dd>
               </div>
             )}
           </dl>
@@ -462,28 +433,29 @@ export function AuctionDetailPage() {
 
         {/* Leadership actions (Líder / Administrador) */}
         {canManage && (
-          <Panel title="Administração" variant="danger" code="ADM" className="auction-admin">
+          <div className="auction-admin">
             {isFinished ? (
-              <>
-                <p className="auction-admin__hint">
-                  Excluir apaga o leilão, os lances e o chat. Os pontos já debitados não mudam.
-                </p>
-                <Button variant="danger" onClick={() => setConfirm('delete')}>
-                  Excluir leilão
-                </Button>
-              </>
+              <Button variant="danger" size="sm" onClick={() => setConfirm('delete')}>
+                Excluir leilão
+              </Button>
             ) : (
               <>
-                <p className="auction-admin__hint">
-                  Encerrar termina o leilão sem vencedor: ninguém é cobrado e os pontos reservados
-                  voltam na hora.
-                </p>
-                <Button variant="danger" onClick={() => setConfirm('cancel')}>
+                {!isTieBreak && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={extendAuction.isPending}
+                    onClick={handleExtend}
+                  >
+                    Adicionar +5 Minutos
+                  </Button>
+                )}
+                <Button variant="danger" size="sm" onClick={() => setConfirm('cancel')}>
                   Encerrar leilão
                 </Button>
               </>
             )}
-          </Panel>
+          </div>
         )}
 
         <ConfirmDialog
@@ -532,67 +504,7 @@ export function AuctionDetailPage() {
 
       {/* ── RIGHT ───────────────────────────────────────────────────────────── */}
       <div className="auction-detail__right">
-        <Panel title="Canal do leilão" code="COM" className="auction-chat" flush>
-          <div className="auction-chat__messages">
-            {messages.length === 0 && (
-              <p className="auction-chat__empty">Nenhuma mensagem ainda.</p>
-            )}
-            {messages.map((msg) => {
-              const isOwn = !!member && msg.member?.id === member.id
-              const isBid = msg.type === 'BID'
-              const isBot = msg.type === 'BOT'
-              const isSystem = isBid || isBot
-              const senderName = isSystem
-                ? 'Sistema'
-                : (isOwn ? undefined : msg.member?.nickname)
-
-              return (
-                <div
-                  key={msg.id}
-                  className={`auction-chat__bubble-wrap${!isSystem && isOwn ? ' auction-chat__bubble-wrap--own' : ''}`}
-                >
-                  <div
-                    className={[
-                      'auction-chat__bubble',
-                      isSystem && isBid ? 'auction-chat__bubble--bid' : '',
-                      isSystem && isBot ? 'auction-chat__bubble--bot' : '',
-                      !isSystem && isOwn ? 'auction-chat__bubble--own' : '',
-                      !isSystem && !isOwn ? 'auction-chat__bubble--other' : '',
-                    ].filter(Boolean).join(' ')}
-                  >
-                    {senderName && (
-                      <span className={`auction-chat__nickname${isSystem ? ' auction-chat__nickname--system' : ''}`}>
-                        {senderName}
-                      </span>
-                    )}
-                    <span className="auction-chat__text">{msg.content}</span>
-                    <span className="auction-chat__time">
-                      {new Date(msg.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-            <div ref={chatEndRef} />
-          </div>
-
-          <form onSubmit={handleChat} className="auction-chat__form">
-            <input
-              value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
-              placeholder={isFinished ? 'Leilão encerrado' : 'Mensagem...'}
-              className="auction-chat__input"
-              disabled={isFinished}
-            />
-            <Button type="submit" size="sm" loading={sendMessage.isPending} disabled={isFinished}>
-              Enviar
-            </Button>
-          </form>
-        </Panel>
+        <AuctionChat auctionId={auctionId} closed={isFinished} />
       </div>
     </div>
   )

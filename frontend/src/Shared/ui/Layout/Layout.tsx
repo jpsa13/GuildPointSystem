@@ -4,6 +4,7 @@ import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useCurrentMember } from '@/Domain/Member/hooks/useMembers'
 import { usePointsSubscription } from '@/Domain/Auction/hooks/useAuction'
 import { useMemberLogNotifications } from '@/Domain/Log/hooks/useLogs'
+import { useGuildEmojisSubscription } from '@/Domain/Emoji/hooks/useGuildEmojis'
 import { EventToastProvider } from '@/Features/Events/components/EventToast/EventToast'
 import { AppToastProvider } from '@/Shared/ui/components/AppToast/AppToast'
 import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberClassIcon'
@@ -12,6 +13,7 @@ import { EventHeaderTimers } from '@/Shared/ui/Layout/EventHeaderTimers'
 import { SERVER_TIME_ZONE } from '@/Shared/utils/scheduleTimeZone'
 import { ScheduleAlertListener } from '@/Features/Schedule/ScheduleAlertListener'
 import { AuctionCreatedListener } from '@/Features/Auction/AuctionCreatedListener'
+import { AuctionNavBadge } from '@/Features/Auction/components/AuctionNavBadge/AuctionNavBadge'
 import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
 import type { Role } from '@/Domain/types/models'
 import './Layout.styles.scss'
@@ -81,6 +83,7 @@ function LayoutShell() {
 
   usePointsSubscription(user?.memberId)
   useMemberLogNotifications(user?.memberId)
+  useGuildEmojisSubscription()
 
   const adminItems = ADMIN_ITEMS.filter((item) => hasRole(item.minRole))
   const currentLabel =
@@ -154,6 +157,7 @@ function LayoutShell() {
             >
               <span className="layout__nav-key">F{index + 1}</span>
               <span className="layout__nav-label">{item.label}</span>
+              {item.to === '/auctions' && <AuctionNavBadge />}
             </Link>
           ))}
 

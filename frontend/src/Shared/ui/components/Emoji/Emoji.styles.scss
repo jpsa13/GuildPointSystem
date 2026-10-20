@@ -1,0 +1,19 @@
+.emoji {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  object-fit: contain;
+
+  // Inside message text: sits on the baseline like a glyph.
+  &--inline {
+    margin: 0 1px;
+    vertical-align: -0.3em;
+  }
+
+  &--text {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+}

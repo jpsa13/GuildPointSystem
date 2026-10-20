@@ -29,6 +29,8 @@ export type AuditLogType =
   | 'DONATION_ACCEPTED'
   | 'DONATION_REJECTED'
   | 'DONATION_RATE_UPDATED'
+  | 'EMOJI_CREATED'
+  | 'EMOJI_DELETED'
   | 'PROFILE_UPDATED'
   | 'MEMBER_APPROVED'
   | 'MEMBER_REJECTED'
@@ -355,6 +357,20 @@ export interface AuctionMessage {
   imageUrl: string | null
   createdAt: string
   member?: { id: number; nickname: string }
+  /** Quoted message when this one is a reply (only member messages can be replied to). */
+  replyTo?: {
+    id: number
+    type: string
+    content: string
+    member: { id: number; nickname: string } | null
+  } | null
+  /** One entry per emoji, in first-use order, with who reacted (oldest first). */
+  reactions?: AuctionMessageReaction[]
+}
+
+export interface AuctionMessageReaction {
+  emoji: string
+  members: { id: number; nickname: string }[]
 }
 
 export interface AuditLogEntry {

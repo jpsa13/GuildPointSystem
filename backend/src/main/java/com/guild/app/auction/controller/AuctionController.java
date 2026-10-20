@@ -39,6 +39,12 @@ public class AuctionController {
         return auctionService.cancel(id, SecurityUtils.currentMember());
     }
 
+    /** Líder/Administrador: add 5 minutes to an open auction (a DOLE countdown goes back to OPEN). */
+    @PostMapping("/{id}/extend")
+    public AuctionResponse extend(@PathVariable Long id) {
+        return auctionService.extend(id, SecurityUtils.currentMember());
+    }
+
     /** Líder/Administrador: delete a finished auction. Points are untouched. */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -54,6 +60,14 @@ public class AuctionController {
     @GetMapping("/{id}/messages")
     public List<AuctionMessageResponse> messages(@PathVariable Long id) {
         return auctionService.getMessages(id);
+    }
+
+    /** Adds the emoji to the message, or removes it if the member already reacted with it. */
+    @PostMapping("/{id}/messages/{messageId}/reactions")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void toggleReaction(@PathVariable Long id, @PathVariable Long messageId,
+                               @Valid @RequestBody ToggleReactionRequest request) {
+        auctionService.toggleReaction(id, messageId, request.emoji(), SecurityUtils.currentMember());
     }
 
     @PostMapping("/{id}/messages")

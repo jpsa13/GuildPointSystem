@@ -158,6 +158,23 @@
     flex-shrink: 0;
   }
 
+  &__member {
+    color: theme.$color-text;
+    font-weight: 600;
+
+    &:hover { text-decoration: underline; }
+
+    span { font-weight: 400; }
+  }
+
+  &__timer {
+    @include theme.readout(theme.$color-primary);
+    min-width: 96px;
+    text-align: right;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
   &__bid {
     @include theme.readout(theme.$color-amber);
     min-width: 96px;
@@ -342,6 +359,9 @@
   &__value {
     font-size: 40px;
     line-height: 1.05;
+    white-space: nowrap;
+
+    &--long { font-size: 30px; line-height: 1.4; }
   }
 
   &__rows {
@@ -411,12 +431,9 @@
 
 // Leadership actions
 .auction-admin {
-  &__hint {
-    margin: 0 0 theme.$spacing-md;
-    font-size: theme.$font-size-base;
-    color: theme.$color-text-muted;
-    line-height: 1.4;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: theme.$spacing-sm;
 }
 
 // Tie-break panel
@@ -490,144 +507,6 @@
 }
 
 // ── Chat window ──────────────────────────────────────────────────────────────
-.auction-chat {
-  height: calc(100vh - 120px);
-  min-height: 480px;
-
-  &.panel .panel__body {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    padding: 0;
-  }
-
-  &__messages {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: theme.$spacing-md;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    background:
-      repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px),
-      rgba(0, 0, 0, 0.3);
-  }
-
-  &__empty {
-    color: theme.$color-text-muted;
-    font-size: theme.$font-size-base;
-    text-align: center;
-    padding: theme.$spacing-lg 0;
-    margin: 0;
-  }
-
-  &__bubble-wrap {
-    display: flex;
-    justify-content: flex-start;
-
-    &--own {
-      justify-content: flex-end;
-    }
-  }
-
-  &__bubble {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    max-width: 75%;
-    padding: 6px 12px;
-    font-size: theme.$font-size-base;
-    line-height: 1.35;
-    word-break: break-word;
-    color: theme.$color-text;
-    border: 1px solid theme.$color-border;
-    background: theme.$metal-700;
-    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
-
-    &--own {
-      clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
-      background: rgba(theme.$color-primary, 0.14);
-      border-color: rgba(theme.$color-primary, 0.3);
-    }
-
-    &--bid,
-    &--bot {
-      max-width: 100%;
-      width: 100%;
-      clip-path: none;
-      flex-direction: row;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 4px 10px;
-      font-family: theme.$font-mono;
-      background: transparent;
-      border: 0;
-      border-left: 2px solid theme.$color-primary;
-    }
-
-    &--bid {
-      color: theme.$color-primary;
-    }
-
-    &--bot {
-      color: theme.$color-amber;
-      border-left-color: theme.$color-amber;
-      background: rgba(theme.$color-amber, 0.06);
-    }
-  }
-
-  &__nickname {
-    font-family: theme.$font-heading;
-    font-size: theme.$font-size-ui;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: theme.$color-primary;
-
-    &--system {
-      font-family: theme.$font-mono;
-      font-size: theme.$font-size-heading;
-      font-weight: 400;
-      color: theme.$color-text-faint;
-
-      &::before { content: '['; }
-      &::after { content: ']'; }
-    }
-  }
-
-  &__text {
-    display: block;
-  }
-
-  &__bubble--bid &__text,
-  &__bubble--bot &__text {
-    flex: 1;
-  }
-
-  &__time {
-    align-self: flex-end;
-    font-family: theme.$font-mono;
-    font-size: theme.$font-size-heading;
-    color: theme.$color-text-faint;
-  }
-
-  &__form {
-    display: flex;
-    gap: theme.$spacing-sm;
-    padding: theme.$spacing-sm theme.$spacing-md;
-    border-top: 1px solid theme.$color-border-strong;
-    background: linear-gradient(180deg, theme.$metal-700, theme.$metal-800);
-    flex-shrink: 0;
-  }
-
-  &__input {
-    @include theme.field-input;
-    flex: 1;
-  }
-}
-
 @keyframes leading-pulse {
   0%, 100% { border-color: rgba(theme.$color-amber, 0.35); }
   50%      { border-color: rgba(theme.$color-amber, 0.8); }

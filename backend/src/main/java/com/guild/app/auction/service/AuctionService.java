@@ -11,6 +11,7 @@ import com.guild.app.common.enums.PointsModality;
 import com.guild.app.common.enums.Role;
 import com.guild.app.common.exception.AppException;
 import com.guild.app.common.security.SecurityUtils;
+import com.guild.app.emoji.service.GuildEmojiService;
 import com.guild.app.item.dto.ItemResponse;
 import com.guild.app.item.entity.GameLuaItem;
 import com.guild.app.item.repository.GameLuaItemRepository;
@@ -37,12 +38,16 @@ public class AuctionService {
 
     private static final Set<Integer> ALLOWED_DURATIONS = Set.of(1, 5, 15, 30, 60, 180, 360, 720, 1440);
     private static final int CLOSED_LIST_LIMIT = 50;
+    /** Distinct emojis per message, as on Discord. */
+    private static final int MAX_REACTION_EMOJIS = 20;
 
     /** A bid with this much time left (or less) resets the clock to {@link #EXTENDED_SECONDS}. */
     static final long EXTEND_THRESHOLD_MS = 15_000;
     static final long EXTENDED_SECONDS = 25;
     static final long DOLE_STEP_SECONDS = 2;
     static final long DOLE_RESCUE_SECONDS = 10;
+    /** Time a Líder/Administrador adds with one click on "+5 minutos". */
+    static final long ADMIN_EXTEND_SECONDS = 5 * 60;
 
     /** Tie-break timeline: announcement countdown → free spin → landing on the drawn winner. */
     static final long TIE_COUNTDOWN_SECONDS = 5;
@@ -63,12 +68,15 @@ public class AuctionService {
     private final AuctionItemRepository auctionItemRepository;
     private final AuctionBidRepository auctionBidRepository;
     private final AuctionMessageRepository auctionMessageRepository;
+    private final AuctionMessageReactionRepository auctionMessageReactionRepository;
     private final ItemRepository itemRepository;
     private final GameLuaItemRepository gameLuaItemRepository;
     private final MemberRepository memberRepository;
     private final PointsService pointsService;
     private final AuditLogService auditLogService;
     private final WebSocketPublisher webSocketPublisher;
+    private final GuildEmojiService guildEmojiService;
+    private final ReactionRateLimiter reactionRateLimiter;
 
     /**
      * Items of active auctions: they never change after creation, and the response is rebuilt on every
@@ -262,6 +270,38 @@ public class AuctionService {
         return response;
     }
 
+    /**
+     * Adds {@link #ADMIN_EXTEND_SECONDS} to an open auction. During DOLE the remaining time is only the
+     * countdown step, so the auction goes back to OPEN with the full extension from now.
+     */
+    @Transactional
+    public AuctionResponse extend(Long auctionId, MemberPrincipal actor) {
+        SecurityUtils.requireRole(Role.ADMINISTRADOR);
+        var auction = auctionRepository.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new AppException("Leilão não encontrado.", HttpStatus.NOT_FOUND));
+        if (auction.getStatus() != AuctionStatus.OPEN && auction.getStatus() != AuctionStatus.DOLE) {
+            throw new AppException("Só é possível adicionar tempo a leilões abertos.", HttpStatus.CONFLICT);
+        }
+
+        var now = Instant.now();
+        if (auction.getStatus() == AuctionStatus.DOLE) {
+            auction.setStatus(AuctionStatus.OPEN);
+            auction.setDolePhase(0);
+            auction.setEndsAt(now.plusSeconds(ADMIN_EXTEND_SECONDS));
+        } else {
+            var base = auction.getEndsAt().isAfter(now) ? auction.getEndsAt() : now;
+            auction.setEndsAt(base.plusSeconds(ADMIN_EXTEND_SECONDS));
+        }
+        auction.bumpVersion();
+        auctionRepository.save(auction);
+
+        var response = toResponse(auction);
+        publishAuctionUpdate(response);
+        var actorName = memberRepository.findById(actor.getId()).map(Member::getNickname).orElse("A administração");
+        addBotMessage(auction, actorName + " adicionou 5 minutos ao leilão.");
+        return response;
+    }
+
     /** Deletes a finished auction with its bids and chat. Points are untouched (debits stay in history). */
     @Transactional
     public void delete(Long auctionId, MemberPrincipal actor) {
@@ -303,6 +343,16 @@ public class AuctionService {
         msg.setMember(memberRepository.getReferenceById(actor.getId()));
         msg.setType("TEXT");
         msg.setContent(request.content());
+        if (request.replyToId() != null) {
+            var replyTo = auctionMessageRepository.findById(request.replyToId())
+                    .filter(m -> m.getAuction().getId().equals(auctionId))
+                    .orElseThrow(() -> new AppException("A mensagem respondida não existe mais.",
+                            HttpStatus.BAD_REQUEST));
+            if (!"TEXT".equals(replyTo.getType())) {
+                throw new AppException("Mensagens do sistema não podem ser respondidas.", HttpStatus.BAD_REQUEST);
+            }
+            msg.setReplyTo(replyTo);
+        }
         msg = auctionMessageRepository.save(msg);
         webSocketPublisher.publishAuction(auctionId, Map.of(
                 "type", "CHAT", "message", toMessageResponse(msg)));
@@ -310,9 +360,74 @@ public class AuctionService {
 
     @Transactional(readOnly = true)
     public List<AuctionMessageResponse> getMessages(Long auctionId) {
+        var reactions = auctionMessageReactionRepository.findByAuctionId(auctionId).stream()
+                .collect(Collectors.groupingBy(r -> r.getMessage().getId()));
         return auctionMessageRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId).stream()
-                .map(this::toMessageResponse)
+                .map(msg -> toMessageResponse(msg, reactions.getOrDefault(msg.getId(), List.of())))
                 .toList();
+    }
+
+    /** Adds the member's reaction with this emoji, or removes it when it is already there. */
+    @Transactional
+    public void toggleReaction(Long auctionId, Long messageId, String value, MemberPrincipal actor) {
+        if (!reactionRateLimiter.tryAcquire(actor.getId())) {
+            throw new AppException("Calma! Muitas reações em sequência.", HttpStatus.TOO_MANY_REQUESTS);
+        }
+        // Unicode emoji, or a guild emoji as ":name:" (stored with the registered name's case).
+        String emoji = isEmoji(value) ? value : guildEmojiService.canonicalReactionKey(value)
+                .orElseThrow(() -> new AppException("Emoji inválido.", HttpStatus.BAD_REQUEST));
+        var message = auctionMessageRepository.findById(messageId)
+                .filter(m -> m.getAuction().getId().equals(auctionId))
+                .orElseThrow(() -> new AppException("Mensagem não encontrada.", HttpStatus.NOT_FOUND));
+        if (FINISHED_STATUSES.contains(message.getAuction().getStatus())) {
+            throw new AppException("Este leilão já foi encerrado.", HttpStatus.BAD_REQUEST);
+        }
+
+        var existing = auctionMessageReactionRepository
+                .findByMessageIdAndMemberIdAndEmoji(messageId, actor.getId(), emoji);
+        if (existing.isPresent()) {
+            auctionMessageReactionRepository.delete(existing.get());
+        } else {
+            boolean newEmoji = !auctionMessageReactionRepository.existsByMessageIdAndEmoji(messageId, emoji);
+            if (newEmoji && auctionMessageReactionRepository.countDistinctEmojis(messageId) >= MAX_REACTION_EMOJIS) {
+                throw new AppException("Esta mensagem já tem o máximo de " + MAX_REACTION_EMOJIS + " reações diferentes.",
+                        HttpStatus.BAD_REQUEST);
+            }
+            var reaction = new AuctionMessageReaction();
+            reaction.setMessage(message);
+            reaction.setMember(memberRepository.getReferenceById(actor.getId()));
+            reaction.setEmoji(emoji);
+            auctionMessageReactionRepository.save(reaction);
+        }
+        auctionMessageReactionRepository.flush();
+
+        webSocketPublisher.publishAuction(auctionId, Map.of(
+                "type", "REACTION",
+                "messageId", messageId,
+                "reactions", toReactionSummaries(auctionMessageReactionRepository.findByMessageId(messageId))));
+    }
+
+    /**
+     * A Unicode emoji (sequence): pictographs plus the joiners, variation selectors, skin tones, keycaps
+     * and tag characters they are built from — no letters, spaces or markup.
+     */
+    static boolean isEmoji(String value) {
+        if (value == null || value.isBlank()) return false;
+        boolean hasPictograph = false;
+        for (int cp : value.codePoints().toArray()) {
+            int type = Character.getType(cp);
+            if (type == Character.OTHER_SYMBOL) {
+                hasPictograph = true;
+            } else if (type != Character.MODIFIER_SYMBOL
+                    && type != Character.NON_SPACING_MARK
+                    && type != Character.ENCLOSING_MARK
+                    && type != Character.FORMAT
+                    && type != Character.DECIMAL_DIGIT_NUMBER
+                    && cp != '#' && cp != '*') {
+                return false;
+            }
+        }
+        return hasPictograph;
     }
 
     /** Active auctions where the member currently holds (or ties) the top bid. */
@@ -616,15 +731,38 @@ public class AuctionService {
     }
 
     private AuctionMessageResponse toMessageResponse(AuctionMessage msg) {
-        var member = msg.getMember();
+        return toMessageResponse(msg, List.of());
+    }
+
+    private AuctionMessageResponse toMessageResponse(AuctionMessage msg, List<AuctionMessageReaction> reactions) {
+        var replyTo = msg.getReplyTo();
         return new AuctionMessageResponse(
                 msg.getId(),
                 msg.getType(),
                 msg.getContent(),
                 msg.getImageUrl(),
                 msg.getCreatedAt(),
-                member != null
-                        ? new AuctionMessageResponse.MemberSummary(member.getId(), member.getNickname())
-                        : null);
+                toMemberSummary(msg.getMember()),
+                replyTo != null
+                        ? new AuctionMessageResponse.ReplySummary(replyTo.getId(), replyTo.getType(),
+                                replyTo.getContent(), toMemberSummary(replyTo.getMember()))
+                        : null,
+                toReactionSummaries(reactions));
+    }
+
+    /** Reactions in creation order → one entry per emoji (first-use order) with its members. */
+    private static List<AuctionMessageResponse.ReactionSummary> toReactionSummaries(
+            List<AuctionMessageReaction> reactions) {
+        var byEmoji = new LinkedHashMap<String, List<AuctionMessageResponse.MemberSummary>>();
+        for (var r : reactions) {
+            byEmoji.computeIfAbsent(r.getEmoji(), e -> new ArrayList<>()).add(toMemberSummary(r.getMember()));
+        }
+        return byEmoji.entrySet().stream()
+                .map(e -> new AuctionMessageResponse.ReactionSummary(e.getKey(), e.getValue()))
+                .toList();
+    }
+
+    private static AuctionMessageResponse.MemberSummary toMemberSummary(Member member) {
+        return member != null ? new AuctionMessageResponse.MemberSummary(member.getId(), member.getNickname()) : null;
     }
 }
