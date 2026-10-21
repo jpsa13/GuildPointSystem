@@ -96,9 +96,6 @@ export function getMsUntilScheduledEvent(event: ScheduledEvent, now: Date): numb
 
 export const TEN_MINUTE_WARNING_MS = 10 * 60 * 1000
 
-/** Próximo PB Major: domingo 27/09/2026 19:00 (Brasília), depois a cada 4 dias. */
-const PBS_MAJOR_ANCHOR = zonedLocalToUtc(2026, 9, 27, 19, 0, TZ)
-
 function devTestScheduleEvent(): IntervalScheduledEvent | null {
   if (!import.meta.env.DEV) return null
   const leadSeconds = 12
@@ -119,12 +116,4 @@ export const HEADER_SCHEDULED_EVENTS: ScheduledEvent[] = [
   { kind: 'daily', id: 'cw1', label: 'CW1', hour: 6, minute: 0, timeZone: SERVER_TIME_ZONE },
   { kind: 'daily', id: 'cw2', label: 'CW2', hour: 14, minute: 0, timeZone: SERVER_TIME_ZONE },
   { kind: 'daily', id: 'cw3', label: 'CW3', hour: 22, minute: 0, timeZone: SERVER_TIME_ZONE },
-  { kind: 'daily', id: 'pbs-elan', label: 'PB Elan', hour: 19, minute: 0 },
-  {
-    kind: 'interval',
-    id: 'pbs-major',
-    label: 'PB Major',
-    intervalDays: 4,
-    anchor: PBS_MAJOR_ANCHOR,
-  },
 ]
