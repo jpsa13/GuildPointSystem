@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 
-/** Abertura do servidor Cerberus (horário de Brasília). */
-export const CERBERUS_LAUNCH = new Date('2026-10-24T00:00:00-03:00')
+/** Acesso antecipado premium: sem monstros e com taxas de PT reduzidas (horário de Brasília). */
+export const CERBERUS_PREMIUM_ACCESS = new Date('2026-10-24T07:00:00-03:00')
+
+/** Abertura oficial para todos, com início do aparecimento dos monstros (horário de Brasília). */
+export const CERBERUS_LAUNCH = new Date('2026-10-24T09:00:00-03:00')
 
 /** setTimeout overflows above ~24.8 days; longer waits re-arm. */
 const MAX_TIMEOUT_MS = 2 ** 31 - 1

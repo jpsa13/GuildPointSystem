@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { CERBERUS_LAUNCH } from '@/Features/ServerInfo/hooks/useCerberusLaunched'
+import {
+  CERBERUS_LAUNCH,
+  CERBERUS_PREMIUM_ACCESS,
+} from '@/Features/ServerInfo/hooks/useCerberusLaunched'
 import './CerberusCountdown.styles.scss'
 
 function pad(n: number) {
@@ -11,21 +14,29 @@ interface CerberusCountdownProps {
   compact?: boolean
 }
 
-/** Countdown to the Cerberus launch; renders nothing once it reaches zero. */
+/** True once premium early access has started; the countdown then targets the official opening. */
+function isPremiumOpen() {
+  return Date.now() >= CERBERUS_PREMIUM_ACCESS.getTime()
+}
+
+/** Countdown to the Cerberus launch in two stages; renders nothing once the official opening arrives. */
 export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
-  const target = CERBERUS_LAUNCH
   const [parts, setParts] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [premiumOpen, setPremiumOpen] = useState(isPremiumOpen)
   const [done, setDone] = useState(() => Date.now() >= CERBERUS_LAUNCH.getTime())
 
   useEffect(() => {
     const tick = () => {
+      const premium = isPremiumOpen()
+      setPremiumOpen(premium)
+      const target = premium ? CERBERUS_LAUNCH : CERBERUS_PREMIUM_ACCESS
       const diff = target.getTime() - Date.now()
-      if (diff <= 0) {
+      if (diff <= 0 && premium) {
         setDone(true)
         window.clearInterval(id)
         return
       }
-      const totalSec = Math.floor(diff / 1000)
+      const totalSec = Math.max(0, Math.floor(diff / 1000))
       setParts({
         days: Math.floor(totalSec / 86400),
         hours: Math.floor((totalSec % 86400) / 3600),
@@ -36,7 +47,7 @@ export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
     const id = window.setInterval(tick, 1000)
     tick()
     return () => window.clearInterval(id)
-  }, [target])
+  }, [])
 
   if (done) return null
 
@@ -44,7 +55,9 @@ export function CerberusCountdown({ compact = false }: CerberusCountdownProps) {
     <>
       <h2 className="cerberus-banner__title">CERBERUS GAMES Inc</h2>
       <p className="cerberus-banner__date">
-        Contagem para 24 de outubro de {target.getFullYear()}
+        {premiumOpen
+          ? 'Premium liberado · abertura oficial às 09:00 (Brasília)'
+          : 'Sáb, 24 de outubro · premium às 07:00 · oficial às 09:00 (Brasília)'}
       </p>
     </>
   )
