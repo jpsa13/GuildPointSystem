@@ -424,7 +424,9 @@ public class PartyService {
         var member = requireApproved(actor);
         ensureNotInParty(member.getId());
 
-        var party = partyRepository.findById(partyId)
+        // Lock like every other write to the PT: otherwise a request racing the last slot being filled
+        // passes the count check and stays pending on a full PT.
+        var party = partyRepository.findByIdForUpdate(partyId)
                 .orElseThrow(() -> new AppException("PT não encontrada", HttpStatus.NOT_FOUND));
         if (party.getLeader() == null) {
             throw new AppException("Esta PT ainda não tem líder — arraste um membro para ela", HttpStatus.BAD_REQUEST);
