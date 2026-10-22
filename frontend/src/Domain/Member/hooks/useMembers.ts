@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
+import { onSocketReconnect, subscribeTopicEffect } from '@/Shared/websocket/socketClient'
 import type { EventClaim, Member, PointsModality } from '@/Domain/types/models'
 import { authKeys } from '@/Domain/Auth/hooks/useAuth'
 
@@ -24,6 +26,33 @@ export function usePendingMembers() {
     queryKey: memberKeys.pending,
     queryFn: () => apiClient<Member[]>('/members/pending'),
   })
+}
+
+export interface PendingMemberNotice {
+  memberId: number
+  nickname: string
+}
+
+/** Moderators: keeps the pending queue live and reports each new registration (toast). */
+export function usePendingApprovalsSubscription(onPending: (notice: PendingMemberNotice) => void) {
+  const queryClient = useQueryClient()
+
+  useEffect(
+    () =>
+      subscribeTopicEffect('/topic/approvals', (message) => {
+        const payload = JSON.parse(message.body) as { type: string } & Partial<PendingMemberNotice>
+        queryClient.invalidateQueries({ queryKey: memberKeys.pending })
+        if (payload.type === 'MEMBER_PENDING' && payload.memberId && payload.nickname) {
+          onPending({ memberId: payload.memberId, nickname: payload.nickname })
+        }
+      }),
+    [onPending, queryClient],
+  )
+
+  useEffect(
+    () => onSocketReconnect(() => queryClient.invalidateQueries({ queryKey: memberKeys.pending })),
+    [queryClient],
+  )
 }
 
 export function useMember(id: number) {

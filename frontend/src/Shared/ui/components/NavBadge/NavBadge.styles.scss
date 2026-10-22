@@ -1,4 +1,4 @@
-.auction-nav-badge {
+.nav-badge {
   margin-left: auto;
   min-width: 22px;
   height: 22px;
@@ -13,14 +13,14 @@
   color: theme.$color-on-primary;
   background: theme.$color-primary;
   box-shadow: 0 0 8px rgba(theme.$color-primary, 0.6);
-  animation: auction-nav-badge-glow 2s ease-in-out infinite;
+  animation: nav-badge-glow 2s ease-in-out infinite;
 }
 
-@keyframes auction-nav-badge-glow {
+@keyframes nav-badge-glow {
   50% { box-shadow: 0 0 2px rgba(theme.$color-primary, 0.2); }
 }
 
-.auction-nav-popover {
+.nav-popover {
   @include theme.chamfer(theme.$chamfer-sm);
   position: fixed;
   z-index: 1000;

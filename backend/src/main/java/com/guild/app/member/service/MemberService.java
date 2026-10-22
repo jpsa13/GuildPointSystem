@@ -120,6 +120,7 @@ public class MemberService {
                 ? AuditLogType.MEMBER_APPROVED : AuditLogType.MEMBER_REJECTED;
         Member actorEntity = memberRepository.getReferenceById(actor.getId());
         auditLogService.log(type, actorEntity, member, Map.of("status", request.status().name()));
+        webSocketPublisher.publishApprovals(Map.of("type", "PENDING_CHANGED"));
 
         return toResponse(member);
     }
@@ -270,6 +271,7 @@ public class MemberService {
         partyService.removeMemberEverywhere(memberId);
 
         var previousRole = member.getRole();
+        var wasPending = member.getStatus() == MemberStatus.PENDENTE;
         member.setStatus(MemberStatus.EXCLUIDO);
         member.setRole(Role.MEMBRO);
         member.setEmail(null);
@@ -285,6 +287,9 @@ public class MemberService {
                         "points", member.getPoints()));
         // Kick any open session of the deleted member (their token is already rejected server-side).
         webSocketPublisher.publishAccountNotice(memberId, Map.of("type", "ACCOUNT_DELETED"));
+        if (wasPending) {
+            webSocketPublisher.publishApprovals(Map.of("type", "PENDING_CHANGED"));
+        }
     }
 
     private static void requireNotDeleted(Member member) {

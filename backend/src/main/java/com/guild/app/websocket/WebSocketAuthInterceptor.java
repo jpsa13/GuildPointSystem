@@ -26,6 +26,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     private static final String PARTY_TOPIC = "/topic/parties";
     private static final String PARTY_MEMBER_TOPIC = "/topic/parties/member/";
     private static final String PRESENCE_TOPIC = "/topic/presence";
+    private static final String APPROVALS_TOPIC = "/topic/approvals";
 
     private final JwtService jwtService;
     private final MemberDetailsService memberDetailsService;
@@ -54,6 +55,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
             checkPartySubscription(accessor);
             checkPresenceSubscription(accessor);
+            checkApprovalsSubscription(accessor);
         }
         return message;
     }
@@ -67,6 +69,19 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 && auth.getPrincipal() instanceof MemberPrincipal principal ? principal : null;
         if (member == null || member.getStatus() != MemberStatus.APROVADO
                 || !member.getRole().isAtLeast(Role.ADMINISTRADOR)) {
+            throw new IllegalStateException("Não autorizado.");
+        }
+    }
+
+    /** Pending registrations: moderators and above, like {@code GET /api/members/pending}. */
+    private void checkApprovalsSubscription(StompHeaderAccessor accessor) {
+        var destination = accessor.getDestination();
+        if (destination == null || !destination.startsWith(APPROVALS_TOPIC)) return;
+
+        var member = accessor.getUser() instanceof UsernamePasswordAuthenticationToken auth
+                && auth.getPrincipal() instanceof MemberPrincipal principal ? principal : null;
+        if (member == null || member.getStatus() != MemberStatus.APROVADO
+                || !member.getRole().isAtLeast(Role.MODERADOR)) {
             throw new IllegalStateException("Não autorizado.");
         }
     }

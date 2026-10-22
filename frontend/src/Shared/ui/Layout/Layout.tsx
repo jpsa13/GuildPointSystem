@@ -15,6 +15,8 @@ import { ScheduleAlertListener } from '@/Features/Schedule/ScheduleAlertListener
 import { AuctionCreatedListener } from '@/Features/Auction/AuctionCreatedListener'
 import { AuctionNavBadge } from '@/Features/Auction/components/AuctionNavBadge/AuctionNavBadge'
 import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
+import { ApprovalsListener } from '@/Features/Admin/Approvals/ApprovalsListener'
+import { ApprovalsNavBadge } from '@/Features/Admin/Approvals/components/ApprovalsNavBadge/ApprovalsNavBadge'
 import type { Role } from '@/Domain/types/models'
 import './Layout.styles.scss'
 
@@ -99,6 +101,7 @@ function LayoutShell() {
       <ScheduleAlertListener />
       <AuctionCreatedListener />
       <AccountDeletedListener />
+      {hasRole('MODERADOR') && <ApprovalsListener />}
       <aside className="layout__sidebar">
         <div className="layout__brand">
           <img src="/Logo-Blacklist.png" alt="" className="layout__logo" />
@@ -172,6 +175,7 @@ function LayoutShell() {
                 >
                   <span className="layout__nav-key">ADM</span>
                   <span className="layout__nav-label">{item.label}</span>
+                  {item.to === '/admin/approvals' && <ApprovalsNavBadge />}
                 </Link>
               ))}
             </div>

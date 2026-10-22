@@ -17,6 +17,7 @@ import com.guild.app.member.policy.GuildRacePolicy;
 import com.guild.app.member.repository.CharacterClassRepository;
 import com.guild.app.member.repository.GameRaceRepository;
 import com.guild.app.member.repository.MemberRepository;
+import com.guild.app.websocket.WebSocketPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -39,6 +40,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final AuditLogService auditLogService;
+    private final WebSocketPublisher webSocketPublisher;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -67,6 +69,7 @@ public class AuthService {
 
         auditLogService.log(AuditLogType.MEMBER_REGISTERED, member, member,
                 Map.of("email", request.email(), "nickname", request.nickname()));
+        publishPending(member);
 
         return buildAuthResponse(member);
     }
@@ -100,6 +103,10 @@ public class AuthService {
         member.setCharacterClass(clazz);
         member.setProfileComplete(true);
         memberRepository.save(member);
+        if (member.getStatus() == MemberStatus.PENDENTE) {
+            // Race/class are now filled in: refresh the moderators' queue without a second toast.
+            webSocketPublisher.publishApprovals(Map.of("type", "PENDING_CHANGED"));
+        }
         return buildAuthResponse(member);
     }
 
@@ -139,8 +146,17 @@ public class AuthService {
 
         auditLogService.log(AuditLogType.MEMBER_REGISTERED, member, member,
                 Map.of("discordId", discordId, "nickname", nickname));
+        publishPending(member);
 
         return buildAuthResponse(member);
+    }
+
+    /** A new registration is waiting for approval: moderators get a toast and the nav badge. */
+    private void publishPending(Member member) {
+        webSocketPublisher.publishApprovals(Map.of(
+                "type", "MEMBER_PENDING",
+                "memberId", member.getId(),
+                "nickname", member.getNickname()));
     }
 
     /**

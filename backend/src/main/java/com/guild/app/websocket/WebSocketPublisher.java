@@ -75,6 +75,11 @@ public class WebSocketPublisher {
         send("/topic/presence", payload);
     }
 
+    /** Moderation-only topic (guarded in {@link WebSocketAuthInterceptor}): the pending-approval queue changed. */
+    public void publishApprovals(Object payload) {
+        send("/topic/approvals", payload);
+    }
+
     public void publishScheduleAlert(Object payload) {
         send("/topic/schedule", payload);
     }
