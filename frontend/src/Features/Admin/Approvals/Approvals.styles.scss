@@ -65,3 +65,22 @@
     flex-shrink: 0;
   }
 }
+
+// Phone: avatar + member info on the first line, approve/reject wrap below.
+@media (max-width: theme.$mobile-breakpoint) {
+  .approvals-list__item {
+    flex-wrap: wrap;
+    gap: theme.$spacing-sm theme.$spacing-md;
+    padding: 12px theme.$spacing-md;
+  }
+
+  .approvals-list__info {
+    flex-basis: calc(100% - 62px);
+
+    small { overflow-wrap: anywhere; }
+  }
+
+  .approvals-list__actions {
+    margin-left: auto;
+  }
+}

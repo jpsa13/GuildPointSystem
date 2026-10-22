@@ -77,6 +77,8 @@ $font-size-display: 32px;
 $field-control-height: 42px;
 
 $sidebar-width: 264px;
+// Phones: below this, pages switch to their single-column / stacked layouts.
+$mobile-breakpoint: 640px;
 
 // ─── Shape mixins ────────────────────────────────────────────────────────────
 

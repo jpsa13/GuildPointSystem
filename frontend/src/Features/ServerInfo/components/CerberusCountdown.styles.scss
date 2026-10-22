@@ -162,3 +162,21 @@
     }
   }
 }
+
+// Phone: the four units stay on one line.
+@media (max-width: theme.$mobile-breakpoint) {
+  .cerberus-banner {
+    padding: theme.$spacing-md theme.$spacing-sm;
+  }
+
+  .cerberus-banner__timer {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .cerberus-banner__unit {
+    min-width: 0;
+    flex: 1 1 0;
+    max-width: 64px;
+  }
+}

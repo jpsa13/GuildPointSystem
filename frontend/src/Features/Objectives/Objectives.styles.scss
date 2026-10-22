@@ -119,3 +119,22 @@
     flex-shrink: 0;
   }
 }
+
+// Phone: points + name on the first line, admin actions wrap below.
+@media (max-width: theme.$mobile-breakpoint) {
+  .objectives-list__item {
+    flex-wrap: wrap;
+    gap: theme.$spacing-sm theme.$spacing-md;
+    padding: 10px theme.$spacing-md;
+  }
+
+  .objectives-list__info {
+    flex-basis: calc(100% - 80px);
+
+    strong { font-size: 17px; }
+  }
+
+  .objectives-list__actions {
+    margin-left: auto;
+  }
+}

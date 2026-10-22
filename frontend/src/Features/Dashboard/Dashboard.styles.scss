@@ -78,6 +78,7 @@
     flex-direction: column;
     align-items: stretch;
     flex: 1;
+    min-width: 0;
     max-width: 190px;
     text-align: center;
 
@@ -475,5 +476,77 @@
 @media (max-width: 1100px) {
   .dashboard {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  // Stacked: the side column has no height to split, so its panels take their natural height.
+  .dashboard__side > .panel,
+  .dashboard__discord > .panel {
+    flex: none;
+  }
+
+  .dashboard__side > .dashboard__col--events > .panel__body {
+    max-height: 480px;
+  }
+}
+
+@media (max-width: theme.$mobile-breakpoint) {
+  .dashboard {
+    gap: theme.$spacing-md;
+  }
+
+  .podium {
+    gap: theme.$spacing-xs;
+
+    &__card {
+      padding: 0 2px theme.$spacing-xs;
+    }
+
+    &__name {
+      font-size: 14px;
+    }
+
+    &__points {
+      font-size: 15px;
+    }
+
+    &__place {
+      font-size: 24px;
+    }
+  }
+
+  .ranking-rest {
+    margin: 0 (-(theme.$spacing-md));
+  }
+
+  // Último login is dropped; the member column keeps the room.
+  .ranking-list__head,
+  .ranking-list li {
+    grid-template-columns: 24px 32px minmax(0, 1fr) 24px 3.5rem;
+    gap: theme.$spacing-sm;
+    padding: 0 theme.$spacing-md;
+  }
+
+  .ranking-list__head span:last-child,
+  .ranking-list__login {
+    display: none;
+  }
+
+  .ranking-list__head span:nth-child(5) {
+    text-align: center;
+  }
+
+  .ranking-list__pos,
+  .ranking-list__pts {
+    font-size: 15px;
+  }
+
+  .ranking-list__who {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .ranking-list__name {
+    flex-shrink: 1;
   }
 }

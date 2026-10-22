@@ -188,6 +188,31 @@
       color: theme.$color-text-muted;
     }
   }
+
+  // Phone: lot · icon · name on the first line; status, timer, bid and actions wrap below.
+  @media (max-width: theme.$mobile-breakpoint) {
+    &__item {
+      flex-wrap: wrap;
+      gap: theme.$spacing-sm;
+      padding: 10px theme.$spacing-md;
+    }
+
+    &__info {
+      flex-basis: calc(100% - 110px);
+
+      strong { font-size: 17px; }
+    }
+
+    &__timer,
+    &__bid {
+      min-width: 0;
+      font-size: 16px;
+    }
+
+    &__actions {
+      margin-left: auto;
+    }
+  }
 }
 
 // ── Detail ───────────────────────────────────────────────────────────────────
