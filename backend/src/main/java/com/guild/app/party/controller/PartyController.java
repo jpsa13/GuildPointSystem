@@ -107,6 +107,11 @@ public class PartyController {
         return partyService.upsertLfg(request, SecurityUtils.currentMember());
     }
 
+    @PostMapping("/lfg/all")
+    public PartyBoardResponse addAllToLfg() {
+        return partyService.addAllMembersToLfg(SecurityUtils.currentMember());
+    }
+
     @DeleteMapping("/lfg")
     public PartyBoardResponse leaveLfg() {
         return partyService.leaveLfg(SecurityUtils.currentMember());

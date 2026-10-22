@@ -156,6 +156,14 @@ export function useLeavePartyLfg() {
   })
 }
 
+export function useAddAllToPartyLfg() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiClient<PartyBoard>('/parties/lfg/all', { method: 'POST' }),
+    onSuccess: (data) => setBoard(queryClient, data),
+  })
+}
+
 export function useCreatePartyForMember() {
   const queryClient = useQueryClient()
   return useMutation({
