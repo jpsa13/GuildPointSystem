@@ -118,6 +118,9 @@ public class AuthService {
             if (member.getStatus() == MemberStatus.REJEITADO) {
                 throw new AppException("Sua conta foi rejeitada.", HttpStatus.FORBIDDEN);
             }
+            if (member.getStatus() == MemberStatus.SUSPENSO) {
+                throw new AppException("Sua conta está suspensa. Fale com a liderança da guild.", HttpStatus.FORBIDDEN);
+            }
             member.setNickname(nickname);
             member.setAvatarUrl(avatarUrl);
             if (email != null && !email.isBlank()) {
@@ -161,12 +164,13 @@ public class AuthService {
 
     /**
      * Renews the token of a member who is using the app, keeping the original login time. Fails (401) once
-     * the session reached its maximum age, or for a rejected/deleted account: the member logs in again.
+     * the session reached its maximum age, or for a rejected/deleted/suspended account: the member logs in again.
      */
     @Transactional(readOnly = true)
     public AuthResponse refresh(MemberPrincipal principal, String token) {
         var member = memberRepository.findById(principal.getId())
-                .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO && m.getStatus() != MemberStatus.REJEITADO)
+                .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO && m.getStatus() != MemberStatus.REJEITADO
+                        && m.getStatus() != MemberStatus.SUSPENSO)
                 .orElseThrow(() -> new AppException("Sessão expirada. Entre novamente.", HttpStatus.UNAUTHORIZED));
         // Role/nickname/status come from the database, not from the old token.
         var renewed = jwtService.renew(token, new MemberPrincipal(member))

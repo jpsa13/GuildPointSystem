@@ -289,6 +289,18 @@
   background: rgba(theme.$color-danger, 0.08);
 }
 
+.profile-sheet__deleted--suspended {
+  color: theme.$color-amber;
+  border-left-color: theme.$color-amber;
+  background: rgba(theme.$color-amber, 0.08);
+}
+
+.profile-danger__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: theme.$spacing-sm;
+}
+
 .profile-danger__hint {
   margin: 0 0 theme.$spacing-md;
   font-size: theme.$font-size-base;

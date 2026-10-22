@@ -72,6 +72,12 @@ public class Member {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "suspended_at")
+    private Instant suspendedAt;
+
+    @Column(name = "suspension_reason", length = 500)
+    private String suspensionReason;
+
     @PrePersist
     void onCreate() {
         if (level == null) {

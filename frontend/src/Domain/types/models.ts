@@ -1,5 +1,5 @@
 export type Role = 'MEMBRO' | 'MODERADOR' | 'ADMINISTRADOR' | 'LIDER'
-export type MemberStatus = 'PENDENTE' | 'APROVADO' | 'REJEITADO' | 'EXCLUIDO'
+export type MemberStatus = 'PENDENTE' | 'APROVADO' | 'REJEITADO' | 'EXCLUIDO' | 'SUSPENSO'
 export type ObjectiveType = 'NORMAL' | 'LIMITADO'
 export type AuctionStatus = 'OPEN' | 'DOLE' | 'TIE_BREAK' | 'CLOSED' | 'CANCELLED'
 
@@ -23,6 +23,8 @@ export type AuditLogType =
   | 'AUCTION_CANCELLED'
   | 'AUCTION_DELETED'
   | 'MEMBER_DELETED'
+  | 'MEMBER_SUSPENDED'
+  | 'MEMBER_UNSUSPENDED'
   | 'NEWS_CREATED'
   | 'NEWS_UPDATED'
   | 'NEWS_DELETED'
@@ -64,6 +66,8 @@ export interface Member {
   level: number
   profileComplete: boolean
   lastLoginAt: string | null
+  suspendedAt: string | null
+  suspensionReason: string | null
 }
 
 export interface SeedOption {
