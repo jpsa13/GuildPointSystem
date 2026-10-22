@@ -9,6 +9,7 @@ export const memberKeys = {
   all: ['members'] as const,
   ranking: ['members', 'ranking'] as const,
   pending: ['members', 'pending'] as const,
+  suspended: ['members', 'suspended'] as const,
   detail: (id: number) => ['members', id] as const,
   claims: (id: number) => ['members', id, 'claims'] as const,
   me: ['members', 'me'] as const,
@@ -25,6 +26,14 @@ export function usePendingMembers() {
   return useQuery({
     queryKey: memberKeys.pending,
     queryFn: () => apiClient<Member[]>('/members/pending'),
+  })
+}
+
+export function useSuspendedMembers(enabled = true) {
+  return useQuery({
+    queryKey: memberKeys.suspended,
+    queryFn: () => apiClient<Member[]>('/members/suspended'),
+    enabled,
   })
 }
 
@@ -98,6 +107,30 @@ export function useApproveMember() {
       apiClient<Member>(`/members/${id}/approval`, { method: 'PATCH', body: { status } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: memberKeys.all })
+    },
+  })
+}
+
+export function useSuspendMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      apiClient<Member>(`/members/${id}/suspend`, { method: 'POST', body: { reason } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: memberKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['parties'] })
+      queryClient.invalidateQueries({ queryKey: ['logs'] })
+    },
+  })
+}
+
+export function useUnsuspendMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiClient<Member>(`/members/${id}/unsuspend`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: memberKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['logs'] })
     },
   })
 }

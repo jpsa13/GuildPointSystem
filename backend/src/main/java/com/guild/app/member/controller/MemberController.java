@@ -7,6 +7,7 @@ import com.guild.app.event.service.EventService;
 import com.guild.app.member.dto.ApprovalRequest;
 import com.guild.app.member.dto.LinkDiscordRequest;
 import com.guild.app.member.dto.MemberResponse;
+import com.guild.app.member.dto.SuspendMemberRequest;
 import com.guild.app.member.dto.UpdateProfileRequest;
 import com.guild.app.member.dto.UpdateRoleRequest;
 import com.guild.app.member.service.MemberService;
@@ -34,6 +35,11 @@ public class MemberController {
     @GetMapping("/pending")
     public List<MemberResponse> pending() {
         return memberService.getPending();
+    }
+
+    @GetMapping("/suspended")
+    public List<MemberResponse> suspended() {
+        return memberService.getSuspended();
     }
 
     @GetMapping("/{id}")
@@ -82,6 +88,17 @@ public class MemberController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(@PathVariable Long id) {
         memberService.deleteAccount(id, SecurityUtils.currentMember());
+    }
+
+    /** Líder/Administrador: block a member's access (everything kept) until the suspension is lifted. */
+    @PostMapping("/{id}/suspend")
+    public MemberResponse suspend(@PathVariable Long id, @Valid @RequestBody SuspendMemberRequest request) {
+        return memberService.suspend(id, request, SecurityUtils.currentMember());
+    }
+
+    @PostMapping("/{id}/unsuspend")
+    public MemberResponse unsuspend(@PathVariable Long id) {
+        return memberService.unsuspend(id, SecurityUtils.currentMember());
     }
 
     /** Líder/Administrador: link or unlink (blank id) the member's Discord account. */

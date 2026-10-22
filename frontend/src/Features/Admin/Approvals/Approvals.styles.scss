@@ -1,4 +1,10 @@
 .approvals-page {
+  &__stack {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-lg;
+  }
+
   &__empty {
     color: theme.$color-text-muted;
     font-size: theme.$font-size-base;
@@ -57,6 +63,13 @@
       font-size: theme.$font-size-base;
       color: theme.$color-text-muted;
     }
+  }
+
+  &__name {
+    color: theme.$color-text;
+    text-decoration: none;
+
+    &:hover { color: theme.$color-primary; }
   }
 
   &__actions {

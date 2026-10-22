@@ -19,6 +19,8 @@ const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
   MEMBER_REGISTERED: 'Novo cadastro',
   MEMBER_ROLE_CHANGED: 'Papel alterado',
   MEMBER_DELETED: 'Conta excluída',
+  MEMBER_SUSPENDED: 'Conta suspensa',
+  MEMBER_UNSUSPENDED: 'Suspensão retirada',
   NEWS_CREATED: 'Notícia publicada',
   NEWS_UPDATED: 'Notícia editada',
   NEWS_DELETED: 'Notícia excluída',
@@ -124,6 +126,8 @@ export function formatLogDetails(log: AuditLogEntry): string {
       return `1kk = ${str(p.oldPointsPerKk)} → ${str(p.newPointsPerKk)} pts`
     case 'MEMBER_DELETED':
       return `${str(p.nickname)} · ${ROLE_LABELS[str(p.role)] ?? str(p.role)} · ${str(p.points)} pts`
+    case 'MEMBER_SUSPENDED':
+      return p.reason ? `Motivo: ${str(p.reason)}` : ''
     default:
       return ''
   }

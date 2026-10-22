@@ -7,6 +7,8 @@ import {
   useGrantManualEvent,
   useMember,
   useMemberClaims,
+  useSuspendMember,
+  useUnsuspendMember,
   useUpdateMemberRole,
   useUpdateProfile,
 } from '@/Domain/Member/hooks/useMembers'
@@ -32,7 +34,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'LIDER', label: 'Líder' },
 ]
 
-/** Minimum role needed to delete a member of the given role (strictly above it). */
+/** Minimum role needed to delete or suspend a member of the given role (strictly above it). */
 const ROLE_REQUIRED_TO_DELETE: Partial<Record<Role, Role>> = {
   MEMBRO: 'ADMINISTRADOR',
   MODERADOR: 'ADMINISTRADOR',
@@ -72,6 +74,11 @@ export function ProfilePage() {
   const { showToast } = useAppToast()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const closeDelete = useCallback(() => setConfirmDelete(false), [])
+  const suspendMember = useSuspendMember()
+  const unsuspendMember = useUnsuspendMember()
+  const [confirmSuspend, setConfirmSuspend] = useState(false)
+  const [suspendReason, setSuspendReason] = useState('')
+  const closeSuspend = useCallback(() => setConfirmSuspend(false), [])
   const isStaff = hasRole('ADMINISTRADOR')
   const isLeader = hasRole('LIDER')
   const isOwn = !id || Number(id) === user?.memberId
@@ -94,6 +101,28 @@ export function ProfilePage() {
   const isDeleted = profile.status === 'EXCLUIDO'
   const requiredToDelete = ROLE_REQUIRED_TO_DELETE[profile.role]
   const canDelete = isStaff && !isOwn && !isDeleted && !!requiredToDelete && hasRole(requiredToDelete)
+  const isSuspended = profile.status === 'SUSPENSO'
+  const canSuspend = canDelete && profile.status === 'APROVADO'
+
+  const handleSuspend = async () => {
+    try {
+      await suspendMember.mutateAsync({ id: profile.id, reason: suspendReason.trim() || undefined })
+      showToast(`Conta de ${profile.nickname} suspensa.`, 'success')
+      setSuspendReason('')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Não foi possível suspender a conta.', 'error')
+    }
+    setConfirmSuspend(false)
+  }
+
+  const handleUnsuspend = async () => {
+    try {
+      await unsuspendMember.mutateAsync(profile.id)
+      showToast(`Suspensão de ${profile.nickname} retirada.`, 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Não foi possível retirar a suspensão.', 'error')
+    }
+  }
 
   const handleDelete = async () => {
     try {
@@ -209,6 +238,19 @@ export function ProfilePage() {
         {isDeleted && (
           <p className="profile-sheet__deleted" role="status">
             Conta excluída — sem acesso ao sistema. O histórico de pontos, lances e eventos foi mantido.
+          </p>
+        )}
+        {isSuspended && (
+          <p className="profile-sheet__deleted profile-sheet__deleted--suspended" role="status">
+            Conta suspensa
+            {profile.suspendedAt ? ` desde ${formatLastLogin(profile.suspendedAt)}` : ''} — sem acesso
+            ao sistema até a suspensão ser retirada.
+            {isStaff && profile.suspensionReason && (
+              <>
+                <br />
+                Motivo: {profile.suspensionReason}
+              </>
+            )}
           </p>
         )}
       </Panel>
@@ -409,13 +451,54 @@ export function ProfilePage() {
       {canDelete && (
         <Panel title="Zona de perigo" variant="danger" code="ADM" className="profile-danger">
           <p className="profile-danger__hint">
-            Excluir a conta remove o acesso de {profile.nickname} imediatamente. O histórico é mantido.
+            Suspender bloqueia o acesso de {profile.nickname} até a suspensão ser retirada, sem apagar
+            nada. Excluir remove o acesso de vez; o histórico é mantido.
           </p>
-          <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-            Excluir conta
-          </Button>
+          <div className="profile-danger__actions">
+            {canSuspend && (
+              <Button variant="secondary" onClick={() => setConfirmSuspend(true)}>
+                Suspender conta
+              </Button>
+            )}
+            {isSuspended && (
+              <Button loading={unsuspendMember.isPending} onClick={handleUnsuspend}>
+                Retirar suspensão
+              </Button>
+            )}
+            <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+              Excluir conta
+            </Button>
+          </div>
         </Panel>
       )}
+
+      <ConfirmDialog
+        open={confirmSuspend}
+        title={`Suspender conta de ${profile.nickname}`}
+        code="ADM"
+        confirmLabel="Suspender conta"
+        loading={suspendMember.isPending}
+        onConfirm={handleSuspend}
+        onCancel={closeSuspend}
+      >
+        <p>
+          <strong>{profile.nickname}</strong> é desconectado na hora, sai da PT e da lista de espera e
+          não consegue entrar até a suspensão ser retirada.
+        </p>
+        <div className="profile-form">
+          <label>
+            Motivo (opcional)
+            <textarea
+              value={suspendReason}
+              maxLength={500}
+              onChange={(e) => setSuspendReason(e.target.value)}
+            />
+          </label>
+        </div>
+        <p className="confirm-dialog__note">
+          Pontos ({profile.points}), e-mail, Discord e histórico são mantidos.
+        </p>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={confirmDelete}

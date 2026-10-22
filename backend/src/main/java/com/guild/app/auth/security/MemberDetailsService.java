@@ -24,12 +24,12 @@ public class MemberDetailsService implements UserDetailsService {
     }
 
     /**
-     * Used for every JWT (REST + WebSocket), served from {@link MemberPrincipalCache}. Deleting an account
-     * evicts it after commit, so its still-valid token stops working on the next request.
+     * Used for every JWT (REST + WebSocket), served from {@link MemberPrincipalCache}. Deleting or suspending an
+     * account evicts it after commit, so its still-valid token stops working on the next request.
      */
     public UserDetails loadById(Long id) {
         return memberPrincipalCache.get(id, () -> memberRepository.findById(id)
-                .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO)
+                .filter(m -> m.getStatus() != MemberStatus.EXCLUIDO && m.getStatus() != MemberStatus.SUSPENSO)
                 .map(MemberPrincipal::new)
                 .orElseThrow(() -> new UsernameNotFoundException("Member not found")));
     }

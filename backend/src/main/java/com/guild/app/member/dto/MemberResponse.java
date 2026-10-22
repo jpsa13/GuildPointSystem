@@ -21,5 +21,7 @@ public record MemberResponse(
         Long availablePoints,
         int level,
         boolean profileComplete,
-        Instant lastLoginAt
+        Instant lastLoginAt,
+        Instant suspendedAt,
+        String suspensionReason
 ) {}

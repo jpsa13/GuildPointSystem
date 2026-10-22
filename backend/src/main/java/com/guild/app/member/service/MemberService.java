@@ -14,6 +14,7 @@ import com.guild.app.log.service.AuditLogService;
 import com.guild.app.member.dto.ApprovalRequest;
 import com.guild.app.member.dto.LinkDiscordRequest;
 import com.guild.app.member.dto.MemberResponse;
+import com.guild.app.member.dto.SuspendMemberRequest;
 import com.guild.app.member.dto.UpdateProfileRequest;
 import com.guild.app.member.dto.UpdateRoleRequest;
 import com.guild.app.member.entity.Member;
@@ -58,6 +59,12 @@ public class MemberService {
     @Transactional(readOnly = true)
     public List<MemberResponse> getRanking() {
         return toResponses(memberRepository.findByStatusOrderByPointsDesc(MemberStatus.APROVADO));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MemberResponse> getSuspended() {
+        SecurityUtils.requireRole(Role.ADMINISTRADOR);
+        return toResponses(memberRepository.findByStatusOrderByPointsDesc(MemberStatus.SUSPENSO));
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +115,9 @@ public class MemberService {
         var member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
         requireNotDeleted(member);
+        if (member.getStatus() == MemberStatus.SUSPENSO) {
+            throw new AppException("Conta suspensa: use \"Retirar suspensão\".", HttpStatus.CONFLICT);
+        }
 
         if (request.status() != MemberStatus.APROVADO && request.status() != MemberStatus.REJEITADO) {
             throw new AppException("Status inválido.", HttpStatus.BAD_REQUEST);
@@ -254,19 +264,7 @@ public class MemberService {
         if (member.getStatus() == MemberStatus.EXCLUIDO) {
             throw new AppException("Esta conta já foi excluída.", HttpStatus.CONFLICT);
         }
-        if (member.getRole() == Role.LIDER) {
-            throw new AppException("Transfira a liderança antes de excluir a conta do líder.", HttpStatus.BAD_REQUEST);
-        }
-        // Administrador can remove Membro/Moderador; only the Líder can remove an Administrador.
-        if (member.getRole().isAtLeast(actor.getRole())) {
-            throw new AppException("Você só pode excluir membros com cargo abaixo do seu.", HttpStatus.FORBIDDEN);
-        }
-        var leading = auctionService.findActiveAuctionsLedBy(memberId);
-        if (!leading.isEmpty()) {
-            throw new AppException("Este membro está vencendo leilão(ões) em andamento ("
-                    + leading.stream().map(id -> "#" + id).collect(java.util.stream.Collectors.joining(", "))
-                    + "). Encerre o leilão antes de excluir a conta.", HttpStatus.CONFLICT);
-        }
+        requireCanLockOut(member, actor, "excluir");
 
         partyService.removeMemberEverywhere(memberId);
 
@@ -289,6 +287,83 @@ public class MemberService {
         webSocketPublisher.publishAccountNotice(memberId, Map.of("type", "ACCOUNT_DELETED"));
         if (wasPending) {
             webSocketPublisher.publishApprovals(Map.of("type", "PENDING_CHANGED"));
+        }
+    }
+
+    /**
+     * Líder/Administrador: blocks a member's access without touching their data. They are logged out, leave
+     * every party/LFG/pending invite and drop out of the ranking until the suspension is lifted.
+     */
+    @Transactional
+    public MemberResponse suspend(Long memberId, SuspendMemberRequest request, MemberPrincipal actor) {
+        SecurityUtils.requireRole(Role.ADMINISTRADOR);
+        if (actor.getId().equals(memberId)) {
+            throw new AppException("Você não pode suspender a própria conta.", HttpStatus.BAD_REQUEST);
+        }
+        var member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
+        if (member.getStatus() == MemberStatus.SUSPENSO) {
+            throw new AppException("Esta conta já está suspensa.", HttpStatus.CONFLICT);
+        }
+        if (member.getStatus() != MemberStatus.APROVADO) {
+            throw new AppException("Só é possível suspender membros aprovados.", HttpStatus.BAD_REQUEST);
+        }
+        requireCanLockOut(member, actor, "suspender");
+
+        partyService.removeMemberEverywhere(memberId);
+
+        String reason = request.reason() != null && !request.reason().isBlank() ? request.reason().trim() : null;
+        member.setStatus(MemberStatus.SUSPENSO);
+        member.setSuspendedAt(java.time.Instant.now());
+        member.setSuspensionReason(reason);
+        memberRepository.save(member);
+
+        auditLogService.log(AuditLogType.MEMBER_SUSPENDED, memberRepository.getReferenceById(actor.getId()), member,
+                reason != null ? Map.of("reason", reason) : Map.of());
+        // Kick any open session (their token is already rejected server-side).
+        webSocketPublisher.publishAccountNotice(memberId, Map.of("type", "ACCOUNT_SUSPENDED"));
+        return toResponse(member);
+    }
+
+    /** Líder/Administrador: lifts a suspension; the member is back as APROVADO and can log in again. */
+    @Transactional
+    public MemberResponse unsuspend(Long memberId, MemberPrincipal actor) {
+        SecurityUtils.requireRole(Role.ADMINISTRADOR);
+        var member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new AppException("Membro não encontrado.", HttpStatus.NOT_FOUND));
+        if (member.getStatus() != MemberStatus.SUSPENSO) {
+            throw new AppException("Esta conta não está suspensa.", HttpStatus.CONFLICT);
+        }
+        if (member.getRole().isAtLeast(actor.getRole())) {
+            throw new AppException("Você só pode retirar a suspensão de membros com cargo abaixo do seu.",
+                    HttpStatus.FORBIDDEN);
+        }
+
+        member.setStatus(MemberStatus.APROVADO);
+        member.setSuspendedAt(null);
+        member.setSuspensionReason(null);
+        memberRepository.save(member);
+
+        auditLogService.log(AuditLogType.MEMBER_UNSUSPENDED, memberRepository.getReferenceById(actor.getId()),
+                member, Map.of());
+        return toResponse(member);
+    }
+
+    /** Shared by delete and suspend: who may lock a member out, and not while they lead an auction. */
+    private void requireCanLockOut(Member member, MemberPrincipal actor, String verb) {
+        if (member.getRole() == Role.LIDER) {
+            throw new AppException("Transfira a liderança antes de " + verb + " a conta do líder.",
+                    HttpStatus.BAD_REQUEST);
+        }
+        // Administrador can act on Membro/Moderador; only the Líder can act on an Administrador.
+        if (member.getRole().isAtLeast(actor.getRole())) {
+            throw new AppException("Você só pode " + verb + " membros com cargo abaixo do seu.", HttpStatus.FORBIDDEN);
+        }
+        var leading = auctionService.findActiveAuctionsLedBy(member.getId());
+        if (!leading.isEmpty()) {
+            throw new AppException("Este membro está vencendo leilão(ões) em andamento ("
+                    + leading.stream().map(id -> "#" + id).collect(java.util.stream.Collectors.joining(", "))
+                    + "). Encerre o leilão antes de " + verb + " a conta.", HttpStatus.CONFLICT);
         }
     }
 
@@ -347,6 +422,8 @@ public class MemberService {
                 availablePoints,
                 member.getLevel() != null ? member.getLevel() : 1,
                 member.isProfileComplete(),
-                member.getLastLoginAt());
+                member.getLastLoginAt(),
+                member.getSuspendedAt(),
+                member.getSuspensionReason());
     }
 }

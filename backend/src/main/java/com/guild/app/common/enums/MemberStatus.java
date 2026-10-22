@@ -5,5 +5,7 @@ public enum MemberStatus {
     APROVADO,
     REJEITADO,
     /** Account deleted by Líder/Administrador: no login, personal data wiped, history kept. */
-    EXCLUIDO
+    EXCLUIDO,
+    /** Access blocked by Líder/Administrador: no login, everything kept; lifting it returns to APROVADO. */
+    SUSPENSO
 }

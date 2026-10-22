@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<Map<String, String>> handleDisabled(DisabledException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("message", "Sua conta está desativada."));
+                .body(Map.of("message", "Sua conta está suspensa. Fale com a liderança da guild."));
     }
 
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
