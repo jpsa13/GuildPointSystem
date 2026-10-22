@@ -2,6 +2,7 @@ import { useCallback, useState, type DragEvent, type ReactNode } from 'react'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import {
   useAcceptPartyPending,
+  useAddAllToPartyLfg,
   useCancelPartyPending,
   useCreateEmptyParty,
   useCreateParty,
@@ -389,6 +390,8 @@ export function PartyPage() {
   const cancelPending = useCancelPartyPending()
   const upsertLfg = useUpsertPartyLfg()
   const leaveLfg = useLeavePartyLfg()
+  const addAllToLfg = useAddAllToPartyLfg()
+  const [addAllOpen, setAddAllOpen] = useState(false)
 
   const onPartyNotice = useCallback(
     (notice: { message: string }) => {
@@ -658,7 +661,18 @@ export function PartyPage() {
             )}
           </Panel>
 
-          <Panel title="Lista de espera" code={`${board.lfg.length} LFP`} flush>
+          <Panel
+            title="Lista de espera"
+            code={`${board.lfg.length} LFP`}
+            flush
+            actions={
+              my.canOrganizeParties && (
+                <Button size="sm" variant="secondary" onClick={() => setAddAllOpen(true)}>
+                  Adicionar todos
+                </Button>
+              )
+            }
+          >
             {board.lfg.length === 0 ? (
               <p className="party-page__empty party-page__empty--panel">Ninguém na lista de espera.</p>
             ) : (
@@ -667,6 +681,37 @@ export function PartyPage() {
           </Panel>
         </div>
       )}
+
+      <ConfirmDialog
+        open={addAllOpen}
+        title="Adicionar todos à lista de espera"
+        code="LFP"
+        confirmLabel="Adicionar todos"
+        loading={addAllToLfg.isPending}
+        onConfirm={() => {
+          const before = board?.lfg.length ?? 0
+          addAllToLfg.mutate(undefined, {
+            onSuccess: (data) => {
+              const added = data.lfg.length - before
+              showToast(
+                added > 0
+                  ? `${added} ${added === 1 ? 'membro adicionado' : 'membros adicionados'} à lista de espera.`
+                  : 'Todos os membros já estão em uma PT ou na lista de espera.',
+                'success',
+              )
+              setAddAllOpen(false)
+            },
+            onError: (err) => {
+              failToast(err)
+              setAddAllOpen(false)
+            },
+          })
+        }}
+        onCancel={() => setAddAllOpen(false)}
+      >
+        <p>Todos os membros aprovados que não estão em uma PT entram na lista de espera.</p>
+        <p className="confirm-dialog__note">Quem já está em uma PT ou na lista continua como está.</p>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={disbandTarget !== null}

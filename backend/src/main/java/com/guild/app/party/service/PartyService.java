@@ -603,6 +603,37 @@ public class PartyService {
         return getBoard(actor);
     }
 
+    /** Admin shortcut: every approved member not already in a PT or on the list joins the waiting list. */
+    @Transactional
+    public PartyBoardResponse addAllMembersToLfg(MemberPrincipal actor) {
+        var organizer = requireApproved(actor);
+        if (!canOrganizeParties(organizer)) {
+            throw new AppException(
+                    "Apenas administradores podem adicionar todos à lista de espera",
+                    HttpStatus.FORBIDDEN);
+        }
+
+        Set<Long> busy = new HashSet<>();
+        partyMemberRepository.findAll().forEach(pm -> busy.add(pm.getMemberId()));
+        partyLfgRepository.findAll().forEach(l -> busy.add(l.getMemberId()));
+
+        var now = Instant.now();
+        var entries = memberRepository.findByStatusOrderByPointsDesc(MemberStatus.APROVADO).stream()
+                .filter(m -> !busy.contains(m.getId()))
+                .map(m -> {
+                    var entry = new PartyLfg();
+                    entry.setMemberId(m.getId());
+                    entry.setCreatedAt(now);
+                    return entry;
+                })
+                .toList();
+        if (!entries.isEmpty()) {
+            partyLfgRepository.saveAll(entries);
+            publishBoard();
+        }
+        return getBoard(actor);
+    }
+
     private void addMemberLocked(Party party, Member newMember) {
         if (partyMemberRepository.findByMemberId(newMember.getId()).isPresent()) {
             throw new AppException("Membro já está em uma PT", HttpStatus.BAD_REQUEST);
