@@ -174,35 +174,28 @@
   }
 }
 
+// The nickname keeps its width (wrapping if it must, never cut); "Classe · Lv" takes what is left.
 .party-card__roster-name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-weight: 600;
 }
 
 .party-card__roster-meta {
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: theme.$font-mono;
   font-size: 14px;
   color: theme.$color-text-muted;
   text-align: right;
 }
 
-// Phone: the nickname keeps its width; "Classe · Lv" takes what is left and truncates first.
 @media (max-width: theme.$mobile-breakpoint) {
-  .party-card__roster-name {
-    flex: 0 1 auto;
-  }
-
   .party-card__roster-meta {
-    flex: 1 1 0;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-size: 12px;
   }
 
@@ -229,12 +222,9 @@
   margin: 0;
   padding: theme.$spacing-md;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  // Cards never get narrower than the nickname needs: as many columns as fit (one on phones).
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: theme.$spacing-sm;
-
-  @media (max-width: 720px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .party-lfg-item {
@@ -287,12 +277,11 @@
   flex: 1;
   min-width: 0;
 
+  // The nickname is never cut: a long one wraps instead.
   strong {
     display: block;
     font-size: theme.$font-size-heading;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   span {
