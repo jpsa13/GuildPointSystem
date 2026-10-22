@@ -75,4 +75,25 @@
 
     &::before { background: theme.$color-danger; }
   }
+
+  @media (max-width: theme.$mobile-breakpoint) {
+    // Title, code and actions wrap instead of truncating the title; the grip lines make room.
+    &__titlebar {
+      flex-wrap: wrap;
+      row-gap: theme.$spacing-xs;
+      padding-top: 6px;
+      padding-bottom: 6px;
+      padding-left: theme.$spacing-md;
+      background-size: 0 0, auto;
+    }
+
+    &__actions {
+      margin-right: 0;
+      flex-wrap: wrap;
+    }
+
+    &__body {
+      padding: theme.$spacing-md;
+    }
+  }
 }

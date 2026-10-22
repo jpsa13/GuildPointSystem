@@ -191,6 +191,26 @@
   text-align: right;
 }
 
+// Phone: the nickname keeps its width; "Classe · Lv" takes what is left and truncates first.
+@media (max-width: theme.$mobile-breakpoint) {
+  .party-card__roster-name {
+    flex: 0 1 auto;
+  }
+
+  .party-card__roster-meta {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .party-card__roster-actions {
+    flex-wrap: nowrap;
+  }
+}
+
 .party-card__roster-vago {
   font-size: theme.$font-size-base;
   color: theme.$color-text-muted;

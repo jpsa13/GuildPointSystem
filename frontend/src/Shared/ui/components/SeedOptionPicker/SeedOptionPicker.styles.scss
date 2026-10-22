@@ -16,6 +16,12 @@
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: theme.$spacing-sm;
+
+    // Phone: four per row so names like "Adventurer" fit.
+    @media (max-width: theme.$mobile-breakpoint) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: theme.$spacing-xs;
+    }
   }
 
   &__option {
@@ -41,7 +47,12 @@
       font-weight: 600;
       color: theme.$color-text-muted;
       text-align: center;
+      overflow-wrap: anywhere;
       transition: color 0.12s;
+    }
+
+    @media (max-width: theme.$mobile-breakpoint) {
+      span { font-size: 13px; }
     }
 
     &:hover {

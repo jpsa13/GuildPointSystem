@@ -532,4 +532,53 @@ $drawer-breakpoint: 960px;
       padding: theme.$spacing-md;
     }
   }
+
+  // ── Phone: one compact row (menu · title · server clock) + scrollable timers ──
+  @media (max-width: theme.$mobile-breakpoint) {
+    &__status {
+      gap: theme.$spacing-sm;
+      row-gap: 6px;
+      min-height: 0;
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+
+    &__page-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &__status-right {
+      gap: theme.$spacing-sm;
+    }
+
+    // The diamond alone carries the connection state; the label stays in the tooltip.
+    &__socket-text,
+    &__clock--local {
+      display: none;
+    }
+
+    &__event-timers {
+      margin: 0 (-(theme.$spacing-md));
+      padding: 0 theme.$spacing-md;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar { display: none; }
+    }
+
+    &__event-timer {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 6px;
+      padding: 3px 6px;
+    }
+
+    &__main {
+      padding: theme.$spacing-sm;
+    }
+  }
 }

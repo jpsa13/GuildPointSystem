@@ -210,14 +210,14 @@ function LayoutShell() {
           <h1 className="layout__page-title">{currentLabel}</h1>
           <EventHeaderTimers now={now} />
           <div className="layout__status-right">
-            <span className={`layout__socket layout__socket--${socket}`}>
-              {SOCKET_LABEL[socket]}
+            <span className={`layout__socket layout__socket--${socket}`} title={SOCKET_LABEL[socket]}>
+              <span className="layout__socket-text">{SOCKET_LABEL[socket]}</span>
             </span>
             <span className="layout__clock layout__clock--server" title="Horário do servidor Cerberus (Moscou, UTC+3)">
               <span className="layout__clock-label">Server</span>
               {now.toLocaleTimeString('pt-BR', { timeZone: SERVER_TIME_ZONE, hour12: false })}
             </span>
-            <span className="layout__clock" title="Seu horário local">
+            <span className="layout__clock layout__clock--local" title="Seu horário local">
               <span className="layout__clock-label">Local</span>
               {now.toLocaleTimeString('pt-BR', { hour12: false })}
             </span>
