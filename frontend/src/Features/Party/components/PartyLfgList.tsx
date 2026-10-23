@@ -57,28 +57,26 @@ export function PartyLfgList({
               ) : (
                 <span className="party-card__roster-fallback party-card__roster-fallback--muted">?</span>
               )}
-              <div className="party-lfg-item__info">
-                <strong title={entry.nickname}>
-                  {entry.nickname}
-                  {isMe ? ' (você)' : ''}
-                </strong>
-                {/* Only the class name is cut when narrow; the level always shows. */}
-                <span className="party-lfg-item__meta">
-                  <span className="party-lfg-item__class">{entry.className ?? 'Classe'}</span>
-                  <span className="party-lfg-item__level">· Lv {entry.level}</span>
-                </span>
-              </div>
+              <strong className="party-lfg-item__name" title={entry.nickname}>
+                {entry.nickname}
+                {isMe ? ' (você)' : ''}
+              </strong>
+              {actions && (
+                <div className="party-lfg-item__actions" draggable={false} onDragStart={(e) => e.stopPropagation()}>
+                  {actions(entry)}
+                </div>
+              )}
+            </div>
+            {/* Second line: class and level on the left, waiting time on the right. */}
+            <div className="party-lfg-item__meta">
+              <span className="party-lfg-item__class">{entry.className ?? 'Classe'}</span>
+              <span className="party-lfg-item__level">· Lv {entry.level}</span>
               <span
                 className="party-lfg-item__wait"
                 title={`Na lista desde ${new Date(entry.createdAt).toLocaleTimeString('pt-BR')}`}
               >
                 {formatWaiting(now - new Date(entry.createdAt).getTime())}
               </span>
-              {actions && (
-                <div className="party-lfg-item__actions" draggable={false} onDragStart={(e) => e.stopPropagation()}>
-                  {actions(entry)}
-                </div>
-              )}
             </div>
           </li>
         )

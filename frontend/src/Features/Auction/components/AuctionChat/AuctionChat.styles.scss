@@ -1,6 +1,6 @@
 // Discord-style channel: avatar + name + time, grouped follow-ups, hover toolbar, reaction pills.
 .auction-chat {
-  height: calc(100vh - 120px);
+  height: var(--auction-panel-height, calc(100vh - 120px));
   min-height: 480px;
 
   &.panel .panel__body {

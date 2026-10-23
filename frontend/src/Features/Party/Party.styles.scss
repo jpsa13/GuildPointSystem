@@ -273,35 +273,35 @@
   }
 }
 
-.party-lfg-item__info {
+// Each line stays on one line: nickname above; class · level and waiting time below.
+.party-lfg-item__name {
   flex: 1;
   min-width: 0;
+  font-size: theme.$font-size-heading;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  // The nickname is never cut: a long one wraps instead.
-  strong {
-    display: block;
-    font-size: theme.$font-size-heading;
-    overflow-wrap: anywhere;
-  }
+.party-lfg-item__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5ch;
+  min-width: 0;
+  font-family: theme.$font-mono;
+  font-size: 14px;
+  color: theme.$color-text-muted;
+  white-space: nowrap;
+}
 
-  .party-lfg-item__meta {
-    display: flex;
-    gap: 0.5ch;
-    font-family: theme.$font-mono;
-    font-size: 14px;
-    color: theme.$color-text-muted;
-    white-space: nowrap;
-  }
+.party-lfg-item__class {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .party-lfg-item__class {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .party-lfg-item__level {
-    flex-shrink: 0;
-  }
+.party-lfg-item__level {
+  flex-shrink: 0;
 }
 
 .party-lfg-item__actions {

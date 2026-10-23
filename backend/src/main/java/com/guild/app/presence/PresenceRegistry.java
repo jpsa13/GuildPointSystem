@@ -2,6 +2,7 @@ package com.guild.app.presence;
 
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
+import com.guild.app.presence.dto.AuctionViewer;
 import com.guild.app.presence.dto.OnlineMember;
 import com.guild.app.presence.dto.PresenceSnapshot;
 import io.micrometer.core.instrument.Gauge;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -131,6 +134,48 @@ public class PresenceRegistry {
                 .sorted(Comparator.comparing(OnlineMember::nickname, String.CASE_INSENSITIVE_ORDER))
                 .toList();
         return new PresenceSnapshot(rows, Instant.now());
+    }
+
+    /**
+     * auctionId → members with that auction open (any of their tabs, not just the latest), for the
+     * "who is here" list next to the auction chat. Auctions nobody is viewing are left out.
+     */
+    public Map<Long, List<AuctionViewer>> auctionViewers() {
+        Map<Long, Map<Long, Boolean>> idleByAuction = new HashMap<>();
+        for (Session s : sessions.values()) {
+            Long auctionId = auctionIdOf(s);
+            if (auctionId == null) continue;
+            // A member is idle only if every tab they have on this auction is in the background.
+            idleByAuction.computeIfAbsent(auctionId, id -> new HashMap<>())
+                    .merge(s.memberId, s.hidden, (a, b) -> a && b);
+        }
+        idleByAuction.values().forEach(byMember -> loadMissingCards(byMember.keySet()));
+
+        Map<Long, List<AuctionViewer>> result = new HashMap<>();
+        idleByAuction.forEach((auctionId, byMember) -> result.put(auctionId, byMember.entrySet().stream()
+                .map(e -> {
+                    var card = cards.getOrDefault(e.getKey(), new MemberCard("#" + e.getKey(), null, null));
+                    return new AuctionViewer(e.getKey(), card.nickname(), card.className(), card.classImageUrl(),
+                            e.getValue());
+                })
+                .sorted(Comparator.comparing(AuctionViewer::nickname, String.CASE_INSENSITIVE_ORDER))
+                .toList()));
+        return result;
+    }
+
+    public List<AuctionViewer> auctionViewers(long auctionId) {
+        return auctionViewers().getOrDefault(auctionId, List.of());
+    }
+
+    /** The client reports an auction page as page "auction" with detail "#<id>". */
+    private static Long auctionIdOf(Session s) {
+        String detail = s.detail;
+        if (!"auction".equals(s.page) || detail == null || !detail.startsWith("#")) return null;
+        try {
+            return Long.parseLong(detail.substring(1));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void loadMissingCards(Set<Long> memberIds) {

@@ -1,0 +1,100 @@
+// Members with the auction open, next to its chat (same row look as the Discord list).
+.auction-viewers {
+  height: var(--auction-panel-height, calc(100vh - 120px));
+  min-height: 480px;
+
+  > .panel__body {
+    overflow-y: auto;
+  }
+
+  &__empty {
+    @include theme.readout(theme.$color-text-muted);
+    display: block;
+    text-align: center;
+    font-size: theme.$font-size-base;
+    padding: theme.$spacing-lg 0;
+    margin: 0;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: theme.$spacing-sm;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.1s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+
+      .auction-viewers__name { text-decoration: underline; }
+    }
+  }
+
+  &__item--idle &__link { opacity: 0.5; }
+
+  &__avatar {
+    position: relative;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+
+    img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  }
+
+  // Green while the auction tab is in front, amber when it is in the background.
+  &__dot {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid theme.$color-bg-elevated;
+    background: #23a55a;
+  }
+
+  &__item--idle &__dot { background: #f0b232; }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__name,
+  &__discord {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__name {
+    font-size: theme.$font-size-base;
+    font-weight: 600;
+    color: theme.$color-text;
+  }
+
+  &__discord {
+    font-size: 13px;
+    color: theme.$color-text-muted;
+  }
+}

@@ -36,6 +36,11 @@ public class WebSocketPublisher {
         send("/topic/auctions/" + auctionId, payload);
     }
 
+    /** Members with this auction open (presence), for the list next to its chat. */
+    public void publishAuctionViewers(Long auctionId, Object payload) {
+        send("/topic/auctions/" + auctionId + "/viewers", payload);
+    }
+
     public void publishAuctionList(Object payload) {
         send("/topic/auctions", payload);
     }

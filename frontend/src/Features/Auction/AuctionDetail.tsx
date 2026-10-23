@@ -22,7 +22,9 @@ import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { ItemCard } from '@/Features/Items/components/ItemCard/ItemCard'
 import type { AuctionItem, SeedOption } from '@/Domain/types/models'
 import { formatTime, useCountdown } from '@/Features/Auction/hooks/useCountdown'
+import { useFillViewport } from '@/Features/Auction/hooks/useFillViewport'
 import { AuctionChat } from '@/Features/Auction/components/AuctionChat/AuctionChat'
+import { AuctionViewers } from '@/Features/Auction/components/AuctionViewers/AuctionViewers'
 import './Auction.styles.scss'
 
 // ─── Single auction item card (fetches full data) ─────────────────────────────
@@ -77,6 +79,7 @@ export function AuctionDetailPage() {
   const auctionId = Number(id)
 
   const navigate = useNavigate()
+  const fillViewport = useFillViewport<HTMLDivElement>()
   const { showToast } = useAppToast()
   const { hasRole } = useAuthContext()
   const canManage = hasRole('ADMINISTRADOR') // Líder ranks above Administrador
@@ -217,7 +220,7 @@ export function AuctionDetailPage() {
   }
 
   return (
-    <div className="auction-detail">
+    <div className="auction-detail" ref={fillViewport}>
       {/* ── LEFT ────────────────────────────────────────────────────────────── */}
       <div className="auction-detail__left">
         <Panel
@@ -505,6 +508,10 @@ export function AuctionDetailPage() {
       {/* ── RIGHT ───────────────────────────────────────────────────────────── */}
       <div className="auction-detail__right">
         <AuctionChat auctionId={auctionId} closed={isFinished} />
+      </div>
+
+      <div className="auction-detail__viewers">
+        <AuctionViewers auctionId={auctionId} />
       </div>
     </div>
   )
