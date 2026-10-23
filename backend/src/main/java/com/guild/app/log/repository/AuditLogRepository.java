@@ -10,4 +10,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     @EntityGraph(attributePaths = {"actor", "target"})
     Page<AuditLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"actor", "target"})
+    Page<AuditLog> findByTypeNotInOrderByCreatedAtDesc(java.util.Collection<com.guild.app.common.enums.AuditLogType> types, Pageable pageable);
 }

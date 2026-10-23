@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useCurrentMember } from '@/Domain/Member/hooks/useMembers'
 import { usePointsSubscription } from '@/Domain/Auction/hooks/useAuction'
@@ -18,6 +18,7 @@ import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
 import { ApprovalsListener } from '@/Features/Admin/Approvals/ApprovalsListener'
 import { ApprovalsNavBadge } from '@/Features/Admin/Approvals/components/ApprovalsNavBadge/ApprovalsNavBadge'
 import type { Role } from '@/Domain/types/models'
+import { EquipmentReviewNotice } from '@/Features/Equipment/EquipmentReviewNotice'
 import './Layout.styles.scss'
 
 const NAV_ITEMS = [
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { to: '/events', label: 'Eventos' },
   { to: '/party', label: 'Party' },
   { to: '/items', label: 'Itens' },
+  { to: '/equipment', label: 'Equipamentos' },
   { to: '/auctions', label: 'Leilões' },
   { to: '/server-info', label: 'Cerberus' },
 ]
@@ -77,6 +79,16 @@ function LayoutShell() {
   const { logout, hasRole, user } = useAuthContext()
   const { data: member } = useCurrentMember()
   const location = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const openEquipment = (event: KeyboardEvent) => {
+      if (event.key !== 'F8' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return
+      event.preventDefault()
+      navigate('/equipment')
+    }
+    window.addEventListener('keydown', openEquipment)
+    return () => window.removeEventListener('keydown', openEquipment)
+  }, [navigate])
   const { now, socket } = useClock()
   // Drawer closes itself on navigation: it is only open for the path it was opened on.
   const [drawerPath, setDrawerPath] = useState<string | null>(null)
@@ -224,6 +236,7 @@ function LayoutShell() {
           </div>
         </div>
         <main className="layout__main">
+          <EquipmentReviewNotice />
           <Outlet />
         </main>
       </div>

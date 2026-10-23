@@ -1,0 +1,11 @@
+uploads-dev/
+uploads-test/
+*.log
+runtime/
+downloads/
+postgres-data/
+maven-cache/
+evidencias/
+catalogo-edf.local.json
+__pycache__/
+*.pyc

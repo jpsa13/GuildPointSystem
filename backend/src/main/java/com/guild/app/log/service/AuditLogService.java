@@ -30,7 +30,8 @@ public class AuditLogService {
         entry.setTarget(target);
         entry.setPayload(payload);
         var saved = auditLogRepository.save(entry);
-        webSocketPublisher.publishLog(toResponse(saved));
+        if (type.isEquipmentPrivate()) webSocketPublisher.publishEquipmentChanged();
+        else webSocketPublisher.publishLog(toResponse(saved));
         return saved;
     }
 

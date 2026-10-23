@@ -1,0 +1,68 @@
+{
+  "sourceHash": "43e14a83288a149e2c05e3e6677cc5460f6af6d4b0efd014a61f6a9808aac2b9",
+  "sheets": {
+    "WEAPON": {
+      "path": "/equipment-sprites/8425bf98be4c22e217961ef6e534065e13dfb6b54bbbe87390c2c87f1fa401c4.png",
+      "width": 2048,
+      "height": 2048,
+      "cols": 32,
+      "rows": 32
+    },
+    "HELMET": {
+      "path": "/equipment-sprites/a16d48cfe3a18b3be7ecbb7245ade417c702183e2959785ba6b14f60aa353251.png",
+      "width": 1024,
+      "height": 4048,
+      "cols": 16,
+      "rows": 63
+    },
+    "UPPER": {
+      "path": "/equipment-sprites/1df6faeff07a7184a761c4f4e2cfaf7985ed287c7fff240eafd2c39905ee58c7.png",
+      "width": 1024,
+      "height": 4048,
+      "cols": 16,
+      "rows": 63
+    },
+    "LOWER": {
+      "path": "/equipment-sprites/7d68f9a4b2aa9c98eeae686b3a540412b5002dc6fa090b6b36855c93a15c0baa.png",
+      "width": 1024,
+      "height": 4048,
+      "cols": 16,
+      "rows": 63
+    },
+    "GLOVES": {
+      "path": "/equipment-sprites/46a3b5b1b6176f231f51138356e19659f08ca68462cc45ee1ab126929b5b0f33.png",
+      "width": 1024,
+      "height": 4048,
+      "cols": 16,
+      "rows": 63
+    },
+    "SHOES": {
+      "path": "/equipment-sprites/8809c1e9e8de2dbd9876b3c9d9f8ba1725722e36fa4b008f4a72c34d52fe10d6.png",
+      "width": 1024,
+      "height": 4048,
+      "cols": 16,
+      "rows": 63
+    },
+    "CLOAK": {
+      "path": "/equipment-sprites/b8368a5f97e47626ad34cfe0767bd4508fc563662742a7d28be37081e79e5f7a.png",
+      "width": 1024,
+      "height": 2048,
+      "cols": 16,
+      "rows": 32
+    },
+    "RING": {
+      "path": "/equipment-sprites/b8368a5f97e47626ad34cfe0767bd4508fc563662742a7d28be37081e79e5f7a.png",
+      "width": 1024,
+      "height": 2048,
+      "cols": 16,
+      "rows": 32
+    },
+    "AMULET": {
+      "path": "/equipment-sprites/b8368a5f97e47626ad34cfe0767bd4508fc563662742a7d28be37081e79e5f7a.png",
+      "width": 1024,
+      "height": 2048,
+      "cols": 16,
+      "rows": 32
+    }
+  }
+}

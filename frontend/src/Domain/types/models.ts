@@ -10,6 +10,8 @@ export type PointsModality = 'AJUSTE' | 'LEILAO' | 'EVENTO' | 'REVERSAO' | 'DOAC
 export type DonationStatus = 'PENDENTE' | 'ACEITA' | 'RECUSADA'
 
 export type AuditLogType =
+  | 'EQUIPMENT_CHANGED'
+  | 'EQUIPMENT_CATALOG_IMPORTED'
   | 'OBJECTIVE_CREATED'
   | 'OBJECTIVE_UPDATED'
   | 'OBJECTIVE_DELETED'

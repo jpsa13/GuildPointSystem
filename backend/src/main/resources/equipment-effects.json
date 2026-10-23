@@ -1,0 +1,279 @@
+{
+  "source": "rf-loot-editor/effect_dictionary",
+  "profile": "woods",
+  "databaseHash": "a0c46b276d30a6b2b7535e2c6c7484175611cf9cdfd543bf77092c14aba5d9f1",
+  "entries": [
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 0,
+      "name": "None",
+      "description": "None",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 1,
+      "name": "SP",
+      "description": "SP",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 2,
+      "name": "FP Consumption",
+      "description": "FP Consumption",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 3,
+      "name": "Accuracy",
+      "description": "Accuracy",
+      "unitHint": "int"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 4,
+      "name": "Dodge",
+      "description": "Dodge",
+      "unitHint": "int"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 5,
+      "name": "Max HP/FP",
+      "description": "Max HP/FP",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 6,
+      "name": "Attack",
+      "description": "Attack",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 7,
+      "name": "Defense",
+      "description": "Defense",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 8,
+      "name": "LvlSkill",
+      "description": "LvlSkill",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 9,
+      "name": "Stealth",
+      "description": "Stealth",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 10,
+      "name": "Detect",
+      "description": "Detect",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 11,
+      "name": "DmgProt",
+      "description": "DmgProt",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 12,
+      "name": "Movement Speed",
+      "description": "Movement Speed",
+      "unitHint": "int"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 14,
+      "name": "FPRecov",
+      "description": "FPRecov",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 15,
+      "name": "Force Attack",
+      "description": "Force Attack",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 16,
+      "name": "FP",
+      "description": "FP",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 17,
+      "name": "Vampiric",
+      "description": "Vampiric",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 18,
+      "name": "fpVamp",
+      "description": "fpVamp",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 19,
+      "name": "Critical Chance",
+      "description": "Critical Chance",
+      "unitHint": "percent_0_100"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 20,
+      "name": "Range",
+      "description": "Range",
+      "unitHint": "int"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 21,
+      "name": "Def",
+      "description": "Def",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 22,
+      "name": "DebuffTime",
+      "description": "DebuffTime",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 23,
+      "name": "HPRecov",
+      "description": "HPRecov",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 24,
+      "name": "Dodge",
+      "description": "Dodge",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 25,
+      "name": "Launcher Attack Delay",
+      "description": "Launcher Attack Delay",
+      "unitHint": "ms"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 26,
+      "name": "ForceRange",
+      "description": "ForceRange",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 27,
+      "name": "AntiCrit",
+      "description": "AntiCrit",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 28,
+      "name": "Block Chance",
+      "description": "Block Chance",
+      "unitHint": "percent_0_100"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 29,
+      "name": "All Resistance",
+      "description": "All Resistance",
+      "unitHint": "int"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 30,
+      "name": "Max HP",
+      "description": "Max HP",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 31,
+      "name": "Debuff Duration",
+      "description": "Debuff Duration",
+      "unitHint": "percent_0_1"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 32,
+      "name": "Ignore Block Chance",
+      "description": "Ignore Block Chance",
+      "unitHint": "percent_0_100"
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 34,
+      "name": "SkillDelay",
+      "description": "SkillDelay",
+      "unitHint": ""
+    },
+    {
+      "dictionaryKey": "equipment",
+      "itemType": "",
+      "code": 35,
+      "name": "Force Skill Delay",
+      "description": "Force Skill Delay",
+      "unitHint": "ms"
+    }
+  ]
+}

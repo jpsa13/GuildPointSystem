@@ -96,6 +96,7 @@ export function useUpdateProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: memberKeys.all })
       queryClient.invalidateQueries({ queryKey: authKeys.me })
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'board'] })
     },
   })
 }
