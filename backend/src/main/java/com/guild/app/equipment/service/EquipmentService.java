@@ -99,16 +99,21 @@ public class EquipmentService {
         return catalog(category,search,page,size,level,grade,ability,"CORA",null);
     }
     public CatalogPage catalog(String category,String search,int page,int size,Integer level,Integer grade,String ability,String race,String equipmentClass) {
+        return catalog(category,search,page,size,level,grade,ability,race,equipmentClass,null,null);
+    }
+    public CatalogPage catalog(String category,String search,int page,int size,Integer level,Integer grade,String ability,String race,String equipmentClass,String accessoryEffect,Integer weaponType) {
         actor(false);
+        require(accessoryEffect==null || (Set.of("RING","AMULET").contains(category) && Set.of("ATTACK","DODGE","DEFENSE").contains(accessoryEffect)),"Filtro de acessório inválido.");
+        require(weaponType==null || (category.equals("WEAPON") && weaponType>=0 && weaponType<=11),"Tipo de arma inválido.");
         require(Set.of("CORA","BELLATO","ACCRETIA","ALL").contains(race),"Raça inválida.");
-        require(equipmentClass==null || Set.of("MELEE","RANGER","FORCE").contains(equipmentClass),"Classe inválida.");
+        require(equipmentClass==null || Set.of("MELEE","RANGER","FORCE").contains(equipmentClass) || (category.equals("WEAPON") && equipmentClass.equals("LAUNCHER")),"Classe inválida.");
         require(level==null || (level>=0 && level<=99 && (!category.equals("WEAPON") || (level>=35 && level<=50))),"Nível inválido.");
         require(grade==null || grade==1 || grade==3,"Grade inválida; escolha B ou C.");
         require(ability==null || (ability.length()<=50 && ability.matches("[A-Za-z ]*")),"Habilidade inválida.");
         require(ability==null || ability.isBlank() || grade==null || grade==3,"Habilidades exigem Grade C.");
         require(categoryValid(category),"Categoria de equipamento inválida.");
         require(page>=0 && page<=100000 && size>=1 && size<=100 && search.length()<=200,"Filtro inválido.");
-        return repository.catalog(category,search.trim(),page,size,level,grade,ability,race,equipmentClass);
+        return repository.catalog(category,search.trim(),page,size,level,grade,ability,race,equipmentClass,accessoryEffect,weaponType);
     }
     private Assignment owned(Long id,long memberId,Slot slot) {
         require(id!=null,"Selecione um registro do histórico.");

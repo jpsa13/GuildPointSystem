@@ -141,9 +141,9 @@ public class EquipmentRepository {
     private static final String CORA_CIVIL = "(substring(edf_civil,3,1)='1' OR substring(edf_civil,4,1)='1')";
     // A elegibilidade é compartilhada pela busca e pelo cadastro direto por ID.
     private static final String SELECTABLE = "edf_source_hash IS NOT NULL AND "+ALLOWED_ARMOR+" AND ("
-        +"(category='WEAPON' AND edf_grade IN (1,3) AND edf_level BETWEEN 35 AND 50) OR "
+        +"(category='WEAPON' AND edf_grade IN (1,3) AND edf_level BETWEEN 35 AND 50 AND edf_name ILIKE '%Intense%') OR "
         +"(category IN ('HELMET','UPPER','LOWER','GLOVES','SHOES') AND edf_grade IN (1,3) AND edf_level BETWEEN 35 AND 55 AND "+ALLOWED_TYPE_C+") OR "
-        +"(category IN ('RING','AMULET') AND "+CORA_CIVIL+" AND (edf_name ILIKE '%Elemental%' OR (category='RING' AND EXISTS ("
+        +"(category IN ('RING','AMULET') AND edf_name NOT ILIKE '%Christmas%' AND edf_name !~* 'H[0-9]+[[:space:]]*$' AND (edf_name ILIKE '%Elemental%' OR (category='RING' AND EXISTS ("
         +"SELECT 1 FROM jsonb_array_elements(edf_effects) effect WHERE "
         +"((effect->>'code')::int=6 AND abs((effect->>'value')::numeric-0.1)<0.000001) OR "
         +"((effect->>'code')::int=8 AND (effect->>'value')::numeric=1) OR "
@@ -162,7 +162,7 @@ public class EquipmentRepository {
     // Os nomes distinguem habilidades que compartilham código de efeito (ex.: Solid/Guardian).
     private static final String ABILITY_RAW = "substring(edf_name from '(?i)(advanced strength|advance strength|endurance|protection|protectoion|vampiric|vampire|guardian|strength|strong|solid|sharp|grand|smart|wind|fine|pain)[[:space:]]+(?:intense|superior)[[:space:]]')";
     private static final String ABILITY = "CASE lower("+ABILITY_RAW+") WHEN 'advance strength' THEN 'Advanced Strength' WHEN 'protectoion' THEN 'Protection' WHEN 'vampiric' THEN 'Vampire' ELSE initcap("+ABILITY_RAW+") END";
-    public CatalogPage catalog(String category,String search,int page,int size,Integer level,Integer grade,String ability,String race,String equipmentClass) {
+    public CatalogPage catalog(String category,String search,int page,int size,Integer level,Integer grade,String ability,String race,String equipmentClass,String accessoryEffect,Integer weaponType) {
         String base=" WHERE "+SELECTABLE+" AND category=?";
         var args=new ArrayList<Object>(); args.add(category);
         String raceCondition=switch(race) {
@@ -173,11 +173,18 @@ public class EquipmentRepository {
         };
         base+=raceCondition;
         if(equipmentClass!=null) {
-            int expert=switch(equipmentClass) { case "MELEE" -> 0; case "RANGER" -> 1; case "FORCE" -> 3; default -> throw new IllegalArgumentException("Classe inválida"); };
-            base+=" AND edf_expert_id IN (?,255)"; args.add(expert);
+            int expert=switch(equipmentClass) { case "MELEE" -> 0; case "RANGER" -> 1; case "FORCE" -> 3; case "LAUNCHER" -> 2; default -> throw new IllegalArgumentException("Classe inválida"); };
+            if(category.equals("WEAPON")) base+=" AND edf_weapon_type IN ("+switch(equipmentClass) {case "MELEE" -> "0,1,2,3,4"; case "RANGER" -> "5,6,8"; case "LAUNCHER" -> "7,11"; default -> "9";}+")";
+            else { base+=" AND edf_expert_id IN (?,255)"; args.add(expert); }
         }
         if(level!=null) { base+=" AND edf_level=?"; args.add(level); }
         if(grade!=null) { base+=" AND edf_grade=?"; args.add(grade); }
+        if(accessoryEffect!=null) {
+            int effect=switch(accessoryEffect) {case "ATTACK" -> 6; case "DODGE" -> 4; default -> 7;};
+            base+=" AND EXISTS (SELECT 1 FROM jsonb_array_elements(edf_effects) effect WHERE (effect->>'code')::int=? AND (effect->>'value')::numeric>0)"; args.add(effect);
+        }
+        var weaponTypes=category.equals("WEAPON")?jdbc.queryForList("SELECT DISTINCT edf_weapon_type FROM game_lua_item"+base+" AND edf_weapon_type IS NOT NULL ORDER BY edf_weapon_type",Integer.class,args.toArray()):List.<Integer>of();
+        if(weaponType!=null) { base+=" AND edf_weapon_type=?"; args.add(weaponType); }
         var abilities=jdbc.queryForList("SELECT DISTINCT "+ABILITY+" AS ability FROM game_lua_item"+base+" AND edf_grade=3 AND "+ABILITY+" IS NOT NULL ORDER BY ability",String.class,args.toArray());
         if(ability!=null && !ability.isBlank()) { base+=" AND edf_grade=3 AND "+ABILITY+"=?"; args.add(ability); }
         String where=base+" AND (edf_name ILIKE ? ESCAPE '!' OR game_code ILIKE ? ESCAPE '!')";
@@ -186,23 +193,24 @@ public class EquipmentRepository {
         long total=jdbc.queryForObject("SELECT count(*) FROM game_lua_item"+where,Long.class,args.toArray());
         args.add(search); args.add(search); args.add(size); args.add((long)page*size);
         return new CatalogPage(jdbc.query("SELECT * FROM game_lua_item"+where+" ORDER BY edf_level ASC,CASE WHEN lower(game_code)=lower(?) THEN 0 WHEN lower(edf_name)=lower(?) THEN 1 ELSE 2 END,lower(edf_name),id LIMIT ? OFFSET ?",
-            catalogMapper(),args.toArray()),total,page,size,abilities);
+            catalogMapper(),args.toArray()),total,page,size,abilities,weaponTypes);
     }
     public void importItems(ImportRequest request, List<List<Effect>> effects) {
         // O lote é um retrato completo: ausências/inativos não podem continuar selecionáveis.
         jdbc.update("UPDATE game_lua_item SET edf_source_hash=NULL WHERE edf_source_hash IS NOT NULL");
         jdbc.batchUpdate("""
             INSERT INTO game_lua_item(category,game_code,name,game_index,icon_id,sprite_sheet,sprite_cols,item_grade,level_required,
-                edf_name,edf_level,edf_grade,edf_effects,edf_source_hash,edf_icon_id,edf_effects_note,edf_civil,edf_expert_id)
-            VALUES(?,?,?,0,0,'',32,?,?, ?,?,?,?::jsonb,?,?,?,?,?)
+                edf_name,edf_level,edf_grade,edf_effects,edf_source_hash,edf_icon_id,edf_effects_note,edf_civil,edf_expert_id,edf_weapon_type)
+            VALUES(?,?,?,0,0,'',32,?,?, ?,?,?,?::jsonb,?,?,?,?,?,?)
             ON CONFLICT(category,game_code) DO UPDATE SET edf_name=EXCLUDED.edf_name,edf_level=EXCLUDED.edf_level,
                 edf_grade=EXCLUDED.edf_grade,edf_effects=EXCLUDED.edf_effects,edf_source_hash=EXCLUDED.edf_source_hash,
                 edf_icon_id=EXCLUDED.edf_icon_id,edf_effects_note=EXCLUDED.edf_effects_note,
-                edf_civil=EXCLUDED.edf_civil,edf_expert_id=EXCLUDED.edf_expert_id
+                edf_civil=EXCLUDED.edf_civil,edf_expert_id=EXCLUDED.edf_expert_id,edf_weapon_type=EXCLUDED.edf_weapon_type
             """,java.util.stream.IntStream.range(0,request.items().size()).mapToObj(index->{
                 var i=request.items().get(index);
                 return new Object[]{i.category(),i.gameCode(),i.name(),i.grade(),i.level(),i.name(),
-                    i.level(),i.grade(),encode(effects.get(index)),request.sourceHash(),i.iconId(),i.effectsNote(),i.civil(),i.expertId()};
+                    i.level(),i.grade(),encode(effects.get(index)),request.sourceHash(),i.iconId(),i.effectsNote(),i.civil(),i.expertId(),
+                    i.category().equals("WEAPON") && i.itemType()!=null && i.itemType().matches("(?:[0-9]|1[01])")?Integer.valueOf(i.itemType()):null};
             }).toList());
         for(var excluded:request.excluded()) jdbc.update("UPDATE game_lua_item SET edf_source_hash=NULL WHERE category=? AND game_code=?",excluded.category(),excluded.gameCode());
         jdbc.update("""

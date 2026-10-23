@@ -18,6 +18,7 @@ import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
 import { ApprovalsListener } from '@/Features/Admin/Approvals/ApprovalsListener'
 import { ApprovalsNavBadge } from '@/Features/Admin/Approvals/components/ApprovalsNavBadge/ApprovalsNavBadge'
 import type { Role } from '@/Domain/types/models'
+import { useEquipmentSubscription } from '@/Domain/Equipment/hooks/useEquipment'
 import './Layout.styles.scss'
 
 const NAV_ITEMS = [
@@ -96,6 +97,7 @@ function LayoutShell() {
   usePointsSubscription(user?.memberId)
   useMemberLogNotifications(user?.memberId)
   useGuildEmojisSubscription()
+  useEquipmentSubscription()
 
   const adminItems = ADMIN_ITEMS.filter((item) => hasRole(item.minRole))
   const currentLabel =

@@ -57,14 +57,6 @@ function applyLogToCache(queryClient: QueryClient, log: AuditLogEntry) {
 
 export function useLogsSubscription() {
   const queryClient = useQueryClient()
-  const { hasRole } = useAuthContext()
-  const admin = hasRole('ADMINISTRADOR')
-  useEffect(() => {
-    if (!admin) return
-    return subscribeTopicEffect('/topic/equipment', () => {
-      void queryClient.invalidateQueries({ queryKey: logKeys.all })
-    })
-  }, [queryClient, admin])
 
   useEffect(
     () =>

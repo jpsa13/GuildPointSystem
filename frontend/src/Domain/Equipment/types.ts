@@ -29,8 +29,8 @@ export interface EquipmentOperation {
   origin?: EquipmentAssignment['origin']; occurredOn?: string; useAsCurrent: boolean; replacementId?: number; restoration?: 'EMPTY' | 'PREVIOUS'; reason?: string
   transfer?: { memberId: number; slot?: EquipmentSlot; expectedVersion: number; replaceCurrent: boolean }
 }
-export interface CatalogFilters { race?: 'CORA' | 'BELLATO' | 'ACCRETIA' | 'ALL'; equipmentClass?: 'MELEE' | 'RANGER' | 'FORCE'; level?: number; grade?: number; ability?: string }
-export interface CatalogPage { abilities?: string[]; items: EquipmentItem[]; total: number; page: number; size: number }
+export interface CatalogFilters { race?: 'CORA' | 'BELLATO' | 'ACCRETIA' | 'ALL'; equipmentClass?: 'MELEE' | 'RANGER' | 'FORCE' | 'LAUNCHER'; level?: number; grade?: number; ability?: string; accessoryEffect?: 'ATTACK' | 'DODGE' | 'DEFENSE'; weaponType?: number }
+export interface CatalogPage { abilities?: string[]; weaponTypes?: number[]; items: EquipmentItem[]; total: number; page: number; size: number }
 export interface ImportStatus { imported_count?: number; excluded?: string }
 
 export interface EquipmentReview { id: string; memberId: number; requestedAt: string; dueAt: string; confirmedAt: string | null; status: 'PENDING' | 'OVERDUE' | 'CONFIRMED'; overdue: boolean }

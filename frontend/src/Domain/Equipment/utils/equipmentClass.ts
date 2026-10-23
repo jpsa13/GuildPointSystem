@@ -12,3 +12,7 @@ const ARMOR_CLASSES: Record<string, NonNullable<CatalogFilters['equipmentClass']
 export function armorClassForCharacter(className?: string) {
   return ARMOR_CLASSES[className?.trim().toLowerCase() ?? '']
 }
+
+export function weaponClassForCharacter(className?: string) {
+  return ['gunner', 'striker', 'dementer'].includes(className?.trim().toLowerCase() ?? '') ? 'LAUNCHER' as const : armorClassForCharacter(className)
+}

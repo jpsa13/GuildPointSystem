@@ -5,7 +5,7 @@ import { useEquipment, useEquipmentHistory, useEquipmentCatalog, useEquipmentOpe
 import { EQUIPMENT_GROUPS, SLOT_CATEGORY, type CatalogFilters, type CurrentSlot, type EquipmentAssignment, type EquipmentEffect, type EquipmentItem, type EquipmentOperation, type EquipmentSlot, type EquipmentSlotEdit, type EquipmentSlotEditResult, type MemberEquipment } from '@/Domain/Equipment/types'
 import { useMember } from '@/Domain/Member/hooks/useMembers'
 import { summarizeDeliveries } from '@/Domain/Equipment/utils/equipmentDeliveries'
-import { armorClassForCharacter } from '@/Domain/Equipment/utils/equipmentClass'
+import { armorClassForCharacter, weaponClassForCharacter } from '@/Domain/Equipment/utils/equipmentClass'
 import { gradeLabel as catalogGradeLabel } from '@/Domain/Catalog/utils/catalogUtils'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { Button } from '@/Shared/ui/components/Button/Button'
@@ -372,13 +372,14 @@ export function EquipmentPage() {
 }
 
 type EquipmentEditorProps = { editor: Editor; members: MemberEquipment[]; onClose: () => void; onSaved: () => void }
+const WEAPON_TYPE_LABELS: Record<number, string> = { 0: 'Faca', 1: 'Espada', 2: 'Machado', 3: 'Maça', 4: 'Lança', 5: 'Arco', 6: 'Arma de fogo', 7: 'Lançador', 8: 'Faca de arremesso', 9: 'Cajado', 10: 'Ferramenta de mineração', 11: 'Lança-granadas' }
 function EquipmentEditor(props: EquipmentEditorProps) {
   const { hasRole } = useAuthContext()
-  const useCharacterClass = hasRole('ADMINISTRADOR') && ['CREATE', 'CORRECT'].includes(props.editor.action) && ['Helmet', 'Upper', 'Lower', 'Gloves', 'Shoes'].includes(props.editor.position.slot)
+  const useCharacterClass = ['CREATE', 'CORRECT'].includes(props.editor.action) && (['Weapon', 'Weapon2'].includes(props.editor.position.slot) || (hasRole('ADMINISTRADOR') && ['Helmet', 'Upper', 'Lower', 'Gloves', 'Shoes'].includes(props.editor.position.slot)))
   const profile = useMember(useCharacterClass ? props.editor.memberId : 0)
   if (useCharacterClass && profile.isLoading) return <p role="status">Carregando classe do personagem…</p>
   if (useCharacterClass && profile.error) return <div role="alert">{profile.error.message}<Button onClick={() => void profile.refetch()}>Tentar novamente</Button><Button variant="secondary" onClick={props.onClose}>Fechar</Button></div>
-  return <EquipmentEditorForm {...props} initialClass={useCharacterClass ? armorClassForCharacter(profile.data?.className) : undefined} />
+  return <EquipmentEditorForm {...props} initialClass={useCharacterClass ? (SLOT_CATEGORY[props.editor.position.slot] === 'WEAPON' ? weaponClassForCharacter : armorClassForCharacter)(profile.data?.className) : undefined} />
 }
 function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }: EquipmentEditorProps & { initialClass?: CatalogFilters['equipmentClass'] }) {
   const { showToast } = useAppToast()
@@ -447,6 +448,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
     else setOperationId(crypto.randomUUID())
   }
   const changeFilters = (next: CatalogFilters) => {
+    if (next.equipmentClass !== filters.equipmentClass || next.race !== filters.race) next = { ...next, weaponType: undefined, ability: undefined }
     setFilters(next); setPage(0); setItem(null); setEffect(''); setAutoResolve(true); setOperationId(crypto.randomUUID())
   }
   const operation = (selectedItem = item, selectedKey = effect): EquipmentOperation => ({
@@ -514,7 +516,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
           </div>}
         </section>}
         <div className="equipment-catalog-search">
-        <label>Raça do equipamento<select disabled={restricted} value={filters.race ?? 'CORA'} onChange={e => changeFilters({ ...filters, race: e.target.value as CatalogFilters['race'] })}>
+        <label>Raça do equipamento<select disabled={cloak} value={filters.race ?? 'CORA'} onChange={e => changeFilters({ ...filters, race: e.target.value as CatalogFilters['race'] })}>
           <option value="CORA">Cora</option><option value="BELLATO">Bellato</option><option value="ACCRETIA">Accretia</option><option value="ALL">Todas as raças</option>
         </select></label>
         <label>Pesquisar item por nome ou código<input value={search} onChange={e => { setSearch(e.target.value); setItem(null); setEffect(''); setAutoResolve(true) }} placeholder="Nome ou código do item" maxLength={200} /></label>
@@ -522,6 +524,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
         {!restricted && <div className="equipment-class-grade">
         <fieldset className="equipment-filters"><legend>Classe do equipamento</legend><div>
           {([['MELEE', 'Melee'], ['RANGER', 'Ranger'], ['FORCE', 'Force']] as const).map(([equipmentClass, label]) => <Button key={equipmentClass} type="button" size="sm" variant="secondary" aria-pressed={filters.equipmentClass === equipmentClass} onClick={() => changeFilters({ ...filters, equipmentClass: filters.equipmentClass === equipmentClass ? undefined : equipmentClass })}>{label}</Button>)}
+          {weapon && <Button type="button" size="sm" variant="secondary" aria-pressed={filters.equipmentClass === 'LAUNCHER'} onClick={() => changeFilters({ ...filters, equipmentClass: filters.equipmentClass === 'LAUNCHER' ? undefined : 'LAUNCHER' })}>Launcher</Button>}
           <Button type="button" size="sm" variant="secondary" aria-pressed={!filters.equipmentClass} onClick={() => changeFilters({ ...filters, equipmentClass: undefined })}>Todas as classes</Button>
         </div></fieldset>
         <fieldset className="equipment-filters"><legend>Grade do item</legend><div>
@@ -530,6 +533,14 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
           <Button type="button" size="sm" variant="secondary" aria-pressed={filters.grade === 3} onClick={() => changeFilters({ ...filters, level: weapon ? filters.level : undefined, grade: filters.grade === 3 ? undefined : 3, ability: undefined })}>C</Button>
         </div></fieldset>
         </div>}
+        {accessory && <fieldset className="equipment-filters"><legend>Tipo de acessório</legend><div>
+          <Button type="button" size="sm" variant="secondary" aria-pressed={!filters.accessoryEffect} onClick={() => changeFilters({ ...filters, accessoryEffect: undefined })}>Todos</Button>
+          {([['ATTACK', 'Ataque'], ['DODGE', 'Esquiva'], ['DEFENSE', 'Defesa']] as const).map(([accessoryEffect, label]) => <Button key={accessoryEffect} type="button" size="sm" variant="secondary" aria-pressed={filters.accessoryEffect === accessoryEffect} onClick={() => changeFilters({ ...filters, accessoryEffect: filters.accessoryEffect === accessoryEffect ? undefined : accessoryEffect })}>{label}</Button>)}
+        </div></fieldset>}
+        {weapon && <fieldset className="equipment-filters"><legend>Tipo de arma</legend><div>
+          <Button type="button" size="sm" variant="secondary" aria-pressed={filters.weaponType === undefined} onClick={() => changeFilters({ ...filters, weaponType: undefined })}>Todos</Button>
+          {data?.weaponTypes?.map(weaponType => <Button key={weaponType} type="button" size="sm" variant="secondary" aria-pressed={filters.weaponType === weaponType} onClick={() => changeFilters({ ...filters, weaponType: filters.weaponType === weaponType ? undefined : weaponType })}>{WEAPON_TYPE_LABELS[weaponType] ?? `Tipo ${weaponType}`}</Button>)}
+        </div></fieldset>}
         {weapon ? <fieldset className="equipment-filters"><legend>Nível do item</legend><WeaponLevelInput value={filters.level} onChange={level => changeFilters({ ...filters, level })} />{!validLevel && <p role="status">Informe um nível inteiro entre 35 e 50.</p>}</fieldset> : accessory ? null : cloak ? <fieldset className="equipment-filters"><legend>Nível do item</legend><div>{[undefined, 40, 50].map(level => <Button key={level ?? 'all'} type="button" size="sm" variant="secondary" aria-pressed={filters.level === level} onClick={() => changeFilters({ ...filters, level })}>{level ?? 'Todos'}</Button>)}</div></fieldset> : <fieldset className="equipment-filters"><legend>Nível do item</legend><div>
           <Button type="button" size="sm" variant="secondary" aria-pressed={filters.level === undefined} onClick={() => changeFilters({ ...filters, level: undefined })}>Todos 35–55</Button>
           {(filters.grade === 3 ? TYPE_C_LEVELS : [37, 39, 41, 43, 45, 47, 50].map(level => ({ base: level, required: level }))).map(level => <Button key={level.base} type="button" size="sm" variant="secondary" aria-pressed={filters.level === level.required} onClick={() => changeFilters({ ...filters, level: filters.level === level.required ? undefined : level.required })}>{filters.grade === 3 ? `${level.base} → ${level.required}` : level.required}</Button>)}
