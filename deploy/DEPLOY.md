@@ -50,6 +50,12 @@ Wait for propagation (often 5–30 min). SSL is automatic on Vercel and Coolify 
 
 Se Party falhar só em produção, veja [party-prod-flyway.md](party-prod-flyway.md) (conflito Flyway `V23` + migration `V24`).
 
+### Equipment catalog
+
+The equipment catalog is bundled in the backend JAR as `equipment-catalog.json.gz`. On the first startup, the application imports it automatically when no previous equipment import or EDF metadata exists. Redeploy the backend as well as the frontend after integrating this change; copying frontend icons alone does not populate item searches. The normal application startup uses this initializer; the `test` profile keeps fixture-driven tests isolated.
+
+Existing imports and player equipment are preserved. No production token or external EDF file is needed for the initial load. Details: [equipment integration](../preparacao/INTEGRACAO_PR.md).
+
 ### Troubleshooting healthcheck
 
 If deploy builds but healthcheck fails (`Could not connect to localhost:8080`):

@@ -1,5 +1,6 @@
 package com.guild.app.equipment.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.guild.app.common.enums.*;
 import com.guild.app.common.exception.AppException;
 import com.guild.app.common.security.SecurityUtils;
@@ -12,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.core.io.ClassPathResource;
+import java.io.IOException;
+import java.util.zip.GZIPInputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.math.BigDecimal;
@@ -25,6 +29,8 @@ public class EquipmentService {
     private final MemberRepository members;
     private final EquipmentEffectDictionary dictionary;
     private final AuditLogService audit;
+    private final ObjectMapper json;
+    private final jakarta.validation.Validator validator;
 
     private Member actor(boolean mutation) {
         var actor=members.findById(SecurityUtils.currentMember().getId()).orElseThrow(()->error("Conta não encontrada.",HttpStatus.FORBIDDEN));
@@ -301,6 +307,19 @@ public class EquipmentService {
     public Map<String,Object> importCatalog(ImportRequest request) {
         var actor=actor(true);
         repository.lockImport();
+        return saveCatalog(request,actor);
+    }
+    @Transactional(rollbackFor=IOException.class)
+    public void initializeCatalog() throws IOException {
+        repository.lockImport();
+        // Um catálogo já administrado nunca é substituído pela versão embutida.
+        if(!repository.importStatus().isEmpty() || repository.hasCatalogMetadata()) return;
+        try(var input=new GZIPInputStream(new ClassPathResource("equipment-catalog.json.gz").getInputStream())) {
+            saveCatalog(json.readValue(input,ImportRequest.class),null);
+        }
+    }
+    private Map<String,Object> saveCatalog(ImportRequest request,Member actor) {
+        require(validator.validate(request).isEmpty(),"Catálogo de equipamentos inválido.");
         var keys=new HashSet<String>();
         var effects=new ArrayList<List<Effect>>();
         for(var item:request.items()) {
