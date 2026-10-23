@@ -156,6 +156,15 @@ export function useLeavePartyLfg() {
   })
 }
 
+/** Admin: takes another member off the waiting list. */
+export function useRemoveFromPartyLfg() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (memberId: number) => apiClient<PartyBoard>(`/parties/lfg/${memberId}`, { method: 'DELETE' }),
+    onSuccess: (data) => setBoard(queryClient, data),
+  })
+}
+
 export function useAddAllToPartyLfg() {
   const queryClient = useQueryClient()
   return useMutation({

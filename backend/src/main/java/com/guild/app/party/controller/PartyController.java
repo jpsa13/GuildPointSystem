@@ -116,4 +116,9 @@ public class PartyController {
     public PartyBoardResponse leaveLfg() {
         return partyService.leaveLfg(SecurityUtils.currentMember());
     }
+
+    @DeleteMapping("/lfg/{memberId}")
+    public PartyBoardResponse removeFromLfg(@PathVariable Long memberId) {
+        return partyService.removeFromLfg(memberId, SecurityUtils.currentMember());
+    }
 }

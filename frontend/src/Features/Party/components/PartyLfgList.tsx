@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { PartyLfgEntry } from '@/Features/Party/Party.types'
 import { formatWaiting, sortByWaiting } from '@/Features/Party/utils/partyWait'
 import { setPartyDragData } from '@/Features/Party/utils/partyDrag'
@@ -15,10 +16,13 @@ export function PartyLfgList({
   entries,
   viewerId,
   canDrag,
+  actions,
 }: {
   entries: PartyLfgEntry[]
   viewerId?: number
   canDrag: boolean
+  /** Extra buttons at the end of a card (e.g. admin "remove from the list"). */
+  actions?: (entry: PartyLfgEntry) => ReactNode
 }) {
   const now = useServerNow()
   const ordered = sortByWaiting(entries)
@@ -58,8 +62,10 @@ export function PartyLfgList({
                   {entry.nickname}
                   {isMe ? ' (você)' : ''}
                 </strong>
-                <span>
-                  {entry.className ?? 'Classe'} · Lv {entry.level}
+                {/* Only the class name is cut when narrow; the level always shows. */}
+                <span className="party-lfg-item__meta">
+                  <span className="party-lfg-item__class">{entry.className ?? 'Classe'}</span>
+                  <span className="party-lfg-item__level">· Lv {entry.level}</span>
                 </span>
               </div>
               <span
@@ -68,6 +74,11 @@ export function PartyLfgList({
               >
                 {formatWaiting(now - new Date(entry.createdAt).getTime())}
               </span>
+              {actions && (
+                <div className="party-lfg-item__actions" draggable={false} onDragStart={(e) => e.stopPropagation()}>
+                  {actions(entry)}
+                </div>
+              )}
             </div>
           </li>
         )

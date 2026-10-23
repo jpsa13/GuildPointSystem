@@ -31,7 +31,6 @@ const NAV_ITEMS = [
   { to: '/items', label: 'Itens' },
   { to: '/equipment', label: 'Equipamentos' },
   { to: '/auctions', label: 'Leilões' },
-  { to: '/server-info', label: 'Cerberus' },
 ]
 
 /** Reached from the member card at the top of the sidebar, not from the nav list. */

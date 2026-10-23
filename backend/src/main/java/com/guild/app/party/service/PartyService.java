@@ -605,6 +605,22 @@ public class PartyService {
         return getBoard(actor);
     }
 
+    /** Admin: takes another member off the waiting list. */
+    @Transactional
+    public PartyBoardResponse removeFromLfg(Long memberId, MemberPrincipal actor) {
+        var organizer = requireApproved(actor);
+        if (!canOrganizeParties(organizer)) {
+            throw new AppException(
+                    "Apenas administradores podem remover membros da lista de espera",
+                    HttpStatus.FORBIDDEN);
+        }
+        var existing = partyLfgRepository.findByMemberId(memberId)
+                .orElseThrow(() -> new AppException("Membro não está na lista de espera", HttpStatus.BAD_REQUEST));
+        partyLfgRepository.delete(existing);
+        publishBoard();
+        return getBoard(actor);
+    }
+
     /** Admin shortcut: every approved member not already in a PT or on the list joins the waiting list. */
     @Transactional
     public PartyBoardResponse addAllMembersToLfg(MemberPrincipal actor) {

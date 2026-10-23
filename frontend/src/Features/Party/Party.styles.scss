@@ -284,15 +284,29 @@
     overflow-wrap: anywhere;
   }
 
-  span {
-    display: block;
+  .party-lfg-item__meta {
+    display: flex;
+    gap: 0.5ch;
     font-family: theme.$font-mono;
     font-size: 14px;
     color: theme.$color-text-muted;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .party-lfg-item__class {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .party-lfg-item__level {
+    flex-shrink: 0;
+  }
+}
+
+.party-lfg-item__actions {
+  flex-shrink: 0;
+  display: flex;
 }
 
 .party-pending {

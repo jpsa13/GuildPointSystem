@@ -10,6 +10,7 @@ import {
   useKickPartyMember,
   useLeaveParty,
   useLeavePartyLfg,
+  useRemoveFromPartyLfg,
   useMovePartyMember,
   usePartyBoard,
   usePartyMemberNotices,
@@ -391,6 +392,8 @@ export function PartyPage() {
   const upsertLfg = useUpsertPartyLfg()
   const leaveLfg = useLeavePartyLfg()
   const addAllToLfg = useAddAllToPartyLfg()
+  const removeFromLfg = useRemoveFromPartyLfg()
+  const [lfgRemovingId, setLfgRemovingId] = useState<number | null>(null)
   const [addAllOpen, setAddAllOpen] = useState(false)
 
   const onPartyNotice = useCallback(
@@ -676,7 +679,30 @@ export function PartyPage() {
             {board.lfg.length === 0 ? (
               <p className="party-page__empty party-page__empty--panel">Ninguém na lista de espera.</p>
             ) : (
-              <PartyLfgList entries={board.lfg} viewerId={user?.memberId} canDrag={canDragFromLfg} />
+              <PartyLfgList
+                entries={board.lfg}
+                viewerId={user?.memberId}
+                canDrag={canDragFromLfg}
+                actions={
+                  my.canOrganizeParties
+                    ? (entry) => (
+                        <PartyIconButton
+                          label={`Remover ${entry.nickname} da lista de espera`}
+                          loading={lfgRemovingId === entry.memberId}
+                          onClick={() => {
+                            setLfgRemovingId(entry.memberId)
+                            removeFromLfg.mutate(entry.memberId, {
+                              onSettled: () => setLfgRemovingId(null),
+                              onError: failToast,
+                            })
+                          }}
+                        >
+                          <IconRemove />
+                        </PartyIconButton>
+                      )
+                    : undefined
+                }
+              />
             )}
           </Panel>
         </div>
