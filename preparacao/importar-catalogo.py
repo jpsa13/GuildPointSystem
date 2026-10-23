@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parent
+PACKAGED_CATALOG = ROOT.parent / "backend/src/main/resources/equipment-catalog.json.gz"
 sys.path.insert(0, str(ROOT))
 from equipment_effects import build_baselines, extra_effects
 # Células completas nas folhas DDS atuais; índices inválidos não impedem uso do modelo.
@@ -84,7 +85,7 @@ if __name__ == "__main__":
         unique_active = prepare({"sources": [{"sha256": "a" * 64}], "tables": {
             "RING": {"records": [row("one"), row("one", 0), row("one", 0)]}}})
         assert [i["gameCode"] for i in unique_active["items"]] == ["one"]
-        with gzip.open(ROOT / "catalogo-equipamentos.json.gz", "rt", encoding="utf-8") as source:
+        with gzip.open(PACKAGED_CATALOG, "rt", encoding="utf-8") as source:
             packaged = json.load(source)
         assert len(packaged["items"]) == 50612 and len(packaged["excluded"]) == 751
         assert len({(i["category"], i["gameCode"]) for i in packaged["items"]}) == len(packaged["items"])
@@ -98,7 +99,7 @@ if __name__ == "__main__":
         if snapshot_path.exists():
             payload = prepare(json.loads(snapshot_path.read_text(encoding="utf-8")))
         else:
-            with gzip.open(ROOT / "catalogo-equipamentos.json.gz", "rt", encoding="utf-8") as source:
+            with gzip.open(PACKAGED_CATALOG, "rt", encoding="utf-8") as source:
                 payload = json.load(source)
         request = Request("http://127.0.0.1:18080/api/equipment/catalog/import",
                           data=json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8"),

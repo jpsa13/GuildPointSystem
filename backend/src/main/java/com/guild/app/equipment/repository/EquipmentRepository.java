@@ -214,5 +214,8 @@ public class EquipmentRepository {
         var rows=jdbc.queryForList("SELECT source_hash,imported_at,imported_count,excluded::text FROM equipment_catalog_import ORDER BY imported_at DESC LIMIT 1");
         return rows.isEmpty()?Map.of():rows.getFirst();
     }
+    public boolean hasCatalogMetadata() {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM game_lua_item WHERE edf_source_hash IS NOT NULL)",Boolean.class));
+    }
     public void lockImport() { jdbc.execute("SELECT pg_advisory_xact_lock(55055)"); }
 }

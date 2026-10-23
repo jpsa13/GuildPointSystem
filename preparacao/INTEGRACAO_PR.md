@@ -16,9 +16,11 @@ As migrations novas são **V57 a V63**. V55 (suspensão de membros) e V56 (pedid
 
 Build e execução de produção continuam usando as configurações existentes do projeto. As configurações, credenciais e scripts de inicialização do laboratório não fazem parte deste PR.
 
-As migrations criam a estrutura; o catálogo precisa de **uma importação administrativa** antes de oferecer modelos. O pacote `catalogo-equipamentos.json.gz` contém 50.612 modelos e 751 exclusões da fonte já validada, sem contas, equipamentos de jogadores, tokens ou dados dos bancos locais. A busca aplica filtros adicionais, portanto não oferece todos os modelos importados. Os PNGs e o manifesto de ícones usam a mesma versão de origem. A associação visual de alguns ícones ainda precisa de confirmação no jogo.
+As migrations criam a estrutura. O catálogo agora acompanha o backend em `backend/src/main/resources/equipment-catalog.json.gz`, portanto entra no JAR e na imagem Docker. Na primeira inicialização fora do perfil `test`, o backend importa automaticamente os 50.612 modelos e 751 exclusões se não houver histórico de importação nem metadados EDF existentes. A carga usa transação e o mesmo bloqueio da importação administrativa, não exige login, gera auditoria privada com autor System e não é repetida a cada reinício. Falhas de leitura ou validação impedem uma inicialização silenciosa com catálogo vazio. Não houve alteração de migrations já aplicadas.
 
-Para importar, use `python -B preparacao/importar-catalogo.py` com `EQUIPMENT_LOCAL_TOKEN` contendo uma sessão administrativa válida, somente na memória do processo. O script mantém a URL fixa em `http://127.0.0.1:18080/api/equipment/catalog/import`. Para a instalação futura, execute-o junto ao backend nesse endereço ou por túnel loopback autenticado previamente conferido. Não foi feita importação no site publicado. Sem o snapshot EDF local, o script lê o pacote compactado deste PR; com o snapshot, regenera o payload pela mesma regra. A importação preserva os campos originais do catálogo compartilhado e os snapshots das entregas anteriores.
+O pacote contém apenas dados do catálogo, sem contas, equipamentos dos jogadores ou credenciais. A busca aplica filtros adicionais; os PNGs e o manifesto de ícones usam a mesma versão de origem. Alguns vínculos de ícones ainda precisam de confirmação visual no jogo.
+
+Para instalações que já receberam importação administrativa ou possuem metadados EDF, a inicialização preserva os dados existentes, mesmo que sejam diferentes da versão embutida. Não tenta reparar automaticamente importações antigas ou catálogos esvaziados. A ferramenta manual `python -B preparacao/importar-catalogo.py` continua disponível para manutenção autenticada, com `EQUIPMENT_LOCAL_TOKEN` somente na memória do processo e URL fixa `http://127.0.0.1:18080/api/equipment/catalog/import`. Sem o snapshot EDF local, ela lê o mesmo recurso compactado do backend. Nenhuma carga foi executada no site oficial durante esta correção.
 
 Bancos, uploads de teste, runtimes, cache Maven, evidências e o snapshot EDF completo não fazem parte deste PR.
 
@@ -26,6 +28,7 @@ Bancos, uploads de teste, runtimes, cache Maven, evidências e o snapshot EDF co
 
 - Frontend: build, 142 testes e lint dos arquivos novos/alterados.
 - Importador: self-check do pacote e das regras de duplicação/inatividade, mais 7 testes dos efeitos extras.
-- Backend: Maven verify aprovado, 73 testes sem falhas/erros/ignorados, contra PostgreSQL novo e isolado, com toda a sequência da `main` e V57–V63.
+- Backend: Maven verify com 76 testes aprovados. Os testes de inicialização cobrem o pacote completo, auditoria System privada, reinicialização sem sobrescrita, preservação de importação prévia e de metadados sem histórico.
+- Smoke test do JAR em banco novo: health UP, importação automática de 50.612 modelos, nove categorias com resultados Cora. Helmet Cora/Force/C nível 38 retornou 10 modelos; arma Cora/C nível 45 retornou 238. Os sete PNGs públicos de ícones do site oficial responderam HTTP 200. A consulta administrativa do catálogo oficial exige autenticação; seu banco não foi acessado nem alterado.
 
 A branch original do laboratório e seu banco foram preservados. A integração usa a branch `codex/modulo-equipamentos`, baseada na `main` atualizada. Abrir este PR não integra nem publica a mudança.
