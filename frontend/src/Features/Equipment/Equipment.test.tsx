@@ -22,7 +22,7 @@ vi.mock('@/Domain/Equipment/hooks/useEquipment', () => ({
   useEquipmentHistory: (id: number, enabled = true) => { state.historyQuery(id, enabled); return { data: enabled && id > 0 ? state.history : [], refetch: state.refetch } },
   useEquipmentCatalog: (category: string, search: string, page: number, enabled: boolean, filters: CatalogFilters) => {
     state.catalog(category, search, page, enabled, filters)
-    return { data: { items: [{ id: 7, category, gameCode: 'iwstb25', name: 'Intense Staff', level: 50, grade: state.catalogGrade, effects: state.multiEffects ? [effect, { ...effect, key: '15:0.1', value: 0.1 }] : [effect], effectsNote: state.effectsNote }], total: state.catalogTotal, abilities: ['Fine', 'Solid', 'Guardian'], size: 30, page: 0 } }
+    return { data: { items: [{ id: 7, category, gameCode: 'iwstb25', name: 'Intense Staff', level: 50, grade: state.catalogGrade, effects: state.multiEffects ? [effect, { ...effect, key: '15:0.1', value: 0.1 }] : [effect], effectsNote: state.effectsNote }], total: state.catalogTotal, abilities: ['Fine', 'Solid', 'Guardian'], weaponTypes: filters.equipmentClass === 'FORCE' ? [9] : filters.equipmentClass === 'RANGER' ? [5, 6, 8] : filters.equipmentClass === 'MELEE' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11], size: 30, page: 0 } }
   },
   useEquipmentSlotEdit: () => ({ mutateAsync: state.slotEdit, isPending: false }),
   useEquipmentOperation: () => ({ mutateAsync: state.mutate, isPending: false }),
@@ -42,6 +42,33 @@ function openEditor(slot = 'Weapon') {
 function selectItem() { fireEvent.click(screen.getByRole('button', { name: 'Selecionar Intense Staff · iwstb25' })) }
 
 describe('Equipamentos', () => {
+  it.each([true, false])('defaults weapon class and clears the type when switching class (admin=%s)', admin => {
+    state.admin = admin; state.userId = 1; state.className = 'Warlock'
+    render(<EquipmentPage />); openEditor()
+    expect(screen.getByRole('button', { name: 'Force' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Cajado' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Espada' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cajado' }))
+    expect(state.catalog.mock.lastCall?.[4]).toMatchObject({ equipmentClass: 'FORCE', weaponType: 9 })
+    fireEvent.click(screen.getByRole('button', { name: 'Melee' }))
+    expect(state.catalog.mock.lastCall?.[4]).toMatchObject({ equipmentClass: 'MELEE', weaponType: undefined })
+    expect(screen.queryByRole('button', { name: 'Cajado' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Espada' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Espada' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de arma' })).getByRole('button', { name: 'Todos' }))
+    expect(state.catalog.mock.lastCall?.[4]).toMatchObject({ equipmentClass: 'MELEE', weaponType: undefined })
+  })
+  it('filters accessories by effect and lets the selected race constrain the results', () => {
+    render(<EquipmentPage />); openEditor('Ring1')
+    expect(screen.getByLabelText('Raça do equipamento')).toBeEnabled()
+    fireEvent.change(screen.getByLabelText('Raça do equipamento'), { target: { value: 'ACCRETIA' } })
+    for (const [label, accessoryEffect] of [['Ataque', 'ATTACK'], ['Esquiva', 'DODGE'], ['Defesa', 'DEFENSE']]) {
+      fireEvent.click(screen.getByRole('button', { name: label }))
+      expect(state.catalog.mock.lastCall?.[4]).toMatchObject({ race: 'ACCRETIA', accessoryEffect })
+    }
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de acessório' })).getByRole('button', { name: 'Todos' }))
+    expect(state.catalog.mock.lastCall?.[4]).toMatchObject({ race: 'ACCRETIA', accessoryEffect: undefined })
+  })
   it.each([['Warrior', 'Melee', 'MELEE'], ['Adventurer', 'Ranger', 'RANGER'], ['Warlock', 'Force', 'FORCE']])('defaults armor to the inspected character class %s', (className, label, equipmentClass) => {
     state.className = className
     render(<EquipmentPage />); openEditor('Helmet')
@@ -62,7 +89,7 @@ describe('Equipamentos', () => {
     render(<EquipmentPage />); openEditor('Helmet')
     expect(screen.getByRole('button', { name: 'Todas as classes' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(within(screen.getByRole('group', { name: 'Inventário de Player local' })).getByRole('button', { name: /^Arma à esquerda:/ }))
-    expect(state.profileQuery).toHaveBeenLastCalledWith(0)
+    expect(state.profileQuery).toHaveBeenLastCalledWith(1)
     expect(state.catalog).toHaveBeenLastCalledWith('WEAPON', '', 0, true, { race: 'CORA', grade: 3, level: 45 })
   })
 
@@ -473,7 +500,8 @@ describe('Equipamentos', () => {
   })
   it.each(['Ring1','Cloak'])('does not apply armor grades or level restrictions to %s', slot => {
     render(<EquipmentPage />); openEditor(slot)
-    expect(screen.getByLabelText('Raça do equipamento')).toBeDisabled()
+    if (slot === 'Cloak') expect(screen.getByLabelText('Raça do equipamento')).toBeDisabled()
+    else expect(screen.getByLabelText('Raça do equipamento')).toBeEnabled()
     expect(screen.queryByRole('group', { name: 'Grade do item' })).not.toBeInTheDocument()
     expect(state.catalog).toHaveBeenLastCalledWith(slot === 'Ring1' ? 'RING' : 'CLOAK', '', 0, true, { race: 'CORA' })
   })

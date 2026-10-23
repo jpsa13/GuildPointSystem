@@ -62,7 +62,7 @@ class EquipmentIntegrationTest {
     }
     @AfterEach void clear() { SecurityContextHolder.clearContext(); }
     ImportRequest importRequest(String name,List<ImportEffect> effects) {
-        return new ImportRequest("a".repeat(64),List.of(new ImportItem("WEAPON",code,name,40,1,effects,42,"9","","11111",0)),List.of());
+        return new ImportRequest("a".repeat(64),List.of(new ImportItem("WEAPON",code,"Intense "+name,40,1,effects,42,"0","","11111",0)),List.of());
     }
     Operation create(Slot slot,long version,boolean equip,String effect) {
         return new Operation(UUID.randomUUID(),Action.CREATE,memberId,slot,version,null,catalogId,effect,
@@ -297,7 +297,7 @@ class EquipmentIntegrationTest {
     @Test void transferKeepsOriginalSnapshotAndLogsBothMembersWithoutDuplicatingOnRetry() {
         var old=service.operate(create(Slot.Weapon2,0,true,"15:0.08"));
         long target=member(Role.MEMBRO,MemberStatus.APROVADO,true);
-        jdbc.update("UPDATE game_lua_item SET edf_name='Novo modelo',edf_icon_id=77 WHERE id=?",catalogId);
+        jdbc.update("UPDATE game_lua_item SET edf_name='Intense Novo modelo',edf_icon_id=77 WHERE id=?",catalogId);
         var operation=repass(Slot.Weapon2,1,target,null,0,false);
         var replacement=service.operate(operation);
         var received=repository.slot(target,Slot.Weapon2).assignment();
@@ -412,8 +412,9 @@ class EquipmentIntegrationTest {
                 jdbc.update("UPDATE game_lua_item SET edf_name='Elemental test' WHERE id=?",id);
                 assertNotNull(repository.catalogItem(id));
                 jdbc.update("UPDATE game_lua_item SET edf_civil='00001' WHERE id=?",id);
-                assertTrue(service.catalog(category,code,0,10,null,null,null,"ALL",null).items().isEmpty());
-                assertNull(repository.catalogItem(id));
+                assertTrue(service.catalog(category,code,0,10).items().isEmpty());
+                assertEquals(id,service.catalog(category,code,0,10,null,null,null,"ACCRETIA",null).items().getFirst().id());
+                assertNotNull(repository.catalogItem(id));
             }
         }
         service.importCatalog(new ImportRequest("a".repeat(64),List.of(new ImportItem("RING",code,"Wrong attack",1,0,
@@ -436,6 +437,59 @@ class EquipmentIntegrationTest {
         }
     }
 
+    @Test void accessoryExclusionsApplyToBothSlotsAndEveryRaceWithoutDeletingEquipment() {
+        var old=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        for(var slot:List.of(Slot.Ring1,Slot.Ring2,Slot.Amulet1,Slot.Amulet2)) {
+            for(var civil:List.of("11000","00110","00001")) {
+                for(var name:List.of("Christmas Elemental Ring","Christmass Elemental Ring","Elemental RingH11","Elemental AmuletH12","Elemental AmuletH55","Elemental Ringh21  ")) {
+                    jdbc.update("UPDATE game_lua_item SET category=?,edf_civil=?,edf_name=? WHERE id=?",slot.category,civil,name,catalogId);
+                    assertTrue(service.catalog(slot.category,code,0,10,null,null,null,"ALL",null).items().isEmpty());
+                    assertNull(repository.catalogItem(catalogId));
+                    assertThrows(AppException.class,()->service.operate(create(slot,0,false,"15:0.08")));
+                }
+            }
+        }
+        assertEquals(old.id(),slot(Slot.Weapon).assignment().id());
+    }
+    @Test void accessoryEffectFiltersIncludeMixedBonusesAndRespectRace() {
+        for(var category:List.of("RING","AMULET")) {
+            service.importCatalog(new ImportRequest("a".repeat(64),List.of(new ImportItem(category,code,"Elemental Mixed",40,1,
+                List.of(new ImportEffect(6,new BigDecimal("0.1")),new ImportEffect(4,BigDecimal.TEN),new ImportEffect(7,new BigDecimal("0.1"))),42,"","","00110",255)),List.of()));
+            for(var effect:List.of("ATTACK","DODGE","DEFENSE")) {
+                assertEquals(1,service.catalog(category,code,0,10,null,null,null,"CORA",null,effect,null).total());
+                assertEquals(0,service.catalog(category,code,0,10,null,null,null,"BELLATO",null,effect,null).total());
+                assertEquals(0,service.catalog(category,code,0,10,null,null,null,"ACCRETIA",null,effect,null).total());
+            }
+            jdbc.update("UPDATE game_lua_item SET edf_effects='[{\"code\":6,\"value\":0.1,\"key\":\"6:0.1\",\"name\":\"Attack\",\"displayType\":\"FLAT\"}]'::jsonb WHERE category=? AND game_code=?",category,code);
+            assertEquals(0,service.catalog(category,code,0,10,null,null,null,"CORA",null,"DODGE",null).total());
+        }
+    }
+    @Test void weaponTypesFollowClassAndOnlyIntenseNamesRemainSelectable() throws Exception {
+        for(int grade:List.of(1,3)) {
+            jdbc.update("UPDATE game_lua_item SET edf_grade=?,edf_name='Fine Intense Test' WHERE id=?",grade,catalogId);
+            assertNotNull(repository.catalogItem(catalogId));
+        }
+        for(int type:List.of(0,1,2,3,4,5,6,7,8,9,10,11)) {
+            jdbc.update("UPDATE game_lua_item SET edf_weapon_type=? WHERE id=?",type,catalogId);
+            for(var equipmentClass:List.of("MELEE","RANGER","FORCE","LAUNCHER")) {
+                boolean allowed=equipmentClass.equals("MELEE")?type<=4:equipmentClass.equals("RANGER")?List.of(5,6,8).contains(type):equipmentClass.equals("LAUNCHER")?List.of(7,11).contains(type):type==9;
+                var result=service.catalog("WEAPON",code,0,10,null,null,null,"CORA",equipmentClass,null,null);
+                assertEquals(allowed,result.total()>0);
+                assertEquals(allowed?List.of(type):List.of(),result.weaponTypes());
+            }
+            assertEquals(1,service.catalog("WEAPON",code,0,10,null,null,null,"CORA",null,null,type).total());
+            assertEquals(0,service.catalog("WEAPON",code,0,10,null,null,null,"CORA",null,null,(type+1)%12).total());
+        }
+        jdbc.update("UPDATE game_lua_item SET edf_name='Relic Staff' WHERE id=?",catalogId);
+        assertNull(repository.catalogItem(catalogId));
+        assertTrue(service.catalog("WEAPON",code,0,10).items().isEmpty());
+        assertThrows(AppException.class,()->service.operate(create(Slot.Weapon,0,true,"15:0.08")));
+        for(var params:List.of(Map.of("category","WEAPON","accessoryEffect","ATTACK"),Map.of("category","RING","weaponType","0"),Map.of("category","WEAPON","weaponType","99"),Map.of("category","RING","accessoryEffect","unknown"))) {
+            var request=get("/api/equipment/catalog").with(authentication(authenticationFor(actorId)));
+            params.forEach(request::param);
+            mvc.perform(request).andExpect(status().isBadRequest());
+        }
+    }
     @Test void importedEffectsUseLootEditorDictionaryAndKeepRawValues() {
         var effect=service.catalog("WEAPON",code,0,10).items().getFirst().effects().getFirst();
         assertEquals("Force Attack",effect.name());
@@ -462,7 +516,7 @@ class EquipmentIntegrationTest {
         assertTrue(service.catalog("WEAPON",code,0,10,38,3,"Solid").items().isEmpty());
         assertTrue(service.catalog("WEAPON","unmatched",0,10,38,3,"Fine").items().isEmpty());
         assertTrue(service.catalog("WEAPON","unmatched",0,10,38,3,null).abilities().contains("Fine"));
-        jdbc.update("UPDATE game_lua_item SET edf_name='Advance Strength Superior Test Head' WHERE id=?",catalogId);
+        jdbc.update("UPDATE game_lua_item SET edf_name='Advance Strength Intense Test Head' WHERE id=?",catalogId);
         assertEquals(catalogId,service.catalog("WEAPON",code,0,10,38,3,"Advanced Strength").items().getFirst().id());
         mvc.perform(get("/api/equipment/catalog").with(authentication(authenticationFor(actorId)))
             .param("category","WEAPON").param("level","38").param("grade","3").param("ability","Advanced Strength").param("search",code))
@@ -475,10 +529,10 @@ class EquipmentIntegrationTest {
 
     @Test void catalogOrdersLevelsAscendingAcrossPagesAndBeforeExactNameMatches() {
         service.importCatalog(new ImportRequest("b".repeat(64),List.of(
-            new ImportItem("WEAPON","iwtes50","SameName",45,3,List.of(),42,"9","","00110",0),
-            new ImportItem("WEAPON","iwtes43","Z SameName",38,3,List.of(),42,"9","","00110",0),
-            new ImportItem("WEAPON","iwtes47","Y SameName",42,3,List.of(),42,"9","","00110",0),
-            new ImportItem("WEAPON","iwtes45","X SameName",40,3,List.of(),42,"9","","00110",0)),List.of()));
+            new ImportItem("WEAPON","iwtes50","Intense SameName",45,3,List.of(),42,"9","","00110",0),
+            new ImportItem("WEAPON","iwtes43","Intense Z SameName",38,3,List.of(),42,"9","","00110",0),
+            new ImportItem("WEAPON","iwtes47","Intense Y SameName",42,3,List.of(),42,"9","","00110",0),
+            new ImportItem("WEAPON","iwtes45","Intense X SameName",40,3,List.of(),42,"9","","00110",0)),List.of()));
         assertEquals(List.of(38,40),service.catalog("WEAPON","SameName",0,2,null,3,null).items().stream().map(CatalogItem::level).toList());
         assertEquals(List.of(42,45),service.catalog("WEAPON","SameName",1,2,null,3,null).items().stream().map(CatalogItem::level).toList());
     }
@@ -494,9 +548,9 @@ class EquipmentIntegrationTest {
         assertEquals(catalogId,service.catalog("WEAPON",code,0,10,38,3,"Fine","CORA","MELEE").items().getFirst().id());
         assertTrue(service.catalog("WEAPON",code,0,10,38,3,"Fine","CORA","RANGER").items().isEmpty());
         assertTrue(service.catalog("WEAPON","",0,10,38,3,null,"CORA","FORCE").abilities().isEmpty());
-        jdbc.update("UPDATE game_lua_item SET edf_civil='00010',edf_expert_id=3 WHERE id=?",catalogId);
+        jdbc.update("UPDATE game_lua_item SET edf_civil='00010',edf_expert_id=3,edf_weapon_type=9 WHERE id=?",catalogId);
         assertEquals(catalogId,service.catalog("WEAPON",code,0,10,38,3,"Fine","CORA","FORCE").items().getFirst().id());
-        jdbc.update("UPDATE game_lua_item SET edf_civil='11111',edf_expert_id=255 WHERE id=?",catalogId);
+        jdbc.update("UPDATE game_lua_item SET edf_civil='11111',edf_expert_id=255,edf_weapon_type=5 WHERE id=?",catalogId);
         assertEquals(catalogId,service.catalog("WEAPON",code,0,10,null,null,null,"CORA","RANGER").items().getFirst().id());
         jdbc.update("UPDATE game_lua_item SET edf_civil='00001' WHERE id=?",catalogId);
         mvc.perform(get("/api/equipment/catalog").with(authentication(authenticationFor(actorId)))
@@ -554,10 +608,10 @@ class EquipmentIntegrationTest {
         }
         jdbc.update("UPDATE game_lua_item SET category='HELMET',game_code='ihtes43',edf_name='Fine Intense Head [Rare D]',edf_grade=3,edf_level=38 WHERE id=?",catalogId);
         assertTrue(service.catalog("HELMET","",0,10,38,3,null).abilities().isEmpty());
-        jdbc.update("UPDATE game_lua_item SET category='WEAPON',game_code=?,edf_name='Weapon [Rare D]',edf_grade=1,edf_level=40 WHERE id=?",code,catalogId);
+        jdbc.update("UPDATE game_lua_item SET category='WEAPON',game_code=?,edf_name='Intense Weapon [Rare D]',edf_grade=1,edf_level=40 WHERE id=?",code,catalogId);
         assertNotNull(repository.catalogItem(catalogId));
         assertEquals(old.id(),slot(Slot.Weapon).assignment().id());
-        assertEquals("Teste EDF",service.history(memberId).getFirst().name());
+        assertEquals("Intense Teste EDF",service.history(memberId).getFirst().name());
     }
 
     @Test void cloakHasItsOwnCategoryAndSlotWithoutMovingExistingEquipment() {
@@ -576,7 +630,7 @@ class EquipmentIntegrationTest {
         service.importCatalog(importRequest("Modelo atualizado",List.of(new ImportEffect(15,new BigDecimal("0.12")))));
         var second=service.operate(create(Slot.Weapon2,0,true,"15:0.12"));
         assertEquals(first.effect().value(),new BigDecimal("0.08"));
-        assertEquals("Teste EDF",repository.assignment(first.id()).name());
+        assertEquals("Intense Teste EDF",repository.assignment(first.id()).name());
         assertEquals(new BigDecimal("0.12"),second.effect().value());
         assertEquals(second.id(),slot(Slot.Weapon2).assignment().id());
         assertNull(slot(Slot.Weapon).assignment());
@@ -584,7 +638,7 @@ class EquipmentIntegrationTest {
     @Test void fullImportRetiresAbsentModelsWithoutChangingExistingSnapshots() {
         var record=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
         assertEquals(42,record.iconId());
-        var updated=new ImportItem("WEAPON",code+"new","Substituto",50,1,List.of(),99,"","","11111",0);
+        var updated=new ImportItem("WEAPON",code+"new","Intense Substituto",50,1,List.of(),99,"","","11111",0);
         service.importCatalog(new ImportRequest("d".repeat(64),List.of(updated),List.of()));
         assertNull(repository.catalogItem(catalogId));
         var snapshot=repository.assignment(record.id());

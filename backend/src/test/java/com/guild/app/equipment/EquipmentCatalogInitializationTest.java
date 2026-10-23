@@ -33,6 +33,7 @@ class EquipmentCatalogInitializationTest {
 
         assertEquals(50612,jdbc.queryForObject("SELECT count(*) FROM game_lua_item WHERE edf_source_hash IS NOT NULL",Integer.class));
         assertEquals(50612,jdbc.queryForObject("SELECT imported_count FROM equipment_catalog_import",Integer.class));
+        assertEquals(8256,jdbc.queryForObject("SELECT count(*) FROM game_lua_item WHERE category='WEAPON' AND edf_source_hash IS NOT NULL AND edf_weapon_type IS NOT NULL",Integer.class));
         for(var category:java.util.List.of("WEAPON","HELMET","UPPER","LOWER","GLOVES","SHOES","RING","AMULET","CLOAK")) {
             assertTrue(jdbc.queryForObject("SELECT count(*) FROM game_lua_item WHERE category=? AND edf_source_hash IS NOT NULL AND edf_civil LIKE '__1%'",Integer.class,category)>0,category);
         }

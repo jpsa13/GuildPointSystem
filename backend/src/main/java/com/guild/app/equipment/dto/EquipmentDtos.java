@@ -24,7 +24,7 @@ public final class EquipmentDtos {
                          String description, String unitHint) {}
     public record CatalogItem(long id, String category, String gameCode, String name, int level, int grade,
                               List<Effect> effects, Integer iconId, String sourceHash, String effectsNote) {}
-    public record CatalogPage(List<CatalogItem> items, long total, int page, int size, List<String> abilities) {}
+    public record CatalogPage(List<CatalogItem> items, long total, int page, int size, List<String> abilities, List<Integer> weaponTypes) {}
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     public record Assignment(long id, long memberId, Slot slot, long catalogId, String gameCode, String name,
                              int level, int grade, String category, Effect effect, Origin origin, LocalDate occurredOn,

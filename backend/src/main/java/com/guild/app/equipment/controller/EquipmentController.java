@@ -22,8 +22,9 @@ public class EquipmentController {
     @GetMapping("/catalog") public CatalogPage catalog(@RequestParam String category,
         @RequestParam(defaultValue="") String search,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="30") int size,
         @RequestParam(required=false) Integer level,@RequestParam(required=false) Integer grade,@RequestParam(required=false) String ability,
-        @RequestParam(defaultValue="CORA") String race,@RequestParam(required=false) String equipmentClass) {
-        return service.catalog(category,search,page,size,level,grade,ability,race,equipmentClass);
+        @RequestParam(defaultValue="CORA") String race,@RequestParam(required=false) String equipmentClass,
+        @RequestParam(required=false) String accessoryEffect,@RequestParam(required=false) Integer weaponType) {
+        return service.catalog(category,search,page,size,level,grade,ability,race,equipmentClass,accessoryEffect,weaponType);
     }
     @PostMapping("/operations")
     public Assignment operate(@Valid @RequestBody Operation request) { return service.operate(request); }
