@@ -24,6 +24,10 @@ public class WebSocketPublisher {
         send("/topic/logs", log);
     }
 
+    public void publishEquipmentChanged() {
+        send("/topic/equipment", Map.of("changed", true));
+    }
+
     public void publishEvent(Object payload) {
         send("/topic/events", payload);
     }

@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Layout } from '@/Shared/ui/Layout/Layout'
 import { AuthProvider } from '@/Features/Auth/contexts/AuthContext'
 import { ProtectedRoute, ModeratorRoute, AdminRoute } from '@/Features/Auth/ProtectedRoute'
@@ -12,6 +12,7 @@ import { LogsPage } from '@/Features/Logs/Logs'
 import { ObjectivesPage } from '@/Features/Objectives/Objectives'
 import { EventsPage } from '@/Features/Events/Events'
 import { ItemsPage } from '@/Features/Items/Items'
+import { EquipmentPage } from '@/Features/Equipment/Equipment'
 import { AuctionListPage } from '@/Features/Auction/AuctionList'
 import { AuctionDetailPage } from '@/Features/Auction/AuctionDetail'
 import { ApprovalsPage } from '@/Features/Admin/Approvals/Approvals'
@@ -23,6 +24,11 @@ import { ServerInfoTopicPage } from '@/Features/ServerInfo/ServerInfoTopicPage'
 import { PartyPage } from '@/Features/Party/Party'
 import { PresenceReporter } from '@/Features/Presence/PresenceReporter'
 import './App.styles.scss'
+
+function EquipmentRoute() {
+  const location = useLocation()
+  return <EquipmentPage key={location.key} />
+}
 
 function App() {
   return (
@@ -48,6 +54,7 @@ function App() {
               <Route path="objectives" element={<ObjectivesPage />} />
               <Route path="events" element={<EventsPage />} />
               <Route path="items" element={<ItemsPage />} />
+              <Route path="equipment" element={<EquipmentRoute />} />
               <Route path="party" element={<PartyPage />} />
               <Route path="auctions" element={<AuctionListPage />} />
               <Route path="auctions/:id" element={<AuctionDetailPage />} />

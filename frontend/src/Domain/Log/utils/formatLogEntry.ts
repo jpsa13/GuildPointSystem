@@ -1,6 +1,8 @@
 import type { AuditLogEntry, AuditLogType } from '@/Domain/types/models'
 
 const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
+  EQUIPMENT_CHANGED: 'Equipamento atualizado',
+  EQUIPMENT_CATALOG_IMPORTED: 'Catálogo EDF importado',
   OBJECTIVE_CREATED: 'Objetivo criado',
   OBJECTIVE_UPDATED: 'Objetivo editado',
   OBJECTIVE_DELETED: 'Objetivo removido',
@@ -58,6 +60,15 @@ export function formatLogDetails(log: AuditLogEntry): string {
   const p = log.payload
 
   switch (log.type) {
+    case 'EQUIPMENT_CHANGED':
+      if (p.action === 'CREATE' && p.quantity) return `${str(p.slot)} · Entrega de ${str(p.quantity)} unidade(s) · Registro #${str(p.assignmentId)}`
+      if (p.action === 'REVIEW_REQUEST') return `Revisão de equipamentos solicitada · Prazo: ${str(p.dueAt)}`
+      if (p.action === 'REVIEW_CONFIRM') return 'Revisão de equipamentos confirmada'
+      if (p.action === 'REMOVE' || p.action === 'CLEAR' || p.action === 'UNDO_REDO')
+        return `${str(p.slot)} · ${p.action === 'REMOVE' ? 'Equipamento removido' : p.action === 'CLEAR' ? 'Equipamentos limpos' : 'Remoção desfeita/refeita'}`
+      return `${str(p.slot)} · Registro #${str(p.assignmentId)} · ${str(p.action)}${p.reason ? ` · ${str(p.reason)}` : ''}`
+    case 'EQUIPMENT_CATALOG_IMPORTED':
+      return `${str(p.count)} modelos · ${str(p.excluded)} códigos ambíguos bloqueados`
     case 'OBJECTIVE_CREATED': {
       const limit =
         p.type === 'LIMITADO' && p.dailyLimit

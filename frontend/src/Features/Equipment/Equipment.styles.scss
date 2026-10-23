@@ -1,0 +1,184 @@
+.equipment-page {
+  display: grid; gap: theme.$spacing-lg; min-width: 0;
+  h1 { font: 700 28px theme.$font-heading; margin: 0 0 6px; text-transform: uppercase; }
+  h2 { margin: 8px 0 18px; } h3 { margin-top: 0; }
+  h2[tabindex] { scroll-margin-top: 80px; }
+  p { margin: 0 0 theme.$spacing-md; overflow-wrap: anywhere; }
+  &__heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
+  label { display: grid; gap: 6px; font-size: 16px; }
+  input:not([type='checkbox']), select, textarea { @include theme.field-input; width: 100%; min-width: 0; }
+  select { max-width: 100%; } textarea { min-height: 85px; }
+  small { display: block; color: theme.$color-text-muted; font-size: 14px; margin-top: 4px; overflow-wrap: anywhere; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid theme.$color-primary; outline-offset: 3px; }
+  button { touch-action: manipulation; }
+}
+.equipment-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
+  > label:first-child { min-width: min(100%, 230px); flex: 1; }
+}
+.equipment-page .equipment-check { display: flex; align-items: center; gap: 8px; padding: 10px 0;
+  input { width: 18px; height: 18px; accent-color: theme.$color-primary; flex-shrink: 0; }
+}
+.equipment-note, .equipment-catalog-note { color: theme.$color-text-muted; font-size: 16px; }
+.equipment-catalog-note { margin-top: 18px; summary { cursor: pointer; margin-bottom: 10px; } }
+.equipment-nick-link { padding: 0; color: theme.$color-primary; border: 0; background: transparent; font: inherit; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.equipment-roster { list-style: none; padding: 0; margin: 0;
+  &__header, &__row { display: grid; grid-template-columns: 180px repeat(3, minmax(0, 1fr)) 130px; gap: 12px; align-items: center; padding: 14px 12px; }
+  &__header { font-family: theme.$font-heading; text-transform: uppercase; border-bottom: 1px solid theme.$color-border-strong; }
+  &__row { border: 1px solid theme.$color-border; margin-bottom: 8px; @include theme.bevel; background: theme.$color-bg;
+    &.is-selected { border-color: theme.$color-primary; background: rgba(theme.$color-primary, .035); }
+    > * { min-width: 0; }
+  }
+  &__header > span:nth-child(n+2):nth-child(-n+4) { text-align: center; }
+  &__label { display: none; }
+}
+.equipment-mini-slots { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; }
+.equipment-mini-slot-wrap { position: relative; }
+.equipment-mini-remove {
+  position: absolute; top: 1px; right: 1px; z-index: 1; width: 15px; height: 15px; opacity: 0; transition: opacity .12s; padding: 0; display: grid; place-items: center;
+  border: 1px solid theme.$color-border-strong; background: theme.$color-bg-card; color: theme.$color-text-muted; font: 13px/1 theme.$font-family; cursor: pointer;
+  &:hover { color: theme.$color-danger; border-color: theme.$color-danger; }
+  &:disabled { opacity: .4; cursor: wait; }
+}
+.equipment-roster__actions { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; }
+.equipment-roster__member { display: flex; align-items: center; gap: 10px;
+  > input { width: 18px; height: 18px; flex-shrink: 0; accent-color: theme.$color-primary; cursor: pointer; }
+  > div { min-width: 0; overflow: hidden; }
+  .equipment-nick-link, small { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.equipment-roster__row.is-checked { background: rgba(theme.$color-primary, .04); }
+.equipment-roster__row.is-drop-target { border-style: dashed; border-color: theme.$color-primary; }
+.equipment-mini-slot[draggable='true'] { cursor: grab; &:active { cursor: grabbing; } }
+.equipment-mini-slot.can-drop:hover { outline: 2px solid theme.$color-primary; outline-offset: 2px; }
+.equipment-mini-slot-wrap:hover .equipment-mini-remove, .equipment-mini-slot-wrap:focus-within .equipment-mini-remove { opacity: 1; }
+@media (hover: none) { .equipment-mini-remove { opacity: 1; } }
+.equipment-slot-empty { opacity: .38; }
+.equipment-mini-slot { display: grid; place-items: center; width: 42px; height: 44px; padding: 2px;
+  background: linear-gradient(145deg, theme.$color-bg-card, theme.$color-bg); color: theme.$color-text-muted;
+  border: 1px solid theme.$color-border-strong; box-shadow: inset 0 1px 0 rgba(theme.$color-text, .05); cursor: pointer;
+  &.is-filled { background: theme.$color-bg-card; box-shadow: inset 0 0 0 2px theme.$color-bg; }
+  &:hover .equipment-slot-empty { opacity: .65; }
+
+  &:hover { background: theme.$metal-600; }
+}
+@each $category, $color in (helmet: theme.$color-equipment-armor, upper: theme.$color-equipment-armor, lower: theme.$color-equipment-armor, gloves: theme.$color-equipment-armor, shoes: theme.$color-equipment-armor, cloak: theme.$color-equipment-armor, weapon: theme.$color-success, weapon2: theme.$color-equipment-weapons, amulet1: theme.$color-danger, amulet2: theme.$color-danger, ring1: theme.$color-danger, ring2: theme.$color-danger) {
+  .equipment-mini-slot.equipment-slot--#{$category} { border-color: rgba($color, .35); color: $color;
+    &.is-filled, &:hover, &:focus-visible { border-color: $color; }
+  }
+}
+.equipment-tooltip {
+  position: fixed; z-index: 1200; display: flex; align-items: start; gap: 12px; width: min(320px, calc(100vw - 16px)); padding: 12px;
+  border: 1px solid theme.$color-border-strong; background: theme.$color-bg-card; color: theme.$color-text; font: 14px/1.4 theme.$font-family;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
+  > div { min-width: 0; overflow-wrap: anywhere; }
+  strong { display: block; font-size: 16px; }
+  &__meta { color: theme.$color-equipment-armor; margin-top: 3px; }
+  p { margin: 5px 0 0; }
+}
+.equipment-tabs { display: flex; border-bottom: 1px solid theme.$color-border-strong; margin-bottom: 20px; gap: 8px;
+  button { padding: 12px 16px; font: 600 16px theme.$font-heading; text-transform: uppercase; cursor: pointer; border: 1px solid theme.$color-border; color: theme.$color-text; background: theme.$color-bg;
+    &[aria-selected='true'], &[aria-pressed='true'] { color: theme.$color-primary; border-bottom-color: theme.$color-primary; }
+  }
+}
+.equipment-inspector { display: grid; grid-template-columns: minmax(250px, 350px) minmax(0, 1fr); gap: 24px; align-items: start;
+  &__details { min-width: 0; padding: 16px; border: 1px solid theme.$color-border; background: theme.$color-bg; }
+}
+.equipment-inventory { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(98px, auto)); gap: 7px; padding: 12px; border: 2px solid theme.$metal-600; @include theme.bevel;
+  background: linear-gradient(115deg, theme.$metal-600, theme.$metal-900 45%, theme.$metal-700);
+  grid-template-areas: 'amulet1 helmet amulet2' 'weapon upper weapon2' 'gloves lower cloak' 'ring1 shoes ring2';
+  &__slot { min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; padding: 6px 2px; border: 1px solid theme.$color-border-strong; background: rgba(theme.$color-bg, .7); color: theme.$color-text; font: 600 16px theme.$font-family; cursor: pointer;
+    &:hover { background: theme.$metal-700; }
+    &.is-selected { outline: 2px solid theme.$color-primary; outline-offset: 1px; }
+  }
+  &__empty { color: theme.$color-text-muted; font-size: 26px; min-height: 48px; display: grid; place-items: center; }
+  &__legend { margin-top: 12px !important; max-width: 350px; }
+}
+@each $slot in helmet, upper, lower, gloves, shoes, cloak, weapon, weapon2, amulet1, amulet2, ring1, ring2 {
+  .equipment-inventory .equipment-slot--#{$slot} { grid-area: $slot; }
+}
+.equipment-slot--helmet, .equipment-slot--upper, .equipment-slot--lower, .equipment-slot--gloves, .equipment-slot--shoes, .equipment-slot--cloak { border-color: theme.$color-equipment-armor; }
+.equipment-slot--weapon { border-color: theme.$color-success; }
+.equipment-slot--weapon2 { border-color: theme.$color-equipment-weapons; }
+.equipment-slot--amulet1, .equipment-slot--amulet2, .equipment-slot--ring1, .equipment-slot--ring2 { border-color: theme.$color-danger; }
+.equipment-icon { display: block; flex-shrink: 0; background-repeat: no-repeat; background-color: theme.$color-bg;
+  &--missing { display: grid; place-items: center; color: theme.$color-text-muted; border: 1px dashed theme.$color-border; font-size: 24px; }
+}
+.equipment-item-preview { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; p { flex: 1; min-width: 100px; margin: 0; } }
+.equipment-editor {
+  form { display: grid; gap: 14px; min-width: 0; scroll-margin-top: 80px; }
+  form > * { min-width: 0; }
+}
+.equipment-results { display: grid; gap: 6px; max-height: 320px; overflow-y: auto; }
+.equipment-result { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; min-width: 0; padding: 10px; background: theme.$color-bg-card; border: 1px solid theme.$color-border; color: theme.$color-text; font: inherit; cursor: pointer;
+  > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  &[aria-pressed='true'] { border-color: theme.$color-primary; background: rgba(theme.$color-primary, .05); }
+}
+.equipment-current { display: block; color: theme.$color-success; }
+.equipment-actions, .equipment-pagination { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.equipment-pagination { justify-content: space-between; }
+.equipment-form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.equipment-history { list-style: none; padding: 0; display: grid; gap: 12px;
+  > li { min-width: 0; padding: 16px; border: 1px solid theme.$color-border; background: theme.$color-bg; }
+  &__heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 10px; strong { overflow-wrap: anywhere; } }
+}
+.equipment-catalog-search { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 16px; align-items: end;
+  > label { min-width: 0; }
+}
+.equipment-class-grade { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px;
+  > fieldset { min-width: 0; }
+}
+@media (min-width: 1251px) and (max-width: 1600px) {
+  .equipment-mini-slots { gap: 3px; }
+  .equipment-mini-slot { position: relative; width: 24px; height: 30px;
+    .equipment-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.555556); }
+    .equipment-slot-empty { width: 18px; height: 18px; }
+  }
+}
+@media (max-width: 1250px) {
+  .equipment-roster__header { display: none; }
+  .equipment-roster__row { grid-template-columns: minmax(0, 1fr) auto; gap: 14px;
+    > .equipment-roster__member { grid-column: 1; grid-row: 1; }
+    > .equipment-roster__actions { grid-column: 2; grid-row: 1; }
+  }
+  .equipment-roster__group { grid-column: 1 / -1; }
+  .equipment-roster__label { display: block; margin-bottom: 6px; font-size: 16px; }
+  .equipment-inspector { grid-template-columns: minmax(0, 1fr); }
+  .equipment-inventory { max-width: 350px; }
+}
+@media (max-width: 600px) {
+  .equipment-page h2[tabindex], .equipment-editor form { scroll-margin-top: 175px; }
+  .equipment-form-row, .equipment-catalog-search, .equipment-class-grade { grid-template-columns: minmax(0, 1fr); }
+  .equipment-inspector__details { padding: 10px; }
+  .equipment-history__heading { flex-wrap: wrap; }
+}
+
+.equipment-filters { margin: 0; padding: 10px; border: 1px solid theme.$color-border;
+  legend { font-weight: 600; }
+  > div { display: flex; flex-wrap: wrap; gap: 8px; }
+  button[aria-pressed='true'] { border-color: theme.$color-primary; color: theme.$color-primary; background: rgba(theme.$color-primary, .08); }
+  small { display: block; margin-top: 8px; color: theme.$color-text-muted; }
+}
+.equipment-transfer {
+  min-width: 0; padding: 16px; border: 1px solid theme.$color-border-strong; background: theme.$color-bg-card;
+  h4 { margin: 0 0 12px; font-size: 12px; font-weight: 600; color: theme.$color-text-muted; letter-spacing: .8px; text-transform: uppercase; }
+  &__item { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  &__icon { flex-shrink: 0; padding: 1px; border: 1px solid rgba(theme.$color-equipment-armor, .3); background: theme.$color-bg; }
+  &__description { min-width: 0; strong { display: block; font-size: 18px; margin-bottom: 5px; overflow-wrap: anywhere; } }
+  &__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px; }
+  &__meta > span:first-child { color: theme.$color-text-muted; }
+  &__grade { padding: 0 7px; line-height: 20px; border: 1px solid rgba(theme.$color-equipment-armor, .3); color: theme.$color-equipment-armor; background: rgba(theme.$color-equipment-armor, .04); font-size: 12px; }
+  &__send { display: grid; grid-template-columns: minmax(0, 1fr) 122px; gap: 10px; align-items: end;
+    label { min-width: 0; font-size: 13px; color: theme.$color-text-muted; }
+    button, select { height: 40px; }
+  }
+  &__extra { margin-top: 10px; p { margin: 0; } }
+  @media (max-width: 600px) {
+    padding: 12px;
+    &__description strong { font-size: 16px; }
+    &__send { grid-template-columns: minmax(0, 1fr) 96px; }
+  }
+}
+
+.equipment-delivery-totals { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px;
+  li { display: flex; gap: 16px; align-items: center; padding: 10px; border: 1px solid theme.$color-border; }
+  strong { color: theme.$color-primary; }
+}

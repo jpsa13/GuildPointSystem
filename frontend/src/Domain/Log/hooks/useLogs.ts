@@ -1,3 +1,4 @@
+import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
@@ -13,8 +14,10 @@ const logKeys = {
 }
 
 export function useLogs(page = 0, size = 50) {
+  const { hasRole } = useAuthContext()
+  const audience = hasRole('ADMINISTRADOR') ? 'admin' : 'public'
   return useQuery({
-    queryKey: [...logKeys.all, page, size],
+    queryKey: [...logKeys.all, audience, page, size],
     queryFn: () => apiClient<Page<AuditLogEntry>>(`/logs?page=${page}&size=${size}`),
   })
 }
@@ -54,6 +57,14 @@ function applyLogToCache(queryClient: QueryClient, log: AuditLogEntry) {
 
 export function useLogsSubscription() {
   const queryClient = useQueryClient()
+  const { hasRole } = useAuthContext()
+  const admin = hasRole('ADMINISTRADOR')
+  useEffect(() => {
+    if (!admin) return
+    return subscribeTopicEffect('/topic/equipment', () => {
+      void queryClient.invalidateQueries({ queryKey: logKeys.all })
+    })
+  }, [queryClient, admin])
 
   useEffect(
     () =>

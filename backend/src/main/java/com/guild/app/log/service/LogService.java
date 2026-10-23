@@ -25,7 +25,11 @@ public class LogService {
 
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> list(Pageable pageable) {
-        var page = auditLogRepository.findAllByOrderByCreatedAtDesc(pageable);
+        boolean admin = com.guild.app.common.security.SecurityUtils.currentMember().getRole()
+                .isAtLeast(com.guild.app.common.enums.Role.ADMINISTRADOR);
+        var page = admin ? auditLogRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : auditLogRepository.findByTypeNotInOrderByCreatedAtDesc(java.util.List.of(
+                    AuditLogType.EQUIPMENT_CHANGED, AuditLogType.EQUIPMENT_CATALOG_IMPORTED), pageable);
 
         var claimIds = new HashSet<Long>();
         for (var log : page.getContent()) {

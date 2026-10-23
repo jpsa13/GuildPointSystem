@@ -28,5 +28,11 @@ public enum AuditLogType {
     DONATION_REJECTED,
     DONATION_RATE_UPDATED,
     EMOJI_CREATED,
-    EMOJI_DELETED
+    EMOJI_DELETED,
+    EQUIPMENT_CHANGED,
+    EQUIPMENT_CATALOG_IMPORTED;
+
+    public boolean isEquipmentPrivate() {
+        return this == EQUIPMENT_CHANGED || this == EQUIPMENT_CATALOG_IMPORTED;
+    }
 }
