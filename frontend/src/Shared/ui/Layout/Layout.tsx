@@ -18,7 +18,6 @@ import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
 import { ApprovalsListener } from '@/Features/Admin/Approvals/ApprovalsListener'
 import { ApprovalsNavBadge } from '@/Features/Admin/Approvals/components/ApprovalsNavBadge/ApprovalsNavBadge'
 import type { Role } from '@/Domain/types/models'
-import { EquipmentReviewNotice } from '@/Features/Equipment/EquipmentReviewNotice'
 import './Layout.styles.scss'
 
 const NAV_ITEMS = [
@@ -235,7 +234,6 @@ function LayoutShell() {
           </div>
         </div>
         <main className="layout__main">
-          <EquipmentReviewNotice />
           <Outlet />
         </main>
       </div>
