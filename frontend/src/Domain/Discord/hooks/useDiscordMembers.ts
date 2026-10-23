@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/Shared/api/client'
 import { onSocketReconnect, subscribeTopicEffect } from '@/Shared/websocket/socketClient'
 
@@ -33,6 +33,7 @@ export interface DiscordMembers {
 
 export const discordKeys = {
   members: ['discord', 'members'] as const,
+  hidden: ['discord', 'hidden'] as const,
 }
 
 /** Discord server sidebar (configured roles only); the backend pushes the full list on change. */
@@ -68,4 +69,28 @@ export function useDiscordBySiteMember() {
     )
     return bySite
   }, [data])
+}
+
+/** Líder/Administrador: members hidden from the list (refetched whenever the list changes). */
+export function useHiddenDiscordMembers(enabled: boolean) {
+  const { dataUpdatedAt } = useDiscordMembers()
+  return useQuery({
+    queryKey: [...discordKeys.hidden, dataUpdatedAt],
+    queryFn: () => apiClient<DiscordMember[]>('/discord/hidden'),
+    enabled,
+    placeholderData: (previous) => previous,
+  })
+}
+
+/** Líder/Administrador: hides or shows a member; the backend pushes the refreshed list. */
+export function useSetDiscordMemberHidden() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, hidden }: { id: string; hidden: boolean }) =>
+      apiClient<void>(`/discord/hidden/${id}`, { method: hidden ? 'PUT' : 'DELETE' }),
+    onSuccess: () => {
+      // Covers a dropped socket, like useLinkDiscord.
+      window.setTimeout(() => queryClient.invalidateQueries({ queryKey: discordKeys.members }), 2500)
+    },
+  })
 }

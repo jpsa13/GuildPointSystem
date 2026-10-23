@@ -3,6 +3,8 @@ package com.guild.app.discord;
 import com.guild.app.discord.dto.DiscordMemberEntry;
 import com.guild.app.discord.dto.DiscordMembersResponse;
 import com.guild.app.discord.dto.DiscordRoleGroup;
+import com.guild.app.discord.entity.DiscordHiddenMember;
+import com.guild.app.discord.repository.DiscordHiddenMemberRepository;
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
 import com.guild.app.websocket.WebSocketPublisher;
@@ -24,6 +26,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -51,11 +54,14 @@ public class DiscordMemberService {
 
     private final DiscordBotProperties properties;
     private final MemberRepository memberRepository;
+    private final DiscordHiddenMemberRepository hiddenMemberRepository;
     private final WebSocketPublisher webSocketPublisher;
 
     private final AtomicBoolean dirty = new AtomicBoolean(false);
     private volatile JDA jda;
     private volatile DiscordMembersResponse snapshot = DiscordMembersResponse.unavailable();
+    /** Members hidden from the list, so Líder/Administrador can show them again. */
+    private volatile List<DiscordMemberEntry> hiddenSnapshot = List.of();
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
@@ -89,6 +95,23 @@ public class DiscordMemberService {
 
     public DiscordMembersResponse snapshot() {
         return snapshot;
+    }
+
+    public List<DiscordMemberEntry> hiddenSnapshot() {
+        return hiddenSnapshot;
+    }
+
+    /** Líder/Administrador: hides or shows a Discord user in the list. */
+    @Transactional
+    public void setHidden(String discordId, boolean hidden, Long actorId) {
+        if (hidden) {
+            if (!hiddenMemberRepository.existsById(discordId)) {
+                hiddenMemberRepository.save(new DiscordHiddenMember(discordId, actorId));
+            }
+        } else {
+            hiddenMemberRepository.deleteById(discordId);
+        }
+        refreshAfterCommit();
     }
 
     /** A site account's Discord link changed: rebuild once the change is committed and readable. */
@@ -137,16 +160,28 @@ public class DiscordMemberService {
         Map<Role, List<net.dv8tion.jda.api.entities.Member>> byRole = new LinkedHashMap<>();
         roles.forEach(role -> byRole.put(role, new ArrayList<>()));
         Set<String> discordIds = new HashSet<>();
+        Set<String> hiddenIds = hiddenMemberRepository.findAll().stream()
+                .map(DiscordHiddenMember::getDiscordId)
+                .collect(Collectors.toSet());
+        List<net.dv8tion.jda.api.entities.Member> hidden = new ArrayList<>();
         for (net.dv8tion.jda.api.entities.Member member : guild.getMemberCache()) {
             if (member.getUser().isBot()) continue;
             roles.stream()
                     .filter(member.getRoles()::contains)
                     .findFirst()
                     .ifPresent(role -> {
+                        if (hiddenIds.contains(member.getId())) {
+                            hidden.add(member);
+                            return;
+                        }
                         byRole.get(role).add(member);
                         discordIds.add(member.getId());
                     });
         }
+        hiddenSnapshot = hidden.stream()
+                .map(m -> toEntry(m, null))
+                .sorted(Comparator.comparing(e -> e.name().toLowerCase()))
+                .toList();
 
         Map<String, Long> siteMemberIds = discordIds.isEmpty()
                 ? Map.of()

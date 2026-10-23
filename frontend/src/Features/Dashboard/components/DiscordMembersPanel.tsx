@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useDiscordMembers, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
+import {
+  useDiscordMembers,
+  useHiddenDiscordMembers,
+  useSetDiscordMemberHidden,
+  type DiscordMember,
+} from '@/Domain/Discord/hooks/useDiscordMembers'
 import { useLinkDiscord, useMemberRanking } from '@/Domain/Member/hooks/useMembers'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
@@ -20,9 +25,12 @@ interface MemberRowProps {
   member: DiscordMember
   /** Set for Líder/Administrador: opens the link-to-site-account dialog. */
   onLink?: (member: DiscordMember) => void
+  /** Set for Líder/Administrador: hides the member from (or shows them again in) the list. */
+  onToggleHidden?: (member: DiscordMember) => void
+  hidden?: boolean
 }
 
-function MemberRow({ member, onLink }: MemberRowProps) {
+function MemberRow({ member, onLink, onToggleHidden, hidden = false }: MemberRowProps) {
   const subtitle = member.customStatus ?? (member.inVoice ? 'Em voz' : member.activity)
   return (
     <li className={`discord-list__member discord-list__member--${member.status}`}>
@@ -70,6 +78,17 @@ function MemberRow({ member, onLink }: MemberRowProps) {
           🔗
         </button>
       )}
+      {onToggleHidden && (
+        <button
+          type="button"
+          className={`discord-list__site${hidden ? ' discord-list__site--visible' : ''}`}
+          title={hidden ? 'Mostrar na lista' : 'Ocultar da lista'}
+          aria-label={`${hidden ? 'Mostrar' : 'Ocultar'} ${member.name} na lista`}
+          onClick={() => onToggleHidden(member)}
+        >
+          {hidden ? '👁' : '🚫'}
+        </button>
+      )}
     </li>
   )
 }
@@ -83,8 +102,21 @@ export function DiscordMembersPanel({ className }: DiscordMembersPanelProps) {
   const { hasRole } = useAuthContext()
   const canManage = hasRole('ADMINISTRADOR') // Líder ranks above Administrador
   const [linking, setLinking] = useState<DiscordMember | null>(null)
+  const [showHidden, setShowHidden] = useState(false)
+  const { data: hidden = [] } = useHiddenDiscordMembers(canManage && !!data?.available)
+  const setHidden = useSetDiscordMemberHidden()
+  const { showToast } = useAppToast()
   const groups = data?.groups ?? []
   const online = groups.reduce((sum, g) => sum + g.onlineCount, 0)
+
+  const toggleHidden = (member: DiscordMember, hide: boolean) =>
+    setHidden.mutate(
+      { id: member.id, hidden: hide },
+      {
+        onSuccess: () => showToast(`${member.name} ${hide ? 'ocultado da' : 'voltou para a'} lista.`, 'success'),
+        onError: (err) => showToast(err instanceof Error ? err.message : 'Erro ao atualizar a lista', 'error'),
+      },
+    )
 
   return (
     <Panel
@@ -106,11 +138,35 @@ export function DiscordMembersPanel({ className }: DiscordMembersPanelProps) {
               </h3>
               <ul>
                 {group.members.map((m) => (
-                  <MemberRow key={m.id} member={m} onLink={canManage ? setLinking : undefined} />
+                  <MemberRow
+                    key={m.id}
+                    member={m}
+                    onLink={canManage ? setLinking : undefined}
+                    onToggleHidden={canManage ? (member) => toggleHidden(member, true) : undefined}
+                  />
                 ))}
               </ul>
             </section>
           ))}
+          {canManage && hidden.length > 0 && (
+            <section className="discord-list__group discord-list__group--hidden">
+              <button
+                type="button"
+                className="discord-list__role discord-list__toggle"
+                aria-expanded={showHidden}
+                onClick={() => setShowHidden((v) => !v)}
+              >
+                {showHidden ? '▾' : '▸'} Ocultos — {hidden.length}
+              </button>
+              {showHidden && (
+                <ul>
+                  {hidden.map((m) => (
+                    <MemberRow key={m.id} member={m} hidden onToggleHidden={(member) => toggleHidden(member, false)} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
         </div>
       )}
       {linking && (
