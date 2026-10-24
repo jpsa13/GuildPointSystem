@@ -7,6 +7,7 @@ import com.guild.app.common.enums.Role;
 import com.guild.app.common.enums.PartyPendingKind;
 import com.guild.app.common.enums.PartyPendingStatus;
 import com.guild.app.common.exception.AppException;
+import com.guild.app.characterstatus.repository.CharacterStatusRepository;
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
 import com.guild.app.party.dto.*;
@@ -32,6 +33,7 @@ public class PartyService {
     private final PartyPendingRepository partyPendingRepository;
     private final PartyLfgRepository partyLfgRepository;
     private final MemberRepository memberRepository;
+    private final CharacterStatusRepository characterStatusRepository;
     private final WebSocketPublisher webSocketPublisher;
     private final PartyBoardBroadcaster partyBoardBroadcaster;
 
@@ -887,9 +889,18 @@ public class PartyService {
                 m.getNickname(),
                 cls != null ? cls.getName() : null,
                 cls != null ? cls.getImageUrl() : null,
-                m.getLevel() != null ? m.getLevel() : 1,
+                gameLevel(m),
                 leader
         );
+    }
+
+    /** Level do jogo (enviado pelo cliente); cai para o level da guilda/1 se nao houver status. */
+    private int gameLevel(Member m) {
+        Integer gameLvl = characterStatusRepository.findMaxLevelByMemberId(m.getId()).orElse(null);
+        if (gameLvl != null) {
+            return gameLvl;
+        }
+        return m.getLevel() != null ? m.getLevel() : 1;
     }
 
     private PartyLfgEntry toLfgEntry(PartyLfg lfg, Map<Long, Member> memberLookup) {
@@ -906,7 +917,7 @@ public class PartyService {
                 m.getNickname(),
                 cls != null ? cls.getName() : null,
                 cls != null ? cls.getImageUrl() : null,
-                m.getLevel() != null ? m.getLevel() : 1,
+                gameLevel(m),
                 lfg.getNote(),
                 lfg.getCreatedAt()
         );

@@ -183,8 +183,8 @@
 .ranking-list__head,
 .ranking-list li {
   display: grid;
-  // Último login is always "dd/mm/aaaa, hh:mm" (or "Nunca"): fixed width, the rest goes to the name.
-  grid-template-columns: 36px 32px minmax(0, 1fr) 40px 4.5rem 9.5rem;
+  // Colunas: # | icone | Membro | Lv(jogo) | EXP | Pontos.
+  grid-template-columns: 36px 32px minmax(0, 1fr) 3.2rem 4.2rem 4.5rem;
   align-items: center;
   gap: theme.$spacing-md;
   padding: 0 theme.$spacing-lg;
@@ -195,14 +195,34 @@
   height: 32px;
   border-top: 1px solid theme.$color-border-strong;
 
-  // Lv and Pontos centered; Último login (last) right-aligned.
+  // Lv(jogo), EXP e Pontos centralizados.
   span:nth-child(4),
-  span:nth-child(5) {
+  span:nth-child(5),
+  span:nth-child(6) {
     text-align: center;
   }
+}
 
-  span:last-child {
-    text-align: right;
+// Status de jogo (level/EXP do CerberusBags): centralizado e discreto.
+.ranking-list__game-lv,
+.ranking-list__game-exp {
+  text-align: center;
+  color: theme.$color-text-muted;
+  font-variant-numeric: tabular-nums;
+}
+
+// Cabeçalhos clicáveis para ordenar (Lv, EXP, Pontos).
+.ranking-list__sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  &:hover {
+    color: theme.$color-text;
+  }
+
+  &--active {
+    color: theme.$color-accent;
   }
 }
 
@@ -518,20 +538,23 @@
     margin: 0 (-(theme.$spacing-md));
   }
 
-  // Último login is dropped; the member column keeps the room.
+  // No mobile a coluna EXP sai; o nome fica com o espaço.
   .ranking-list__head,
   .ranking-list li {
-    grid-template-columns: 24px 32px minmax(0, 1fr) 24px 3.5rem;
+    grid-template-columns: 24px 32px minmax(0, 1fr) 3rem 3.5rem;
     gap: theme.$spacing-sm;
     padding: 0 theme.$spacing-md;
   }
 
-  .ranking-list__head span:last-child,
-  .ranking-list__login {
+  // Esconde a coluna EXP (5a) e seu cabeçalho, para caber.
+  .ranking-list__game-exp,
+  .ranking-list__head span:nth-child(5) {
     display: none;
   }
 
-  .ranking-list__head span:nth-child(5) {
+  // Lv(jogo) (4a) e Pontos (6a) centralizados.
+  .ranking-list__head span:nth-child(4),
+  .ranking-list__head span:nth-child(6) {
     text-align: center;
   }
 
