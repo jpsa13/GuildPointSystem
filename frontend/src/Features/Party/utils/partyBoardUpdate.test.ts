@@ -17,6 +17,7 @@ const member = (id: number, leader = false) => ({
   className: null,
   classImageUrl: null,
   level: 1,
+  expPercent: null,
   leader,
 })
 
@@ -36,6 +37,7 @@ const lfg = (memberId: number): PartyLfgEntry => ({
   className: null,
   classImageUrl: null,
   level: 1,
+  expPercent: null,
   note: null,
   createdAt: '2026-10-18T10:00:00Z',
 })
