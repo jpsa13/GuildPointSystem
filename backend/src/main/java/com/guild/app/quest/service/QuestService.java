@@ -32,14 +32,17 @@ public class QuestService {
     private final boolean liveEnabled;
     private final QuestCatalog catalog;
     private final AuditLogService audit;
+    private final QuestStatusService questStatus;
     public QuestService(QuestRepository repository, MemberRepository members, WebSocketPublisher publisher,
                         Environment environment, @Value("${guild.quests.simulation-enabled:false}") boolean enabled,
-                        @Value("${guild.quests.live-enabled:false}") boolean live,QuestCatalog catalog,AuditLogService audit) {
+                        @Value("${guild.quests.live-enabled:false}") boolean live,QuestCatalog catalog,AuditLogService audit,
+                        QuestStatusService questStatus) {
         this.repository=repository; this.members=members; this.publisher=publisher;
         simulationEnabled=enabled && environment.acceptsProfiles(Profiles.of("quests-local"));
         liveEnabled=live && environment.acceptsProfiles(Profiles.of("quests-local"));
         this.catalog=catalog;
         this.audit=audit;
+        this.questStatus=questStatus;
     }
     private Member member(long id) {
         var member=members.findById(id).orElseThrow(()->error("Não autorizado.",HttpStatus.FORBIDDEN));
@@ -58,8 +61,15 @@ public class QuestService {
         boolean more=events.size()>500;
         var visibility=repository.visibility(); boolean admin=member(id).getRole().isAtLeast(Role.ADMINISTRADOR);
         var signals=repository.signals(id,periodStart(day,resetPeriod),periodStart(day.plusDays(1),resetPeriod));
+        // Sobreposicao do monitor name-based do CerberusBags: uma quest que sumiu do
+        // journal no dia marca a checklist como concluida (display-only, imprecisao aceita).
+        var doneCodes=questStatus.doneCodesForDay(id,day);
         var expected=catalog.coupons.quests().stream()
-            .map(row->new ExpectedQuest(row,signals.getOrDefault(row.quest().definitionHash(),0L),visibility.getOrDefault(row.quest().definitionHash(),catalog.defaultHidden(row.quest().definitionHash()))))
+            .map(row->{
+                long sig=signals.getOrDefault(row.quest().definitionHash(),0L);
+                if(sig==0 && doneCodes.contains(row.quest().code())) sig=1;
+                return new ExpectedQuest(row,sig,visibility.getOrDefault(row.quest().definitionHash(),catalog.defaultHidden(row.quest().definitionHash())));
+            })
             .filter(row->admin||!row.hidden()).toList();
         return new History(id,simulationEnabled,repository.sessions(id),events.stream().limit(500).toList(),more,offset+Math.min(500,events.size()),liveEnabled,repository.player(id),expected,catalog.coupons.npcs());
     }
