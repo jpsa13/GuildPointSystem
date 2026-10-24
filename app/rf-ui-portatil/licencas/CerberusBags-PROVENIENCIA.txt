@@ -1,0 +1,16 @@
+CerberusBags 0.1.4 - prototipo local em codigo fonte C++.
+
+Motor/grade/perfil: derivados do codigo local escrito para CerberusUI, adaptados
+para complemento exclusivo de bags. Loader/proxy minimo e leitor de banco novos.
+Interface de configuracao propria com controles Win32; sem codigo do painel rf-ui.
+Layouts de interoperabilidade foram estudados nos binarios Bagnon e rf-ui e
+confirmados parcialmente por leitura do cliente. Nao sao APIs publicas do jogo.
+
+Nenhum codigo binario do rf-ui/Bagnon, ImGui, MinHook, DPS ou HUD foi incluido
+nesta DLL. O proxy preserva os nomes das APIs version.dll do Windows.
+Compilado com MinGW-w64/GCC do w64devkit local, runtime GCC/C++ estatico.
+Os avisos do runtime MinGW fornecidos pela ferramenta acompanham o pacote em
+COPYING.MinGW-w64-runtime.txt. Nao se atribui nova licenca aos componentes do compilador.
+
+O rf-ui original e dependencia separada do usuario; nao e distribuido neste
+pacote, nao foi modificado, e permanece um produto de fontes nao publicadas.

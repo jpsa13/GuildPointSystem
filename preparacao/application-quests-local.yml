@@ -1,0 +1,45 @@
+# Somente banco novo de simulação. Carregar por spring.config.location explícito.
+spring:
+  application:
+    name: guild-quests-local
+  config:
+    import: []
+  profiles:
+    active: quests-local
+  datasource:
+    url: ${QUESTS_DB_URL:jdbc:postgresql://127.0.0.1:15433/guild_quests_integration}
+    username: ${QUESTS_DB_USERNAME}
+    password: ${QUESTS_DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+server:
+  address: 127.0.0.1
+  port: 18082
+guild:
+  quests:
+    simulation-enabled: true
+    live-enabled: true
+  jwt:
+    secret: ${QUESTS_JWT_SECRET}
+    expiration-ms: 3600000
+  oauth:
+    frontend-url: http://127.0.0.1:15175
+  cors:
+    allowed-origins: http://127.0.0.1:15175
+  discord:
+    bot:
+      token: ""
+      guild-id: ""
+      roles: []
+  schedule:
+    test-alert:
+      enabled: false
+  metrics:
+    scrape-token: ""
+  upload:
+    base-path: ../preparacao/uploads-quests

@@ -53,6 +53,7 @@ public class DiscordMemberService {
     private static final int AVATAR_SIZE = 64;
 
     private final DiscordBotProperties properties;
+    private final org.springframework.context.ApplicationEventPublisher applicationEvents;
     private final MemberRepository memberRepository;
     private final DiscordHiddenMemberRepository hiddenMemberRepository;
     private final WebSocketPublisher webSocketPublisher;
@@ -74,12 +75,20 @@ public class DiscordMemberService {
                             properties.getToken(),
                             GatewayIntent.GUILD_MEMBERS,
                             GatewayIntent.GUILD_PRESENCES,
-                            GatewayIntent.GUILD_VOICE_STATES)
+                            GatewayIntent.GUILD_VOICE_STATES,
+                            GatewayIntent.GUILD_MESSAGE_REACTIONS)
                     .enableCache(CacheFlag.ONLINE_STATUS, CacheFlag.ACTIVITY, CacheFlag.VOICE_STATE)
                     .setMemberCachePolicy(MemberCachePolicy.ALL)
                     .setChunkingFilter(ChunkingFilter.ALL)
                     // Any gateway event can change what the list shows (presence, roles, nick, voice).
                     .addEventListeners((net.dv8tion.jda.api.hooks.EventListener) event -> dirty.set(true))
+                    .addEventListeners((net.dv8tion.jda.api.hooks.EventListener) event -> {
+                        if(event instanceof net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent reaction
+                                && reaction.isFromGuild() && "✅".equals(reaction.getEmoji().getName())
+                                && reaction.getUserIdLong()!=reaction.getJDA().getSelfUser().getIdLong())
+                            applicationEvents.publishEvent(new PartyDiscordGateway.Checkmark(
+                                reaction.getChannel().getId(),reaction.getMessageId(),reaction.getUserId()));
+                    })
                     .build();
         } catch (Exception e) {
             log.error("Discord bot failed to start: {}", e.getMessage());
@@ -92,6 +101,8 @@ public class DiscordMemberService {
             jda.shutdown();
         }
     }
+
+    JDA client() { return jda; }
 
     public DiscordMembersResponse snapshot() {
         return snapshot;

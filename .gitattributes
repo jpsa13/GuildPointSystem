@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Payload hashes must remain identical after clone/download on Windows.
+/app/rf-ui-portatil/payload/* -text -whitespace
+/app/rf-ui-portatil/licencas/* -text -whitespace
+/downloads/*.zip binary

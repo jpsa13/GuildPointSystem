@@ -30,7 +30,9 @@ public enum AuditLogType {
     EMOJI_CREATED,
     EMOJI_DELETED,
     EQUIPMENT_CHANGED,
-    EQUIPMENT_CATALOG_IMPORTED;
+    EQUIPMENT_CATALOG_IMPORTED,
+    QUEST_CATALOG_UPDATED,
+    PARTY_DISCORD_CALLED;
 
     public boolean isEquipmentPrivate() {
         return this == EQUIPMENT_CHANGED || this == EQUIPMENT_CATALOG_IMPORTED;

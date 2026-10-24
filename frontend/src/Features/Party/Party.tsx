@@ -44,6 +44,8 @@ import {
   type PartySummary,
 } from '@/Features/Party/Party.types'
 import './Party.styles.scss'
+import { usePartyDiscordCalls, useCallPartyDiscord, type PartyDiscordCall as DiscordCall } from '@/Domain/Party/hooks/usePartyDiscord'
+import { PartyDiscordCall } from './components/PartyDiscordCall'
 
 function pendingActionLabel(p: PartyPendingItem, my: MyPartyState): string {
   if (p.kind === 'JOIN_REQUEST' && my.canOrganizeParties && my.partyId !== p.partyId) {
@@ -273,6 +275,7 @@ function PartyRoster({
 }
 
 function PartyCard({
+  discordCall, discordUnavailable, discordLoading, onDiscordCall,
   party,
   my,
   viewerId,
@@ -290,6 +293,10 @@ function PartyCard({
   onDragHighlight,
   movePending,
 }: {
+  discordCall?: DiscordCall
+  discordUnavailable?: string | null
+  discordLoading: boolean
+  onDiscordCall: () => void
   party: PartySummary
   my: MyPartyState
   viewerId?: number
@@ -363,6 +370,8 @@ function PartyCard({
           </Button>
         )}
       </div>
+      <PartyDiscordCall call={discordCall} canManage={canManage}
+        unavailable={discordUnavailable} loading={discordLoading} onCall={onDiscordCall} />
     </li>
   )
 }
@@ -378,6 +387,8 @@ export function PartyPage() {
   const closeDisband = useCallback(() => setDisbandTarget(null), [])
 
   const { data: board, isLoading } = usePartyBoard()
+  const discord = usePartyDiscordCalls()
+  const callDiscord = useCallPartyDiscord()
   const createParty = useCreateParty()
   const createEmptyParty = useCreateEmptyParty()
   const movePartyMember = useMovePartyMember()
@@ -626,6 +637,11 @@ export function PartyPage() {
                 {board.parties.map((party) => (
                     <PartyCard
                       key={party.id}
+                      discordCall={discord.data?.calls.find((call) => call.partyId === party.id)}
+                      discordUnavailable={discord.isError ? 'Não foi possível consultar as chamadas do Discord.'
+                        : !discord.data ? 'Conectando ao Discord…' : !discord.data.available ? discord.data.reason : null}
+                      discordLoading={callDiscord.isPending && callDiscord.variables === party.id}
+                      onDiscordCall={() => callDiscord.mutate(party.id, onFail)}
                       party={party}
                       my={my}
                       viewerId={user?.memberId}

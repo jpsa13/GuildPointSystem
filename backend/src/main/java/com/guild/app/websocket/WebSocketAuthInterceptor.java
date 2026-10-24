@@ -56,8 +56,23 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             checkPartySubscription(accessor);
             checkPresenceSubscription(accessor);
             checkApprovalsSubscription(accessor);
+            checkQuestSubscription(accessor);
         }
         return message;
+    }
+
+    private void checkQuestSubscription(StompHeaderAccessor accessor) {
+        var destination=accessor.getDestination();
+        // Broker wildcards such as /topic/** can also reach private quest topics.
+        if(destination!=null && (destination.contains("*") || destination.contains("?") || destination.contains("{")))
+            throw new IllegalStateException("Assine um tópico específico.");
+        if(destination==null || !destination.startsWith("/topic/quests")) return;
+        var member=accessor.getUser() instanceof UsernamePasswordAuthenticationToken auth
+            && auth.getPrincipal() instanceof MemberPrincipal principal ? principal : null;
+        if(destination.equals("/topic/quests/catalog") && member!=null && member.getStatus()==MemberStatus.APROVADO && member.isProfileComplete()) return;
+        if(member==null || member.getStatus()!=MemberStatus.APROVADO || !member.isProfileComplete()
+            || !destination.equals("/topic/quests/member/"+member.getId()))
+            throw new IllegalStateException("Não autorizado.");
     }
 
     /** Who is online and where: leadership only, like {@code GET /api/presence}. */

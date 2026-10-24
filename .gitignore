@@ -23,3 +23,21 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Monitor runtime and private configuration
+__pycache__/
+*.pyc
+*.private.properties
+CerberusQuests/build/
+CerberusQuests/runtime/
+CerberusQuests/logs/
+outputs/*
+!outputs/cerberus-quest-monitor/
+!outputs/quests-npc-abandon-simulation.json
+!outputs/quests-npc-completion-simulation.json
+outputs/cerberus-quest-monitor/*
+!outputs/cerberus-quest-monitor/edf/
+outputs/cerberus-quest-monitor/edf/*
+!outputs/cerberus-quest-monitor/edf/analyze_edf.py
+CerberusQuests/package/
+app/rf-ui-portatil/backups/

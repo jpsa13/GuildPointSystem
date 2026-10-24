@@ -1,0 +1,89 @@
+@use '@/Shared/styles/theme' as *;
+.quests {
+  display: grid; gap: 12px; max-width: 1440px; margin-inline: auto; width: 100%;
+  p { margin-block: $spacing-sm; }
+  label { display: grid; gap: $spacing-xs; }
+  input:not([type='checkbox']), select { @include field-input; }
+  summary { cursor: pointer; }
+  summary:focus-visible, a:focus-visible { outline: 2px solid $color-primary; outline-offset: 3px; }
+  &__character.panel, &__checklist.panel { background: $color-bg-elevated; box-shadow: none; }
+  &__character .panel__body { display: flex; align-items: center; flex-wrap: wrap; gap: $spacing-lg; padding: 12px 18px; }
+  &__identity { display: flex; align-items: center; gap: 12px; flex: 1; }
+  &__identity h2 { font: 28px $font-heading; margin: 0; line-height: 1.1; }
+  &__avatar { @include slot; display: grid; place-items: center; width: 44px; height: 44px; color: $color-primary; font: 26px $font-heading; flex-shrink: 0; }
+  &__eyebrow { display: none; }
+  &__connection { color: $color-text-muted; display: flex; align-items: center; gap: 6px; }
+  &__connection::before { content: ''; width: 6px; height: 6px; background: currentColor; }
+  &__connection.is-live { color: $color-success; }
+  &__stats { display: flex; gap: $spacing-lg; align-items: center; }
+  &__level { display: flex; align-items: center; gap: 8px; border-right: 1px solid $color-border; padding-right: $spacing-lg; }
+  &__level > span, &__xp > div > span { color: $color-text-muted; }
+  &__level strong { font: 24px $font-mono; }
+  &__xp { width: 160px; }
+  &__xp > div { display: flex; justify-content: space-between; gap: $spacing-sm; }
+  &__xp strong { font: $font-size-base $font-mono; }
+  progress { appearance: none; border: 0; display: block; height: 3px; width: 100%; background: $color-border; accent-color: $color-primary; }
+  progress::-webkit-progress-bar { background: $color-border; }
+  progress::-webkit-progress-value { background: $color-primary; }
+  progress::-moz-progress-bar { background: $color-primary; }
+  &__xp progress { margin-top: 6px; }
+  &__character-info { color: $color-text-muted; }
+  &__character-info[open] { flex-basis: 100%; border-top: 1px solid $color-border; padding-top: $spacing-sm; }
+  &__character-info a { color: $color-primary; }
+  &__date-controls { display: flex; gap: 6px; align-items: center; }
+  &__date-controls input { color-scheme: dark; min-width: 150px; max-width: 170px; }
+  &__checklist > .panel__titlebar { background: none; box-shadow: none; min-height: 54px; }
+  &__checklist > .panel__titlebar .panel__actions { margin-right: 0; }
+  &__checklist .panel__code { color: $color-primary; white-space: nowrap; }
+  &__checklist > .panel__body { padding: 12px 14px 8px; }
+  &__groups { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; }
+  &__group { min-width: 0; padding-inline: 8px; }
+  &__group + &__group { border-left: 1px solid $color-border; }
+  &__group > header { display: flex; justify-content: space-between; align-items: center; gap: 4px; padding: 0 0 8px; border-bottom: 1px solid $color-border; }
+  &__group h3, &__extras h3 { font: 20px $font-heading; margin: 0; }
+  &__group > header > span { color: $color-text-muted; font: 14px $font-mono; }
+  &__group > ul, &__extras > ul { margin: 0; list-style: none; padding: 0; }
+  &__group > ul > li + li { border-top: 1px solid $color-border; }
+  &__quest-detail > summary { list-style: none; display: flex; gap: 6px; padding: 7px 0; align-items: center; min-height: 44px; }
+  &__quest-detail > summary::-webkit-details-marker { display: none; }
+  &__quest-detail > summary:hover, .is-complete > &__quest-detail > summary { background: rgba($color-primary, .04); }
+  &__reward-slot { @include slot; color: $color-text-muted; width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; }
+  &__reward-slot img { display: block; object-fit: contain; image-rendering: pixelated; }
+  &__quest-name { display: grid; gap: 2px; min-width: 0; flex: 1; }
+  &__quest-name strong { font-weight: 500; line-height: 1.15; overflow-wrap: anywhere; }
+  &__quest-name > span { color: $color-text-muted; }
+  &__quest-detail input[type='checkbox'] { width: 16px; height: 16px; accent-color: $color-primary; flex-shrink: 0; opacity: 1; margin: 0; }
+  &__quest-body { padding: $spacing-sm 0; border-top: 1px solid $color-border; color: $color-text-muted; overflow-wrap: anywhere; }
+  &__quest-body ul { padding-left: $spacing-md; }
+  &__extras { margin-top: 10px; padding-top: 8px; border-top: 1px solid $color-border; }
+  &__extras > ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  &__extras .quests__quest-detail > summary { gap: 10px; }
+  &__list-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid $color-border; color: $color-text-muted; display: flex; gap: $spacing-md; justify-content: space-between; flex-wrap: wrap; }
+  &__list-footer > details[open] { flex-basis: 100%; }
+  &__list-footer summary { color: $color-text; }
+  &__filters { display: flex; flex-wrap: wrap; align-items: end; gap: $spacing-md; margin-block: $spacing-md; }
+  label.quests__check { display: flex; align-items: start; gap: $spacing-sm; input { width: 20px; height: 20px; flex-shrink: 0; accent-color: $color-primary; } }
+  &__empty { padding-block: $spacing-lg; text-align: center; color: $color-text-muted; }
+  &__advanced { color: $color-text-muted; }
+  &__advanced > summary { padding: 4px 0; }
+  &__advanced > .panel { margin-top: $spacing-md; }
+  &__events { list-style: none; padding: 0; display: grid; gap: $spacing-sm; }
+  &__events > li { @include card; padding: $spacing-md; overflow-wrap: anywhere; }
+  &__code { font-family: $font-mono; color: $color-primary; font-size: 14px; }
+  &__group--other { grid-column: 1 / -1; margin-top: $spacing-md; }
+  &__group--other > ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: $spacing-md; }
+  &__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  @media (max-width: 1150px) { &__groups { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; } }
+  @media (max-width: $mobile-breakpoint) {
+    &__character .panel__body { gap: 12px; padding: 12px; }
+    &__identity { flex-basis: 100%; }
+    &__stats { flex: 1; gap: 12px; }
+    &__xp { flex: 1; }
+    &__level { padding-right: 12px; }
+    &__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    &__group:nth-child(odd) { border-left: 0; }
+    &__date-controls input { max-width: none; }
+    &__checklist > .panel__titlebar .panel__actions { width: 100%; }
+    &__extras > ul, &__group--other > ul { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  }
+}

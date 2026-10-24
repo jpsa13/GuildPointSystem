@@ -1,0 +1,180 @@
+CerberusQuests — validação parcial, 23/10/2026
+
+Alvo: F:\RF Cerberus - Stage Era\RF_Online_4gb.bin.
+Nenhuma instalação, escrita na memória do jogo ou alteração do cliente foi feita.
+
+Confirmado nos arquivos atuais:
+- Q082000 = código binário 0x10082000, índice 150, seção 7, registro de 424 bytes.
+- Título inglês: The weapon was given out.
+- O briefing é da Spiritualist Cora e oferece a magia inicial (Force Reaver).
+- Perfil usa SHA256 do executável, Quest.edf e NDQuest.edf inglês, além dos
+  424 bytes da definição da quest. Código e título isolados não bastam.
+
+Primeira captura do Stage Era aberto, PID 45088 (antes do novo personagem):
+- Base do módulo 0x00400000; slot 0x00A50334 aponta a 0x00560F80.
+- Dispatcher filtra grupo 0x18 e distribui pelo subtipo.
+- Subtipo 5 chama 0x005614B0, que usa o primeiro byte do payload.
+- ABI do dispatcher: this em ECX, dois argumentos na pilha, resultado em AL,
+  ret 8. Esta é uma constatação do código carregado, não de um evento observado.
+- Em 19:44:20, o gerenciador 0x0D3F7038 tinha vtable esperada 0x00A47494;
+  a lista pôde ser percorrida de forma consistente e Q082000 não foi encontrada.
+- O usuário já havia confirmado a recompensa. Não houve captura anterior,
+  portanto essa ausência não demonstra por si só conclusão ou entrega do item.
+
+Preparado fora do cliente:
+- Leitor C++ independente que identifica a definição exata da Q082000.
+- Executável externo de diagnóstico em package/CerberusQuests.exe.
+- Logs em inglês, modo de leitura única --snapshot e consulta periódica 100 ms.
+- Recusa cliente de outra pasta, múltiplos alvos iguais, build incompatível,
+  memória protegida, registro divergente e amostra que muda durante a leitura.
+- Arquivos técnicos e hashes em ../outputs/CerberusQuests-stage-validation.
+
+Testes executados e aprovados:
+- Leitor sintético: ausência, presença, reutilização de slot, definição divergente,
+  truncamento, ambiguidade e mudança durante a leitura.
+- Acesso Win32: leitura exata, endereço inválido, overflow e página guardada
+  recusada sem consumir a proteção.
+- SHA256 calculado pelo programa comparado ao Get-FileHash do PowerShell.
+- EDF: roundtrip, limites de registros/textos, identidade única e fontes intactas.
+- Asserts sobre os bytes reais do dispatcher, tabela de desvios e retorno ABI.
+
+Próxima etapa necessária:
+Validar o evento nativo diretamente. A consulta periódica
+sozinha não identifica com certeza conclusão: falha, abandono, troca de personagem
+e outras transições também podem remover uma quest da lista.
+
+Integração proposta após essa validação:
+Acrescentar observação do evento ao código próprio da CerberusBags, preservando
+rf-ui. Resolver slot para código antes do processamento nativo; encaminhar o
+handler original exatamente uma vez, preservando retorno e argumentos; registrar
+fora do handler. Sem identidade comprovada, emitir evento indeterminado.
+Validar a semântica de recompensa, abandono, falha e troca de personagem antes
+de habilitar notificações de conclusão. Nenhum hook novo foi implementado ou
+instalado nesta etapa; falta observar diretamente o evento em tempo real.
+
+Atualização: captura do novo personagem, 19:47–19:49, mesmo PID 45088.
+- 19:47:38.584: Q082000_PRESENT, slot 0, tipo 0, flags 0, registro 0x3B738890.
+- 19:47:40.119: Q082000_PRESENT, slot 103, tipo 0, flags 0, mesmo registro.
+- Leituras únicas às 19:48:20 e 19:49:02 repetiram o slot 103.
+- Cada leitura PRESENT verificou os 424 bytes contra o EDF e releu o objeto,
+  a definição e a estrutura da lista para rejeitar amostras inconsistentes.
+  A identidade Q082000 está agora confirmada em memória neste build.
+- O usuário informou que os itens já estavam na mochila antes de confirmar
+  a janela. Isso é observação do usuário; este diagnóstico não leu o inventário.
+- Não houve observação direta de chamada do handler ou captura do pacote.
+
+Explicação técnica da transição observada:
+O handler 0x005614B0, chamado pelo subtipo 5, consulta objeto+0x28 através
+de 0x0048A700. No ramo em que esse campo é zero, soma 0x67 (=103) ao slot
+do payload e chama 0x00488EF0 com slot antigo e novo. Essa rotina chama
+0x0048A8F0, que grava o novo byte em objeto+0x18 — exatamente o campo
+lido pelo monitor. O estado observado (flags 0, slot 0 -> 103) é compatível
+com esse ramo. Isso reforça a hipótese de conclusão automática antes do
+fechamento da janela, mas não prova que essa foi a única rota executada.
+Não interpretar flags==0 como sucesso nem slot>=103 como regra universal.
+
+Evidências dessa atualização:
+- package/QuestMonitor-logs/20261023-194602-23728/quest-monitor.log
+- build/QuestMonitor-logs/20261023-194902-48440/ (nome inclui o PID do diagnóstico).
+- ../outputs/CerberusQuests-stage-validation/quest-state-disassembly.txt
+
+Após o usuário fechar a janela:
+- 19:50:08.269: o diagnóstico passou a Q082000_NOT_OBSERVED.
+- A leitura única de 19:50:23 confirmou a ausência na lista observada.
+- O código exato da quest foi identificado antes e durante a janela; o ciclo
+  observado foi presença slot 0 -> presença slot 103 -> ausência ao fechar.
+- Fechar a janela não deve ser usado como instante de entrega de recompensa.
+- Log preservado em ../outputs/CerberusQuests-stage-validation/automatic-quest-lifecycle.log.
+- O diagnóstico contínuo foi encerrado após as capturas; o jogo permaneceu aberto.
+
+Conclusão atual: identidade em memória validada e transição compatível com
+o ramo nativo de conclusão identificada. Ainda falta observar diretamente a
+mensagem correspondente. Inventário e confirmação do servidor não foram lidos;
+o instante exato da concessão dos itens não foi determinado pelo diagnóstico.
+
+Verificação final: hashes de version.dll e dinput8.dll permanecem iguais aos
+anteriores. Os INIs mudaram entre as leituras (CerberusBags.ini às 19:45:07 e
+rf-ui.ini às 19:47:31); esta análise não escreveu neles. Não atribuir essas
+mudanças a uma causa específica sem verificar quem os salvou.
+
+Segundo teste: Q082010 (5 Young Flym), 23/10/2026.
+- 19:59:15.636: presença confirmada por comparação integral com o EDF,
+  slot 0, tipo 0, flags 0, registro 0x3B739920, PID 45088.
+- 20:03:44.414: mesma definição e registro, slot alterado para 103.
+- 20:04:05.820: leitura única confirmou que permanecia no slot 103.
+- O usuário confirmou que, ao completar o objetivo, a janela abriu e a recompensa
+  já foi creditada automaticamente. Essa confirmação visual é do usuário;
+  o diagnóstico não leu o inventário nem observou diretamente a concessão.
+- Assim, neste teste, a transição 0 -> 103 está correlacionada com a conclusão
+  automática e o recebimento da recompensa, antes de confirmar a janela.
+  O instante exato do crédito em relação à amostra de memória não foi medido.
+- A repetição do padrão 0 -> 103 em duas quests reforça a interpretação
+  do caminho nativo já analisado. Não é regra universal para quests de NPC,
+  abandono, falha ou cadeia, e não equivale a observar o handler em execução.
+- Log preservado: ../outputs/CerberusQuests-stage-validation/flym-completion-observation.log.
+- O usuário pediu apenas definir o funcionamento geral por enquanto;
+  o rascunho dessa ampliação foi retirado, sem instalar novos módulos.
+- Após a confirmação do usuário, somente o diagnóstico contínuo deste teste
+  foi encerrado; jogo, launcher, rf-ui e bags não foram encerrados ou alterados.
+
+Terceiro teste: quest de NPC em outro personagem, iniciado às 20:09:22.
+- Processo Stage Era PID 17992, gerenciador 0x0D657038.
+- Modo diagnóstico --journal acrescentado para este teste: percorre as três
+  listas conhecidas, registra metadados de quests e salva definições de 424 bytes
+  para comparação offline. Continua usando somente leitura; não é o módulo
+  geral de detecção de conclusão nem uma classificação automática de abas.
+- Leitura inicial: 21 registros, sendo 20 no grupo 0/tipo 0 e um no grupo 1/tipo 1.
+- Comparação offline confirmou os 21 registros integralmente contra o Quest.edf
+  cujo hash já estava validado. Os nomes foram consultados no NDQuest.edf inglês.
+- Quest no grupo 1: Q071356, índice 4011, slot 8, tipo 1, flags 0,
+  objeto 0x3A300300, definição 0x3B397358.
+- Título: [3h][Easy Cartella] Gathering Ore.
+- O usuário confirmou que essa é a quest que acabou de pegar no NPC.
+- A aceitação ocorreu antes da primeira amostra. Não foi capturado o evento de
+  inserção nem uma transição de lista vazia para essa quest presente.
+- Grupo 1/tipo 1 está associado a uma quest de NPC confirmada neste teste;
+  não extrapolar esse mapeamento para todos os tipos sem outras validações.
+- Evidências: package/QuestMonitor-logs/20261023-200922-48220/ e
+  ../outputs/CerberusQuests-stage-validation/npc-baseline.json.
+- Diagnóstico contínuo permaneceu ativo para acompanhar o teste e foi encerrado
+  após a captura de conclusão descrita abaixo.
+
+Resultado da conclusão da quest de NPC Q071356:
+- 20:10:56.144: mesmo grupo 1, objeto, tipo 1, flags 0 e definição; slot 8 -> 111.
+- 20:11:11.299: a lista observada passou de 21 para 20 registros, sem Q071356.
+- 20:11:16.662: leitura independente confirmou a ausência da Q071356.
+- O usuário confirmou: recompensa creditada automaticamente, seguida pelo
+  fechamento da janela. O inventário não foi lido pelo diagnóstico.
+- Os 424 bytes da definição antes/depois são idênticos, e a identidade do
+  registro anterior já havia sido verificada integralmente contra o EDF.
+- As definições das outras 20 quests são iguais nas três capturas; não houve
+  confusão entre a quest NPC e uma das quests comuns presentes.
+- Resultado: há três casos observados com deslocamento de slot +103 associado
+  à conclusão com recompensa automática relatada pelo usuário: Q082000 (0->103),
+  Q082010 (0->103) e Q071356 (8->111). O valor final não é sempre 103.
+- Ainda não foi demonstrado que esse sinal é exclusivo de sucesso em todos
+  os fluxos. Abandono, falha, repetição e cadeias continuam sem teste específico;
+  o handler nativo ainda não foi observado diretamente em execução.
+- Evidências: ../outputs/CerberusQuests-stage-validation/npc-completion.json e
+  npc-completion-observation.log. Somente o diagnóstico PID 48220 foi encerrado.
+
+Quarto teste: aceitação e abandono de quest NPC Q071396.
+- Título conferido nos EDFs: [24h] Easy Cartella Quest Reward 1.
+- 20:12:54.275: lista com 20 quests, sem essa quest NPC.
+- 20:13:53.064: Q071396 adicionada, grupo 1, tipo 1, slot 8, flags 0,
+  objeto 0x3A301DE8, registro 0x3B39B598, índice 4051; lista com 21 entradas.
+- Definição de 424 bytes conferida integralmente e de forma única contra o EDF.
+- Usuário confirmou abandono. Às 20:14:30.124 a lista voltou a 20 entradas,
+  sem Q071396. Leitura independente às 20:14:42.991 confirmou a ausência.
+- Nas amostras coletadas, não houve mudança para slot 111 (+103): o único
+  slot observado para essa quest foi 8. As definições das outras 20 permaneceram iguais.
+- Este controle negativo distingue o abandono testado das três conclusões
+  testadas. Polling pode perder estados intermediários curtos; portanto não
+  prova que a mudança +103 seja universalmente exclusiva de conclusão.
+- Desaparecimento sem transição validada continua sendo remoção de causa
+  indeterminada no futuro programa, salvo existência de evidência específica
+  de abandono. Neste teste, a causa foi confirmada pelo próprio usuário.
+- Faltam testes de falha, repetição e cadeia; não foi observada a execução do
+  handler nativo diretamente. Não houve implementação do módulo geral.
+- Evidências: ../outputs/CerberusQuests-stage-validation/npc-abandon-result.json
+  e npc-abandon-observation.log. Somente o diagnóstico PID 28032 foi encerrado.
