@@ -10,7 +10,8 @@ export function QuestPlayerPanel({ data }: { data: QuestHistory | undefined }) {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(timer) }, [])
   const player = data?.player
   const sample = player?.sample
-  const fresh = !!player && !player.revoked && sample?.status === 'OBSERVED' && now - Date.parse(player.receivedAt) < 15_000
+  // O CerberusBags envia a cada 60s; considera "conectado" ate 90s apos a ultima leitura.
+  const fresh = !!player && !player.revoked && sample?.status === 'OBSERVED' && now - Date.parse(player.receivedAt) < 90_000
   return <Panel className="quests__character" aria-label="Personagem identificado">
     <div className="quests__identity">
       <span className="quests__avatar" aria-hidden="true">{sample?.name.charAt(0).toUpperCase() || '—'}</span>

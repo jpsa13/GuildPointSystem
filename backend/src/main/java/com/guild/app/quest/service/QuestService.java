@@ -71,7 +71,11 @@ public class QuestService {
                 return new ExpectedQuest(row,sig,visibility.getOrDefault(row.quest().definitionHash(),catalog.defaultHidden(row.quest().definitionHash())));
             })
             .filter(row->admin||!row.hidden()).toList();
-        return new History(id,simulationEnabled,repository.sessions(id),events.stream().limit(500).toList(),more,offset+Math.min(500,events.size()),liveEnabled,repository.player(id),expected,catalog.coupons.npcs());
+        // Sem o monitor antigo (token), o "player" vem do que o CerberusBags envia,
+        // para o cabecalho mostrar "Monitor conectado" + nome em vez de desconectado.
+        var player=repository.player(id);
+        if(player==null) player=questStatus.playerStatus(member(id)).orElse(null);
+        return new History(id,simulationEnabled,repository.sessions(id),events.stream().limit(500).toList(),more,offset+Math.min(500,events.size()),liveEnabled,player,expected,catalog.coupons.npcs());
     }
     public static Instant periodStart(LocalDate day, boolean resetPeriod) {
         return day.atTime(resetPeriod?3:0,0).atZone(ZoneId.of("America/Sao_Paulo")).toInstant();
