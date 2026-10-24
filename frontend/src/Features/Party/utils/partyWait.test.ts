@@ -8,6 +8,7 @@ const entry = (memberId: number, createdAt: string): PartyLfgEntry => ({
   className: null,
   classImageUrl: null,
   level: 1,
+  expPercent: null,
   note: null,
   createdAt,
 })
