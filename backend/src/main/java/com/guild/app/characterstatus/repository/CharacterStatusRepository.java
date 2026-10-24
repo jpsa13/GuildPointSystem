@@ -11,8 +11,8 @@ public interface CharacterStatusRepository extends JpaRepository<CharacterStatus
 
     Optional<CharacterStatus> findByMemberIdAndGid(Long memberId, Long gid);
 
-    /** Melhor personagem do membro (maior level, depois maior EXP) para level/EXP no party. */
-    Optional<CharacterStatus> findFirstByMemberIdOrderByLevelDescExpPercentDesc(Long memberId);
+    /** Personagem que enviou por ultimo (o que esta sendo jogado) para level/EXP no party e em Quests. */
+    Optional<CharacterStatus> findFirstByMemberIdOrderByUpdatedAtDesc(Long memberId);
 
     @EntityGraph(attributePaths = {"member"})
     List<CharacterStatus> findByMemberIdOrderByLevelDescExpPercentDesc(Long memberId);

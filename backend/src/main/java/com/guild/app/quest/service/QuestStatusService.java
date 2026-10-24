@@ -86,7 +86,7 @@ public class QuestStatusService {
         QuestStatus qs = repository.findById(member.getId()).orElse(null);
         if (qs == null) return Optional.empty();
         var cs = characterStatusRepository
-                .findFirstByMemberIdOrderByLevelDescExpPercentDesc(member.getId()).orElse(null);
+                .findFirstByMemberIdOrderByUpdatedAtDesc(member.getId()).orElse(null);
         int level = cs != null ? cs.getLevel() : (member.getLevel() != null ? member.getLevel() : 1);
         BigDecimal xp = cs != null ? BigDecimal.valueOf((double) cs.getExpPercent()) : null;
         PlayerSample sample = new PlayerSample(0L, qs.getUpdatedAt(), SampleStatus.OBSERVED,

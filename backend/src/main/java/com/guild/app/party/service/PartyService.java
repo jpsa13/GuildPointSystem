@@ -886,7 +886,7 @@ public class PartyService {
     private PartyMemberSummary toMemberSummary(Member m, boolean leader) {
         var cls = m.getCharacterClass();
         var gs = characterStatusRepository
-                .findFirstByMemberIdOrderByLevelDescExpPercentDesc(m.getId()).orElse(null);
+                .findFirstByMemberIdOrderByUpdatedAtDesc(m.getId()).orElse(null);
         return new PartyMemberSummary(
                 m.getId(),
                 m.getNickname(),
@@ -916,7 +916,7 @@ public class PartyService {
         }
         var cls = m.getCharacterClass();
         var gs = characterStatusRepository
-                .findFirstByMemberIdOrderByLevelDescExpPercentDesc(m.getId()).orElse(null);
+                .findFirstByMemberIdOrderByUpdatedAtDesc(m.getId()).orElse(null);
         return new PartyLfgEntry(
                 m.getId(),
                 m.getNickname(),

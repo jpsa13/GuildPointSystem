@@ -80,7 +80,12 @@ export function DashboardPage() {
   const { data: characterStatus = [] } = useCharacterRanking()
   useCharacterStatusSubscription() // atualiza o ranking sem recarregar a página
   // Status de jogo (level/EXP) por membro, enviado pelo cliente CerberusBags.
-  const gameStatusByMember = new Map(characterStatus.map((s) => [s.memberId, s]))
+  // Com varios personagens na conta, vale o que enviou por ultimo (o que esta sendo jogado).
+  const gameStatusByMember = new Map<number, (typeof characterStatus)[number]>()
+  for (const s of characterStatus) {
+    const current = gameStatusByMember.get(s.memberId)
+    if (!current || Date.parse(s.updatedAt) > Date.parse(current.updatedAt)) gameStatusByMember.set(s.memberId, s)
+  }
   const cerberusLaunched = useCerberusLaunched()
   const { data: discord } = useDiscordMembers()
   const discordBySiteId = new Map<number, DiscordMember>()
