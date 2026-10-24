@@ -102,6 +102,11 @@ public class WebSocketPublisher {
         send("/topic/discord/members", payload);
     }
 
+    /** Status de personagem (level/EXP) recebido do cliente: a dashboard atualiza sozinha. */
+    public void publishCharacterStatus(Object payload) {
+        send("/topic/character-status", payload);
+    }
+
     private void send(String destination, Object payload) {
         afterCommit(() -> messagingTemplate.convertAndSend(destination, payload));
     }

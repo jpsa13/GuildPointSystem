@@ -67,6 +67,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/prometheus")
                         .access(new ScrapeTokenAuthorizationManager(metricsScrapeToken))
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Ingestao do cliente CerberusBags: autentica pelo token de pareamento no proprio corpo/header.
+                        .requestMatchers(HttpMethod.POST, "/api/character-status/ingest").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seeds/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/**").permitAll()

@@ -15,6 +15,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByEmail(String email);
 
+    /** Casamento do personagem (nome unico no jogo) com o membro, sem diferenciar caixa. */
+    Optional<Member> findByNicknameIgnoreCase(String nickname);
+
     Optional<Member> findByDiscordId(String discordId);
 
     List<Member> findByDiscordIdIn(Collection<String> discordIds);

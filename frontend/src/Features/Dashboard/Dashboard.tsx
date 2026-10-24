@@ -7,8 +7,11 @@ import { DiscordMembersPanel } from '@/Features/Dashboard/components/DiscordMemb
 import { CerberusCountdown } from '@/Features/ServerInfo/components/CerberusCountdown'
 import { useCerberusLaunched } from '@/Features/ServerInfo/hooks/useCerberusLaunched'
 import { useMemberRanking } from '@/Domain/Member/hooks/useMembers'
+import {
+  useCharacterRanking,
+  useCharacterStatusSubscription,
+} from '@/Domain/CharacterStatus/hooks/useCharacterStatus'
 import { useDiscordMembers, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
-import { formatLastLogin } from '@/Shared/utils/memberLastLogin'
 import { discordProfileUrl, openInDiscordApp } from '@/Shared/utils/discordLink'
 import { useActiveEvents, useClaimEvent } from '@/Domain/Event/hooks/useEvents'
 import { Button } from '@/Shared/ui/components/Button/Button'
@@ -74,6 +77,10 @@ function DiscordTag({ member, className }: { member?: DiscordMember; className: 
 
 export function DashboardPage() {
   const { data: ranking = [], isLoading } = useMemberRanking()
+  const { data: characterStatus = [] } = useCharacterRanking()
+  useCharacterStatusSubscription() // atualiza o ranking sem recarregar a página
+  // Status de jogo (level/EXP) por membro, enviado pelo cliente CerberusBags.
+  const gameStatusByMember = new Map(characterStatus.map((s) => [s.memberId, s]))
   const cerberusLaunched = useCerberusLaunched()
   const { data: discord } = useDiscordMembers()
   const discordBySiteId = new Map<number, DiscordMember>()
@@ -87,14 +94,43 @@ export function DashboardPage() {
   const [claimErrors, setClaimErrors] = useState<Record<number, string>>({})
   const [rankPage, setRankPage] = useState(0)
   const [eventPage, setEventPage] = useState(0)
+  // Ordenação do ranking: por pontos (padrão), level ou EXP do jogo.
+  const [sortKey, setSortKey] = useState<'points' | 'gameLevel' | 'gameExp'>('points')
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
+
+  const sortValue = (memberId: number, points: number): number | null => {
+    if (sortKey === 'points') return points
+    const s = gameStatusByMember.get(memberId)
+    if (!s) return null // sem status de jogo vai sempre para o fim
+    return sortKey === 'gameLevel' ? s.level : s.expPercent
+  }
+  const toggleSort = (key: 'points' | 'gameLevel' | 'gameExp') => {
+    if (sortKey === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))
+    else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+    setRankPage(0)
+  }
+  const sortArrow = (key: 'points' | 'gameLevel' | 'gameExp') =>
+    sortKey === key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''
 
   // Side columns end exactly where the ranking panel ends; events and news split theirs in half.
   const sideRef = useRef<HTMLDivElement>(null)
   const rankingRef = useRef<HTMLDivElement>(null)
   const sideHeight = useMatchBottom(sideRef, rankingRef, !isLoading)
 
-  const top3 = ranking.slice(0, 3)
-  const rest = ranking.slice(3)
+  const sortedRanking = [...ranking].sort((a, b) => {
+    const av = sortValue(a.id, a.points)
+    const bv = sortValue(b.id, b.points)
+    if (av === null && bv === null) return 0
+    if (av === null) return 1 // sem dado por último, independente da direção
+    if (bv === null) return -1
+    const diff = bv - av // base: maior primeiro
+    return sortDir === 'desc' ? diff : -diff
+  })
+  const top3 = sortedRanking.slice(0, 3)
+  const rest = sortedRanking.slice(3)
 
   // Rows per page follow the viewport height so the dashboard never scrolls; extra rows paginate.
   const rankListRef = useRef<HTMLUListElement>(null)
@@ -183,7 +219,13 @@ export function DashboardPage() {
                     {member.nickname}
                   </Link>
                   <DiscordTag member={discordBySiteId.get(member.id)} className="podium__discord" />
-                  <span className="podium__level">Lv {member.level ?? 1}</span>
+                  <span className="podium__level">
+                    {gameStatusByMember.has(member.id)
+                      ? `Lv ${gameStatusByMember.get(member.id)!.level} · ${gameStatusByMember
+                          .get(member.id)!
+                          .expPercent.toFixed(2)}%`
+                      : '—'}
+                  </span>
                   <span className="podium__points">{member.points}</span>
                 </div>
                 <div className="podium__pedestal">
@@ -196,13 +238,31 @@ export function DashboardPage() {
 
         {rest.length > 0 && (
           <div className="ranking-rest">
-            <div className="ranking-list__head" aria-hidden="true">
+            <div className="ranking-list__head">
               <span>#</span>
               <span className="ranking-list__head-icon" />
               <span>Membro</span>
-              <span>Lv</span>
-              <span>Pontos</span>
-              <span>Último login</span>
+              <span
+                className={`ranking-list__sort${sortKey === 'gameLevel' ? ' ranking-list__sort--active' : ''}`}
+                title="Level do personagem no jogo — clique para ordenar"
+                onClick={() => toggleSort('gameLevel')}
+              >
+                Lv{sortArrow('gameLevel')}
+              </span>
+              <span
+                className={`ranking-list__sort${sortKey === 'gameExp' ? ' ranking-list__sort--active' : ''}`}
+                title="Experiência no jogo — clique para ordenar"
+                onClick={() => toggleSort('gameExp')}
+              >
+                EXP{sortArrow('gameExp')}
+              </span>
+              <span
+                className={`ranking-list__sort${sortKey === 'points' ? ' ranking-list__sort--active' : ''}`}
+                title="Pontos da guilda — clique para ordenar"
+                onClick={() => toggleSort('points')}
+              >
+                Pontos{sortArrow('points')}
+              </span>
             </div>
             <ul
               className="ranking-list"
@@ -226,11 +286,15 @@ export function DashboardPage() {
                     </Link>
                     <DiscordTag member={discordBySiteId.get(m.id)} className="ranking-list__discord" />
                   </span>
-                  <span className="ranking-list__level">{m.level ?? 1}</span>
-                  <span className="ranking-list__pts">{m.points}</span>
-                  <span className="ranking-list__login" title={formatLastLogin(m.lastLoginAt)}>
-                    {formatLastLogin(m.lastLoginAt)}
+                  <span className="ranking-list__game-lv">
+                    {gameStatusByMember.get(m.id)?.level ?? '—'}
                   </span>
+                  <span className="ranking-list__game-exp">
+                    {gameStatusByMember.has(m.id)
+                      ? `${gameStatusByMember.get(m.id)!.expPercent.toFixed(2)}%`
+                      : '—'}
+                  </span>
+                  <span className="ranking-list__pts">{m.points}</span>
                 </li>
               ))}
               {Array.from({ length: emptyRankRows }, (_, i) => (
