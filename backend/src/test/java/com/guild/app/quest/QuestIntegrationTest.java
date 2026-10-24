@@ -121,7 +121,7 @@ class QuestIntegrationTest {
     @Test void expiryStatusAndDefaultGate() {
         jdbc.update("UPDATE quest_monitor_session SET expires_at=now()-interval '1 second' WHERE id=?",pairing.sessionId());
         assertThrows(RuntimeException.class,()->service.ingest(pairing.token(),new Batch(List.of(event(UUID.randomUUID(),0,State.PRESENT,8)))));
-        var disabled=new QuestService(null,null,null,new org.springframework.mock.env.MockEnvironment(),true,true,null,null);
+        var disabled=new QuestService(null,null,null,new org.springframework.mock.env.MockEnvironment(),true,true,null,null,null);
         assertThrows(RuntimeException.class,()->disabled.pair(new PairRequest("test")));
     }
     @Test void activeSessionLimit() {
