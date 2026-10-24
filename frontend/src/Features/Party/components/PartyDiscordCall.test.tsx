@@ -26,14 +26,13 @@ describe('Party Discord calls', () => {
     expect(onCall).not.toHaveBeenCalled()
     expect(screen.getByText('Configure o bot')).toBeTruthy()
   })
-  it('shows confirmations and prevents overlapping rounds', () => {
+  it('prevents overlapping rounds without a status panel', () => {
     const onCall = vi.fn()
     render(<PartyDiscordCall call={call} canManage loading={false} onCall={onCall} />)
     fireEvent.click(screen.getByRole('button'))
     expect(onCall).not.toHaveBeenCalled()
-    expect(screen.getByText('✅ Alice')).toBeTruthy()
-    expect(screen.getByText('Sem confirmação: Bob')).toBeTruthy()
-    expect(screen.getByRole('link').getAttribute('href')).toBe(call.messageUrl)
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByRole('link')).toBeNull()
   })
   it('does not offer nonleaders a call button', () => {
     render(<PartyDiscordCall call={call} canManage={false} loading={false} onCall={vi.fn()} />)
