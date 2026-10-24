@@ -58,6 +58,8 @@ export interface PartyMemberSummary {
 
   level: number
 
+  expPercent: number | null
+
   leader: boolean
 
 }
@@ -95,6 +97,8 @@ export interface PartyLfgEntry {
   classImageUrl: string | null
 
   level: number
+
+  expPercent: number | null
 
   note: string | null
 

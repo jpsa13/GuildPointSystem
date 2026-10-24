@@ -7,6 +7,7 @@ import com.guild.app.common.enums.Role;
 import com.guild.app.common.enums.PartyPendingKind;
 import com.guild.app.common.enums.PartyPendingStatus;
 import com.guild.app.common.exception.AppException;
+import com.guild.app.characterstatus.entity.CharacterStatus;
 import com.guild.app.characterstatus.repository.CharacterStatusRepository;
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
@@ -884,21 +885,23 @@ public class PartyService {
 
     private PartyMemberSummary toMemberSummary(Member m, boolean leader) {
         var cls = m.getCharacterClass();
+        var gs = characterStatusRepository
+                .findFirstByMemberIdOrderByLevelDescExpPercentDesc(m.getId()).orElse(null);
         return new PartyMemberSummary(
                 m.getId(),
                 m.getNickname(),
                 cls != null ? cls.getName() : null,
                 cls != null ? cls.getImageUrl() : null,
-                gameLevel(m),
+                gameLevel(m, gs),
+                gs != null ? gs.getExpPercent() : null,
                 leader
         );
     }
 
     /** Level do jogo (enviado pelo cliente); cai para o level da guilda/1 se nao houver status. */
-    private int gameLevel(Member m) {
-        Integer gameLvl = characterStatusRepository.findMaxLevelByMemberId(m.getId()).orElse(null);
-        if (gameLvl != null) {
-            return gameLvl;
+    private int gameLevel(Member m, CharacterStatus gs) {
+        if (gs != null) {
+            return gs.getLevel();
         }
         return m.getLevel() != null ? m.getLevel() : 1;
     }
@@ -912,12 +915,15 @@ public class PartyService {
             throw new AppException("Membro da lista de espera não encontrado", HttpStatus.INTERNAL_SERVER_ERROR);
         }
         var cls = m.getCharacterClass();
+        var gs = characterStatusRepository
+                .findFirstByMemberIdOrderByLevelDescExpPercentDesc(m.getId()).orElse(null);
         return new PartyLfgEntry(
                 m.getId(),
                 m.getNickname(),
                 cls != null ? cls.getName() : null,
                 cls != null ? cls.getImageUrl() : null,
-                gameLevel(m),
+                gameLevel(m, gs),
+                gs != null ? gs.getExpPercent() : null,
                 lfg.getNote(),
                 lfg.getCreatedAt()
         );

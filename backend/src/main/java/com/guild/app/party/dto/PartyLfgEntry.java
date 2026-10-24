@@ -8,6 +8,7 @@ public record PartyLfgEntry(
         String className,
         String classImageUrl,
         int level,
+        Float expPercent,
         String note,
         Instant createdAt
 ) {}
