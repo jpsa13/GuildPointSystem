@@ -4,6 +4,22 @@
   gap: theme.$spacing-lg;
 }
 
+.party-discord {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: theme.$spacing-sm;
+  margin-top: theme.$spacing-md;
+  padding-top: theme.$spacing-sm;
+  border-top: 1px solid theme.$color-border;
+  color: theme.$color-text-muted;
+  font-size: theme.$font-size-ui;
+  overflow-wrap: anywhere;
+  p { margin: 0 0 theme.$spacing-xs; }
+  a { color: theme.$color-accent; }
+  &:empty { display: none; }
+}
+
 .party-page__tabs {
   display: flex;
   flex-wrap: wrap;

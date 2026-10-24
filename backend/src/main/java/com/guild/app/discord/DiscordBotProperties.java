@@ -17,6 +17,9 @@ public class DiscordBotProperties {
     /** Server to read; blank = first server the bot is in. */
     private String guildId = "";
 
+    /** Dedicated, category-synced channel; empty disables party calls. */
+    private String partyChannelId = "";
+
     /** Role names shown in the list, in display order (a member goes under the first one they have). */
     private List<String> roles = List.of("Leader", "Cerberus");
 

@@ -82,3 +82,7 @@ cd frontend && npm run test
 - REST: `http://localhost:8080/api`
 - WebSocket STOMP: `http://localhost:8080/ws`
 - Health: `http://localhost:8080/actuator/health`
+
+## Quests e chamadas de PT
+
+Consulte [integração, configuração e migrations](preparacao/QUESTS_PARTY_INTEGRACAO.md), [monitor local](preparacao/QUESTS_LIVE.md) e [chamadas Discord](preparacao/PARTY_DISCORD.md). O monitor e o pacote portátil foram incorporados do [RF-ui PR #1](https://github.com/jpsa13/RF-ui/pull/1).

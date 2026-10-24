@@ -1,6 +1,8 @@
 import type { AuditLogEntry, AuditLogType } from '@/Domain/types/models'
 
 const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
+  PARTY_DISCORD_CALLED: 'PT chamada no Discord',
+  QUEST_CATALOG_UPDATED: 'Lista de quests revisada',
   EQUIPMENT_CHANGED: 'Equipamento atualizado',
   EQUIPMENT_CATALOG_IMPORTED: 'Catálogo EDF importado',
   OBJECTIVE_CREATED: 'Objetivo criado',
@@ -60,6 +62,10 @@ export function formatLogDetails(log: AuditLogEntry): string {
   const p = log.payload
 
   switch (log.type) {
+    case 'PARTY_DISCORD_CALLED':
+      return str(p.party)
+    case 'QUEST_CATALOG_UPDATED':
+      return `${str(p.code)} · ${p.hidden ? 'Ocultada da checklist' : 'Restaurada na checklist'}`
     case 'EQUIPMENT_CHANGED':
       if (p.action === 'CREATE' && p.quantity) return `${str(p.slot)} · Entrega de ${str(p.quantity)} unidade(s) · Registro #${str(p.assignmentId)}`
       if (p.action === 'REVIEW_REQUEST') return `Revisão de equipamentos solicitada · Prazo: ${str(p.dueAt)}`

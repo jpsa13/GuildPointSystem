@@ -1,5 +1,6 @@
 uploads-dev/
 uploads-test/
+uploads-quests/
 *.log
 runtime/
 downloads/
@@ -9,3 +10,4 @@ evidencias/
 catalogo-edf.local.json
 __pycache__/
 *.pyc
+discord-local.private.properties

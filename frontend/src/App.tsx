@@ -13,6 +13,7 @@ import { ObjectivesPage } from '@/Features/Objectives/Objectives'
 import { EventsPage } from '@/Features/Events/Events'
 import { ItemsPage } from '@/Features/Items/Items'
 import { EquipmentPage } from '@/Features/Equipment/Equipment'
+import { QuestsPage } from '@/Features/Quests/Quests'
 import { AuctionListPage } from '@/Features/Auction/AuctionList'
 import { AuctionDetailPage } from '@/Features/Auction/AuctionDetail'
 import { ApprovalsPage } from '@/Features/Admin/Approvals/Approvals'
@@ -55,6 +56,7 @@ function App() {
               <Route path="events" element={<EventsPage />} />
               <Route path="items" element={<ItemsPage />} />
               <Route path="equipment" element={<EquipmentRoute />} />
+              <Route path="quests" element={<QuestsPage />} />
               <Route path="party" element={<PartyPage />} />
               <Route path="auctions" element={<AuctionListPage />} />
               <Route path="auctions/:id" element={<AuctionDetailPage />} />

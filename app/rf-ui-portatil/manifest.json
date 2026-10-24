@@ -1,0 +1,18 @@
+[
+  {
+    "file": "CerberusBags.ini",
+    "sha256": "675b31ac7ecc11ae680a5cd36b9d68bd0aa53e54850824a61088317295722267"
+  },
+  {
+    "file": "dinput8.dll",
+    "sha256": "28122308cdca160ec60399bff096529d85c1e5977788c7955241617bbcb450d6"
+  },
+  {
+    "file": "rf-ui.ini",
+    "sha256": "c0785e332493f3c38fe50fb9b78ef2fa521e077d551dbfa46f9c9003d1c05996"
+  },
+  {
+    "file": "version.dll",
+    "sha256": "3ba7180bb3c850afba2ad52f27ff26da1e6695ca1e156552e243a282ccb378b4"
+  }
+]

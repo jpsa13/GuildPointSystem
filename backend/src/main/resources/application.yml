@@ -57,6 +57,7 @@ guild:
       token: ${DISCORD_BOT_TOKEN:}
       # Empty = first server the bot is in.
       guild-id: ${DISCORD_GUILD_ID:}
+      party-channel-id: ${DISCORD_PARTY_CHANNEL_ID:}
       # Role names shown in the list, in display order.
       roles: ${DISCORD_MEMBER_ROLES:Leader,Cerberus}
   cors:

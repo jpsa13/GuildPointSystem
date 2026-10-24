@@ -1,0 +1,60 @@
+INTEGRAÇÃO LOCAL COM GuildPointSystem — monitor local 0.2
+
+O fluxo ao vivo agora usa tools/monitor_site.py, leitura externa do cliente Stage
+Era 4 GB, com nome, nível, XP e journal. Abra /quests, informe o nome exato, crie
+um pareamento e execute com Python 3 instalado:
+powershell -File CerberusQuests/Start-SiteMonitor.ps1 -ClientPath "F:\RF Cerberus - Stage Era"
+Cole o token no prompt protegido. Não publique tokens, logs ou a fila outputs.
+Troca de personagem/conexão encerra o monitor. Novo pareamento revoga o anterior.
+O vínculo é declarado pelo jogador e observado no cliente, sem atestação RF.
+
+O catálogo lista 68 quests do Coupon Reward Manager 2 e 40 do Manager 3, com
+objetivos e ocultação administrativa. Manager 4 existe no Store.edf mas não tem
+ofertas vinculadas neste Quest.edf. Esses itens ainda exigem teste controlado de
+conclusão: estado alterado não validado permanece indeterminado (STATE_CHANGED).
+Guia atualizado: preparacao/QUESTS_LIVE.md.
+
+O texto abaixo documenta a etapa anterior de replay 0.1; suas restrições sobre
+ausência de monitor ao vivo foram substituídas pelo fluxo acima.
+
+O monitor C++ permanece diagnóstico somente leitura. Não há envio de uma sessão
+real do jogo nem identificação automática de personagem nesta candidata.
+O utilitário tools/replay_site.py converte logs --journal já encerrados, confere
+os 424 bytes de cada definição contra o EDF do Stage Era e gera uma fila JSON
+de SIMULAÇÃO. Não instala/edita nada no cliente nem abre um processo do jogo.
+
+Exemplo a partir do workspace Cerberus (caminhos PowerShell):
+python CerberusQuests/tools/replay_site.py convert --log CerberusQuests/package/QuestMonitor-logs/20261023-200922-48220/quest-monitor.log --records CerberusQuests/package/QuestMonitor-logs/20261023-200922-48220 --out outputs/quests-npc-completion-simulation.json
+
+O arquivo de saída deve ser novo. Um existente nunca é sobrescrito, preservando
+IDs de reenvio. EDFs são lidos de F:/RF Cerberus - Stage Era por padrão; hashes
+incompatíveis interrompem a conversão. Títulos sem referência utilizável usam
+o código. Somente os casos individualmente validados podem produzir COMPLETION_SIGNAL;
+desaparecimento é sempre REMOVED_UNKNOWN, inclusive no log de abandono.
+Os timestamps dos logs históricos têm fuso Brasília (-03:00), convertido em UTC.
+
+Faça login na prévia local 15175, abra /quests e crie uma sessão de simulação.
+Copie o token mostrado uma vez para a variável QUEST_SIMULATION_TOKEN do processo
+que executará o envio (não coloque tokens em argumentos de linha de comando).
+python CerberusQuests/tools/replay_site.py send --outbox outputs/quests-npc-completion-simulation.json --url http://127.0.0.1:18082
+
+O sender só aceita HTTP em loopback, não usa proxy e recusa redirects. Em erro,
+conserve a fila, corrija a conexão e reenvie o mesmo arquivo na mesma sessão:
+reenvio integral é idempotente. Não apaga a fila automaticamente. Use outra
+sessão para outro personagem/log e revogue os tokens ao terminar. Recriar sessão
+não mantém a deduplicação da anterior. Não existe vínculo comprovado entre os
+personagens dos logs históricos e as contas fictícias do site.
+
+Testes sintéticos:
+python -m unittest discover -s CerberusQuests/tests -p test_replay_site.py -v
+
+Reset informado: 03h Brasília / 09h Moscou. O site distingue janela de reset e
+dia civil; não infere regras de repetição pelos prefixos [3h] ou [24h].
+
+Próxima etapa necessária para fluxo real: identidade de personagem confiável,
+detecção de troca/relogin que encerre a sessão e invalide a continuidade, catálogo
+validado no runtime e observação de falha, cadeia e repetição. Confirmação manual
+por sessão isoladamente não detecta troca de personagem no jogo. Nenhuma garantia
+sobre anticheat é oferecida. Sem monitor não há prova de ausência de conclusão.
+
+Entrega confirmada pelo jogador: Q071396 (Easy Cartella Quest Reward 1), grupo 1/tipo 1, 8 -> 111 (+103). O detector e a checklist reconhecem esse caso, sem generalizar as demais quests Easy.

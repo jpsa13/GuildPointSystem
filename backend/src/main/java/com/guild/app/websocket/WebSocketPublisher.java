@@ -27,6 +27,11 @@ public class WebSocketPublisher {
     public void publishEquipmentChanged() {
         send("/topic/equipment", Map.of("changed", true));
     }
+
+    public void publishQuestChanged(Long memberId) {
+        send("/topic/quests/member/" + memberId, Map.of("changed", true));
+    }
+    public void publishQuestCatalogChanged() { send("/topic/quests/catalog",Map.of("changed",true)); }
     public void publishEquipmentCatalogChanged() {
         send("/topic/equipment", Map.of("changed", true, "catalogChanged", true));
     }
