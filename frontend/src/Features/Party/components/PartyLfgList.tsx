@@ -67,10 +67,12 @@ export function PartyLfgList({
                 </div>
               )}
             </div>
-            {/* Second line: class and level on the left, waiting time on the right. */}
+            {/* Second line: level and EXP on the left, waiting time on the right. */}
             <div className="party-lfg-item__meta">
-              <span className="party-lfg-item__class">{entry.className ?? 'Classe'}</span>
-              <span className="party-lfg-item__level">· Lv {entry.level}</span>
+              <span className="party-lfg-item__level">
+                Lv {entry.level}
+                {entry.expPercent != null ? ` · ${entry.expPercent.toFixed(2)}%` : ''}
+              </span>
               <span
                 className="party-lfg-item__wait"
                 title={`Na lista desde ${new Date(entry.createdAt).toLocaleTimeString('pt-BR')}`}

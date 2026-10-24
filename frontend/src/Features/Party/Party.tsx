@@ -78,7 +78,8 @@ function PendingMemberPreview({ member }: { member: PartyMemberSummary }) {
       <div className="party-pending__who-text">
         <strong>{member.nickname}</strong>
         <span>
-          {member.className ?? 'Classe'} · Lv {member.level}
+          Lv {member.level}
+          {member.expPercent != null ? ` · ${member.expPercent.toFixed(2)}%` : ''}
         </span>
       </div>
     </div>
@@ -237,8 +238,8 @@ function PartyRoster({
                 {member.nickname}
               </span>
               <span className="party-card__roster-meta">
-                {member.className ? `${member.className} · ` : ''}
                 Lv {member.level}
+                {member.expPercent != null ? ` · ${member.expPercent.toFixed(2)}%` : ''}
               </span>
               {canManage && !member.leader && member.id !== viewerId && (
                 <div

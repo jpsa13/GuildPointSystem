@@ -6,5 +6,6 @@ public record PartyMemberSummary(
         String className,
         String classImageUrl,
         int level,
+        Float expPercent,
         boolean leader
 ) {}
