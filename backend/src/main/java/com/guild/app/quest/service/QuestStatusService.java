@@ -1,8 +1,12 @@
 package com.guild.app.quest.service;
 
+import com.guild.app.characterstatus.repository.CharacterStatusRepository;
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
 import com.guild.app.quest.dto.QuestStatusIngestRequest;
+import com.guild.app.quest.dto.QuestDtos.PlayerSample;
+import com.guild.app.quest.dto.QuestDtos.PlayerStatus;
+import com.guild.app.quest.dto.QuestDtos.SampleStatus;
 import com.guild.app.quest.entity.QuestStatus;
 import com.guild.app.quest.repository.QuestStatusRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,11 +15,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,6 +39,7 @@ public class QuestStatusService {
 
     private final QuestStatusRepository repository;
     private final MemberRepository memberRepository;
+    private final CharacterStatusRepository characterStatusRepository;
 
     /** Dia de quest: reset 03:00 America/Sao_Paulo (desloca 3h e pega a data). */
     public static LocalDate currentQuestDay() {
@@ -66,6 +74,24 @@ public class QuestStatusService {
                 .filter(s -> day.equals(s.getQuestDay()))
                 .map(s -> parse(s.getDoneCodes()))
                 .orElse(Set.of());
+    }
+
+    /**
+     * "Player" sintetico para o cabecalho da aba Quests, montado do que a DLL envia
+     * (quest_status + level/EXP do character_status). Faz o cabecalho mostrar
+     * "Monitor conectado" + nome quando ha envio recente, sem o monitor antigo.
+     */
+    @Transactional(readOnly = true)
+    public Optional<PlayerStatus> playerStatus(Member member) {
+        QuestStatus qs = repository.findById(member.getId()).orElse(null);
+        if (qs == null) return Optional.empty();
+        var cs = characterStatusRepository
+                .findFirstByMemberIdOrderByLevelDescExpPercentDesc(member.getId()).orElse(null);
+        int level = cs != null ? cs.getLevel() : (member.getLevel() != null ? member.getLevel() : 1);
+        BigDecimal xp = cs != null ? BigDecimal.valueOf((double) cs.getExpPercent()) : null;
+        PlayerSample sample = new PlayerSample(0L, qs.getUpdatedAt(), SampleStatus.OBSERVED,
+                member.getNickname(), 1L, "0".repeat(64), level, xp, List.of());
+        return Optional.of(new PlayerStatus(null, sample, qs.getUpdatedAt(), false));
     }
 
     private static String toCodes(java.util.List<Integer> values) {
