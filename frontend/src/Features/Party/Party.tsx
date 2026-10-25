@@ -406,6 +406,7 @@ export function PartyPage() {
   const addAllToLfg = useAddAllToPartyLfg()
   const removeFromLfg = useRemoveFromPartyLfg()
   const [lfgRemovingId, setLfgRemovingId] = useState<number | null>(null)
+  const [lfgSearch, setLfgSearch] = useState('')
   const [addAllOpen, setAddAllOpen] = useState(false)
 
   const onPartyNotice = useCallback(
@@ -686,11 +687,23 @@ export function PartyPage() {
             code={`${board.lfg.length} LFP`}
             flush
             actions={
-              my.canOrganizeParties && (
-                <Button size="sm" variant="secondary" onClick={() => setAddAllOpen(true)}>
-                  Adicionar todos
-                </Button>
-              )
+              <>
+                {board.lfg.length > 0 && (
+                  <input
+                    type="search"
+                    className="party-lfg-search"
+                    placeholder="Buscar membro"
+                    aria-label="Buscar membro na lista de espera"
+                    value={lfgSearch}
+                    onChange={(e) => setLfgSearch(e.target.value)}
+                  />
+                )}
+                {my.canOrganizeParties && (
+                  <Button size="sm" variant="secondary" onClick={() => setAddAllOpen(true)}>
+                    Adicionar todos
+                  </Button>
+                )}
+              </>
             }
           >
             {board.lfg.length === 0 ? (
@@ -698,6 +711,7 @@ export function PartyPage() {
             ) : (
               <PartyLfgList
                 entries={board.lfg}
+                search={lfgSearch}
                 viewerId={user?.memberId}
                 canDrag={canDragFromLfg}
                 actions={

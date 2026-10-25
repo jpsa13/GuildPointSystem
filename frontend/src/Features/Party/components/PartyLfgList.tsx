@@ -17,19 +17,29 @@ export function PartyLfgList({
   viewerId,
   canDrag,
   actions,
+  search = '',
 }: {
   entries: PartyLfgEntry[]
   viewerId?: number
   canDrag: boolean
   /** Extra buttons at the end of a card (e.g. admin "remove from the list"). */
   actions?: (entry: PartyLfgEntry) => ReactNode
+  /** Shows only nicknames containing this text; each card keeps its real place in the queue. */
+  search?: string
 }) {
   const now = useServerNow()
+  const term = search.trim().toLocaleLowerCase('pt-BR')
   const ordered = sortByWaiting(entries)
+    .map((entry, index) => ({ entry, place: index + 1 }))
+    .filter(({ entry }) => !term || entry.nickname.toLocaleLowerCase('pt-BR').includes(term))
+
+  if (ordered.length === 0) {
+    return <p className="party-page__empty party-page__empty--panel">Nenhum membro encontrado.</p>
+  }
 
   return (
     <ol className="party-lfg-grid">
-      {ordered.map((entry, index) => {
+      {ordered.map(({ entry, place }) => {
         const draggable = canDrag && entry.memberId !== viewerId
         const isMe = entry.memberId === viewerId
         return (
@@ -50,7 +60,7 @@ export function PartyLfgList({
           >
             <div className="party-lfg-item__main">
               <span className="party-lfg-item__rank" title="Posição na fila (maior tempo de espera primeiro)">
-                {index + 1}
+                {place}
               </span>
               {entry.classImageUrl ? (
                 <MemberClassIcon classImageUrl={entry.classImageUrl} classLabel={entry.className ?? ''} size="sm" />

@@ -233,6 +233,17 @@
   gap: theme.$spacing-sm;
 }
 
+.party-lfg-search {
+  @include theme.field-input;
+  width: 200px;
+  padding: 4px 10px;
+  font-size: 14px;
+
+  @media (max-width: theme.$mobile-breakpoint) {
+    width: 130px;
+  }
+}
+
 .party-lfg-grid {
   list-style: none;
   margin: 0;
