@@ -19,6 +19,8 @@ function effectLabel(effect: EquipmentEffect) {
   return formatEquipmentEffect(effect)
 }
 function gradeLabel(grade: number) { return grade === 3 ? 'Type C' : grade === 1 ? 'Intense' : catalogGradeLabel(grade) }
+function memberScore(member: MemberEquipment) { return member.gearScore ? `${member.gearScore.total.toLocaleString('pt-BR')} GS${member.gearScore.unscored ? ' · parcial' : ''}` : 'GS indisponível' }
+function itemScore(item: CurrentSlot['assignment']) { return item?.gearScore?.included === false ? 'Fora do GS' : item?.gearScore?.points != null ? `${item.gearScore.points.toLocaleString('pt-BR')} GS${item.gearScore.originalLevel != null ? ` · base Lv. ${item.gearScore.originalLevel}` : ''}` : 'GS pendente de classificação' }
 const TYPE_C_LEVELS = [{ base: 43, required: 38 }, { base: 45, required: 40 }, { base: 47, required: 42 }, { base: 50, required: 45 }]
 const SLOT_COUNT = EQUIPMENT_GROUPS.reduce((total, group) => total + group.slots.length, 0)
 
@@ -67,7 +69,7 @@ export function EquipmentPage() {
   const { hasRole, user } = useAuthContext()
   const admin = hasRole('ADMINISTRADOR')
   const [pageView, setPageView] = useState<'mine' | 'manage'>('mine')
-  const managing = admin && pageView === 'manage'
+  const managing = pageView === 'manage'
   const { data: reviews = [], error: reviewLoadError } = useEquipmentReviews()
   const reviewAction = useEquipmentReviewAction()
   const ownReview = reviews.find(r => r.memberId === user?.memberId)
@@ -161,7 +163,7 @@ export function EquipmentPage() {
   const canEdit = admin || inspected?.memberId === user?.memberId
   const filteringSelection = onlySelected && selectedMembers.size > 0
   const filtered = members.filter(m => m.nickname.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) && (!filled || m.slots.some(s => s.assignment)) && (!filteringSelection || selectedMembers.has(m.memberId)))
-    .sort((a, b) => (sort === 'level-asc' ? a.level - b.level : sort === 'level-desc' ? b.level - a.level : 0) || a.nickname.localeCompare(b.nickname, 'pt-BR', { sensitivity: 'base' }) || a.memberId - b.memberId)
+    .sort((a, b) => (sort === 'gs-asc' ? (a.gearScore?.total ?? 0) - (b.gearScore?.total ?? 0) : sort === 'gs-desc' ? (b.gearScore?.total ?? 0) - (a.gearScore?.total ?? 0) : sort === 'name-desc' ? b.nickname.localeCompare(a.nickname, 'pt-BR', { sensitivity: 'base' }) : sort === 'level-asc' ? a.level - b.level : sort === 'level-desc' ? b.level - a.level : 0) || a.nickname.localeCompare(b.nickname, 'pt-BR', { sensitivity: 'base' }) || a.memberId - b.memberId)
   const acceptsDrop = (memberId: number, slot?: EquipmentSlot, source = dragged) => !!(admin && source && source.memberId !== memberId && !transferMutation.isPending && (!slot || slot === source.position.slot ||
     (['RING', 'AMULET'].includes(SLOT_CATEGORY[source.position.slot]) && SLOT_CATEGORY[slot] === SLOT_CATEGORY[source.position.slot])))
   const sendTransfer = async (request: DragTransfer) => {
@@ -194,6 +196,7 @@ export function EquipmentPage() {
     if (id === historyId) { inspectRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); inspectRef.current?.focus({ preventScroll: true }) }
   }
   const openEditor = (slot: EquipmentSlot, action: Editor['action'], original?: EquipmentAssignment) => {
+    if (!canEdit) return
     const target = inspected?.slots.find(s => s.slot === slot)
     if (inspected && target) {
       setSelectedSlot(slot); setTab('current')
@@ -214,10 +217,10 @@ export function EquipmentPage() {
       <div><h1>{managing ? 'Equipamentos da guild' : 'Meus equipamentos'}</h1></div>
       <Button variant="secondary" onClick={() => { void refetch(); if (historyId) void refetchHistory() }}>Atualizar</Button>
     </header>
-    {admin && <div className="equipment-tabs" role="group" aria-label="Área de equipamentos">
+    <div className="equipment-tabs" role="group" aria-label="Área de equipamentos">
       <Button variant={managing ? 'secondary' : 'primary'} aria-pressed={!managing} onClick={() => { setPageView('mine'); setEditor(null); setTab('current') }}>Meus equipamentos</Button>
-      <Button variant={managing ? 'primary' : 'secondary'} aria-pressed={managing} onClick={() => { setPageView('manage'); setEditor(null); setTab('current') }}>Gerenciar players</Button>
-    </div>}
+      <Button variant={managing ? 'primary' : 'secondary'} aria-pressed={managing} onClick={() => { setPageView('manage'); setEditor(null); setTab('current') }}>{admin ? 'Gerenciar players' : 'Ver jogadores'}</Button>
+    </div>
     {(reviewAction.error || reviewLoadError) && <p role="alert">{reviewAction.error?.message ?? reviewLoadError?.message}</p>}
     {!managing && <div className="equipment-actions">
       {ownReview && <span>{ownReview.status === 'CONFIRMED' ? 'Revisão confirmada' : ownReview.overdue ? 'Revisão em atraso' : 'Revisão pendente'} · Prazo: {new Date(ownReview.dueAt).toLocaleString('pt-BR')}</span>}
@@ -232,7 +235,7 @@ export function EquipmentPage() {
     {managing && <Panel title="Personagens" code={`${members.length} PERSONAGENS`}>
       <div className="equipment-toolbar">
         <label>Pesquisar personagem<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nick do personagem" /></label>
-        <label>Ordenar jogadores<select value={sort} onChange={e => setSort(e.target.value)}><option value="name">Nome · A–Z</option><option value="level-asc">Nível crescente</option><option value="level-desc">Nível decrescente</option></select></label>
+        <label>Ordenar jogadores<select value={sort} onChange={e => setSort(e.target.value)}><option value="name">Nome · A–Z</option><option value="name-desc">Nome · Z–A</option><option value="gs-desc">Gear score decrescente</option><option value="gs-asc">Gear score crescente</option><option value="level-asc">Nível crescente</option><option value="level-desc">Nível decrescente</option></select></label>
         <label className="equipment-check"><input type="checkbox" checked={filled} onChange={e => setFilled(e.target.checked)} />Somente com equipamento informado</label>
         <label className="equipment-check"><input type="checkbox" checked={filteringSelection} disabled={selectedMembers.size === 0} onChange={e => setOnlySelected(e.target.checked)} />Somente selecionados ({selectedMembers.size})</label>
         {selectedMembers.size > 0 && <Button size="sm" variant="secondary" onClick={() => { setSelectedMembers(new Set()); setOnlySelected(false) }}>Limpar seleção</Button>}
@@ -253,7 +256,7 @@ export function EquipmentPage() {
             const checked = e.target.checked
             if (!checked && selectedMembers.size === 1) setOnlySelected(false)
             setSelectedMembers(previous => { const next = new Set(previous); if (checked) next.add(member.memberId); else next.delete(member.memberId); return next })
-          }} /><div><button className="equipment-nick-link" title={member.nickname} onClick={() => inspect(member.memberId)}>{member.nickname}</button><small>Lv. {member.level} · {member.slots.filter(s => s.assignment).length}/{SLOT_COUNT} informados</small></div></div>
+          }} /><div><button className="equipment-nick-link" title={member.nickname} onClick={() => inspect(member.memberId)}>{member.nickname}</button><small>Lv. {member.level} · {memberScore(member)}</small></div></div>
           {EQUIPMENT_GROUPS.map(group => <div key={group.id} className="equipment-roster__group" role="group" aria-label={`${group.label} de ${member.nickname}`}>
             <span className="equipment-roster__label">{group.label}</span>
             <div className="equipment-mini-slots">{group.slots.map(slot => {
@@ -297,7 +300,8 @@ export function EquipmentPage() {
         {transferMutation.error && <p role="alert">{transferMutation.error.message}</p>}</>}
     </ConfirmDialog>
     {inspected && <Panel title={managing ? "Inspecionar personagem" : "Meu inventário"} code={`${inspected.slots.filter(s => s.assignment).length}/${SLOT_COUNT} INFORMADOS`}>
-      <div className="equipment-page__heading"><h2 ref={inspectRef} tabIndex={-1}>{inspected.nickname}</h2>{managing && <Button variant="secondary" onClick={() => { setHistoryId(0); setEditor(null) }}>Fechar inspeção</Button>}</div>
+      <div className="equipment-page__heading"><h2 ref={inspectRef} tabIndex={-1}>{inspected.nickname} · {memberScore(inspected)}</h2>{managing && <Button variant="secondary" onClick={() => { setHistoryId(0); setEditor(null) }}>Fechar inspeção</Button>}</div>
+      {inspected.gearScore && <small title="Itens +0. Arma ×5 (somente a maior), armaduras ×1, acessórios ×3. Capa fora do cálculo.">Arma: {inspected.gearScore.weapon.toLocaleString('pt-BR')} · Armaduras: {inspected.gearScore.armor.toLocaleString('pt-BR')} · Acessórios: {inspected.gearScore.accessories.toLocaleString('pt-BR')}{inspected.gearScore.unscored > 0 && ` · ${inspected.gearScore.unscored} item(ns) sem pontuação confirmada`}</small>}
       {admin && <div className="equipment-actions">
         <Button size="sm" onClick={() => {
           const position = inspected.slots.find(s => s.slot === 'Weapon')
@@ -336,7 +340,7 @@ export function EquipmentPage() {
             <EquipmentEditor key={`${editor.memberId}-${editor.position.slot}-${editor.action}-${editor.original?.id ?? 'new'}-${editor.delivery ? 'delivery' : 'equipment'}`} editor={editor} members={members} onClose={() => setEditor(null)} onSaved={() => { if (editor.delivery) setTab('deliveries'); setEditor(null) }} />
           </> : <section aria-label="Detalhes da posição" aria-live="polite">
             <h3>{SLOT_LABELS[selectedSlot]}</h3>
-            {item ? <><div className="equipment-item-preview"><EquipmentIcon item={item} size={64} /><div><strong>{itemLabel(item)}</strong><small>{item.gameCode}{admin && ` · Registro #${item.id}`}</small></div></div><p>{effectLabel(item.effect)}</p>{admin && <><p>{item.origin === 'INITIAL' ? 'Equipamento inicial' : 'Entrega da guild'} · {item.occurredOn?.split('-').reverse().join('/')}</p><p>Registrado por {item.actorName}</p></>}</> : <p>Equipamento não informado nesta posição.</p>}
+            {item ? <><div className="equipment-item-preview"><EquipmentIcon item={item} size={64} /><div><strong>{itemLabel(item)}</strong><small>{item.gameCode}{admin && ` · Registro #${item.id}`}</small></div></div><p>{effectLabel(item.effect)} · {itemScore(item)}</p>{admin && <><p>{item.origin === 'INITIAL' ? 'Equipamento inicial' : 'Entrega da guild'} · {item.occurredOn?.split('-').reverse().join('/')}</p><p>Registrado por {item.actorName}</p></>}</> : <p>Equipamento não informado nesta posição.</p>}
             {canEdit && <Button onClick={() => openEditor(selectedSlot, 'CREATE')}>Registrar em {SLOT_LABELS[selectedSlot]}</Button>}
           </section>}
         </div>
@@ -366,7 +370,7 @@ export function EquipmentPage() {
       </div>}
     </Panel>}
     {tooltip && tooltipItem && createPortal(<div id="equipment-item-tooltip" role="tooltip" className="equipment-tooltip" style={{ left: tooltip.left, top: tooltip.top, bottom: tooltip.bottom }} onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
-      <EquipmentIcon item={tooltipItem} size={48} /><div><strong>{tooltipItem.name}</strong><div className="equipment-tooltip__meta">Lv. {tooltipItem.level} · {gradeLabel(tooltipItem.grade)}</div><p>{effectLabel(tooltipItem.effect)}</p></div>
+      <EquipmentIcon item={tooltipItem} size={48} /><div><strong>{tooltipItem.name}</strong><div className="equipment-tooltip__meta">Lv. {tooltipItem.level} · {gradeLabel(tooltipItem.grade)} · {itemScore(tooltipItem)}</div><p>{effectLabel(tooltipItem.effect)}</p></div>
     </div>, document.body)}
   </div>
 }

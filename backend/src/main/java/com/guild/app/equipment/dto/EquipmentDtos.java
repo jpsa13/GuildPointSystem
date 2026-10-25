@@ -29,10 +29,10 @@ public final class EquipmentDtos {
     public record Assignment(long id, long memberId, Slot slot, long catalogId, String gameCode, String name,
                              int level, int grade, String category, Effect effect, Origin origin, LocalDate occurredOn,
                              Long actorId, String actorName, Instant createdAt, String status, Long correctsId, String reason,
-                             Integer iconId, String sourceHash, String statusReason, String statusActorName, Instant statusChangedAt) {
+                             Integer iconId, String sourceHash, String statusReason, String statusActorName, Instant statusChangedAt, GearScore gearScore) {
         public Assignment withoutAudit() {
             return new Assignment(id,memberId,slot,catalogId,gameCode,name,level,grade,category,effect,
-                null,null,null,null,null,null,null,null,iconId,sourceHash,null,null,null);
+                null,null,null,null,null,null,null,null,iconId,sourceHash,null,null,null,gearScore);
         }
     }
     public record ReviewRequest(@NotNull UUID operationId, @NotNull @Positive Long memberId) {}
@@ -43,7 +43,25 @@ public final class EquipmentDtos {
     public record SlotEdit(@NotNull UUID operationId, @NotNull @Positive Long memberId,
                            @NotNull @Size(min=1,max=12) List<@NotNull @Valid SlotVersion> slots, UUID reversesOperationId) {}
     public record SlotEditResult(UUID operationId, long memberId, List<CurrentSlot> slots) {}
-    public record MemberEquipment(long memberId, String nickname, int level, List<CurrentSlot> slots) {}
+    public record GearScore(Integer points, Integer originalLevel, boolean included) {}
+    public record GearScoreTotal(int total,int weapon,int armor,int accessories,int unscored) {}
+    public record MemberEquipment(long memberId, String nickname, int level, List<CurrentSlot> slots) {
+        @com.fasterxml.jackson.annotation.JsonProperty("gearScore")
+        public GearScoreTotal gearScore() {
+            int weapon=0,armor=0,accessories=0,unscored=0;
+            for (var slot:slots) {
+                if (slot.assignment()==null || slot.slot()==Slot.Cloak) continue;
+                var score=slot.assignment().gearScore();
+                if (score==null || score.points()==null) { unscored++; continue; }
+                switch(slot.slot().category) {
+                    case "WEAPON" -> weapon=Math.max(weapon,score.points());
+                    case "RING","AMULET" -> accessories+=score.points();
+                    default -> armor+=score.points();
+                }
+            }
+            return new GearScoreTotal(weapon+armor+accessories,weapon,armor,accessories,unscored);
+        }
+    }
     public record Transfer(@NotNull @Positive Long memberId, Slot slot,
                            @NotNull @Min(0) Long expectedVersion, boolean replaceCurrent) {}
     public record Operation(@NotNull UUID operationId, @NotNull Action action, @NotNull @Positive Long memberId,

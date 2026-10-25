@@ -17,7 +17,7 @@ vi.mock('@/Shared/ui/components/AppToast/AppToast', () => ({ useAppToast: () => 
 vi.mock('@/Domain/Equipment/hooks/useEquipment', () => ({
   useEquipmentReviews: () => ({ data: state.reviews }),
   useEquipmentReviewAction: () => ({ mutate: state.reviewAction, isPending: false }),
-  useEquipment: () => ({ data: [{ memberId: 1, nickname: 'Player local', level: 50, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.current && slot === state.currentSlot ? 1 : 0, assignment: state.current && slot === state.currentSlot ? { ...record, slot, level: state.currentLevel, grade: state.currentGrade } : null })) }, ...(state.transferTarget ? [{ memberId: 3, nickname: 'Destinatário local', level: 40, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.targetEmpty ? 0 : 2, assignment: state.targetEmpty ? null : { ...record, id: 30, memberId: 3, slot, name: 'Item do destinatário' } })) }] : []), ...(state.extraMember ? [{ memberId: 4, nickname: 'Outro player', level: 50, slots: [] }] : [])], refetch: state.refetch }),
+  useEquipment: () => ({ data: [{ memberId: 1, nickname: 'Player local', level: 50, gearScore: { total: 1000, weapon: 1000, armor: 0, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.current && slot === state.currentSlot ? 1 : 0, assignment: state.current && slot === state.currentSlot ? { ...record, slot, level: state.currentLevel, grade: state.currentGrade } : null })) }, ...(state.transferTarget ? [{ memberId: 3, nickname: 'Destinatário local', level: 40, gearScore: { total: 2500, weapon: 1000, armor: 1500, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.targetEmpty ? 0 : 2, assignment: state.targetEmpty ? null : { ...record, id: 30, memberId: 3, slot, name: 'Item do destinatário' } })) }] : []), ...(state.extraMember ? [{ memberId: 4, nickname: 'Outro player', level: 50, slots: [] }] : [])], refetch: state.refetch }),
   useEquipmentImportStatus: () => ({ data: { imported_count: 100, excluded: '[]' } }),
   useEquipmentHistory: (id: number, enabled = true) => { state.historyQuery(id, enabled); return { data: enabled && id > 0 ? state.history : [], refetch: state.refetch } },
   useEquipmentCatalog: (category: string, search: string, page: number, enabled: boolean, filters: CatalogFilters) => {
@@ -283,11 +283,32 @@ describe('Equipamentos', () => {
     expect(state.mutate).not.toHaveBeenCalled()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
-  it('does not expose other players or transfers to ordinary owners', () => {
+  it('opens a public read-only roster with name and gear score ordering', () => {
     state.admin = false; state.userId = 1; state.current = true; state.transferTarget = true
     render(<EquipmentPage />)
     expect(screen.queryByRole('button', { name: 'Destinatário local' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Destinatário')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver jogadores' }))
+    const roster=screen.getByRole('list', { name: 'Equipamentos dos personagens' })
+    const names=() => within(roster).getAllByRole('button', { name: /^(Player local|Destinatário local)$/ }).map(b=>b.textContent)
+    expect(names()).toEqual(['Destinatário local','Player local'])
+    fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'gs-desc' } })
+    expect(names()).toEqual(['Destinatário local','Player local'])
+    fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'gs-asc' } })
+    expect(names()).toEqual(['Player local','Destinatário local'])
+    expect(within(roster).getByText(/2.500 GS/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Limpar equipamentos de Destinatário local' })).not.toBeInTheDocument()
+    const otherItem=within(roster).getByRole('button', { name: /^Arma à esquerda de Destinatário local:/ })
+    expect(otherItem).toHaveAttribute('draggable','false')
+    fireEvent.click(otherItem)
+    expect(screen.getByRole('group', { name: 'Inventário de Destinatário local' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Registrar em Arma' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Histórico' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Registrar entrega' })).not.toBeInTheDocument()
+    expect(state.historyQuery).toHaveBeenLastCalledWith(3,false)
+    expect(state.mutate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Meus equipamentos' }))
+    expect(screen.getByRole('group', { name: 'Inventário de Player local' })).toBeInTheDocument()
   })
   it('keeps a failed drag transfer available for retry with the same operation id', async () => {
     state.current = true; state.transferTarget = true; state.targetEmpty = true
