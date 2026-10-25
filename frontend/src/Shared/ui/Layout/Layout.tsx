@@ -39,7 +39,6 @@ const PROFILE_ITEM = { to: '/profile', label: 'Perfil' }
 
 const ADMIN_ITEMS: { to: string; label: string; minRole: Role }[] = [
   { to: '/admin/approvals', label: 'Aprovações', minRole: 'MODERADOR' },
-  { to: '/admin/online', label: 'Online agora', minRole: 'ADMINISTRADOR' },
 ]
 
 const SOCKET_LABEL: Record<SocketState, string> = {
@@ -165,13 +164,12 @@ function LayoutShell() {
         </div>
 
         <nav className="layout__nav">
-          {NAV_ITEMS.map((item, index) => (
+          {NAV_ITEMS.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               className={`layout__nav-link${isActive(location.pathname, item.to) ? ' layout__nav-link--active' : ''}`}
             >
-              <span className="layout__nav-key">F{index + 1}</span>
               <span className="layout__nav-label">{item.label}</span>
               {item.to === '/auctions' && <AuctionNavBadge />}
             </Link>
@@ -186,7 +184,6 @@ function LayoutShell() {
                   to={item.to}
                   className={`layout__nav-link layout__nav-link--admin${isActive(location.pathname, item.to) ? ' layout__nav-link--active' : ''}`}
                 >
-                  <span className="layout__nav-key">ADM</span>
                   <span className="layout__nav-label">{item.label}</span>
                   {item.to === '/admin/approvals' && <ApprovalsNavBadge />}
                 </Link>
@@ -196,7 +193,6 @@ function LayoutShell() {
         </nav>
 
         <button type="button" className="layout__logout" onClick={logout}>
-          <span className="layout__nav-key">ESC</span>
           Sair
         </button>
       </aside>
