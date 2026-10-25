@@ -102,6 +102,7 @@ export function DashboardPage() {
   // Ordenação do ranking: por pontos (padrão), level ou EXP do jogo.
   const [sortKey, setSortKey] = useState<'points' | 'gameLevel' | 'gameExp'>('points')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
+  const [rankSearch, setRankSearch] = useState('')
 
   const sortValue = (memberId: number, points: number): number | null => {
     if (sortKey === 'points') return points
@@ -135,7 +136,16 @@ export function DashboardPage() {
     return sortDir === 'desc' ? diff : -diff
   })
   const top3 = sortedRanking.slice(0, 3)
-  const rest = sortedRanking.slice(3)
+  // Busca por nick (ou nome no Discord): mostra só quem bate, na posição real do ranking, sem pódio.
+  const searchTerm = rankSearch.trim().toLocaleLowerCase('pt-BR')
+  const ranked = sortedRanking.map((member, idx) => ({ member, pos: idx + 1 }))
+  const rest = searchTerm
+    ? ranked.filter(({ member }) =>
+        [member.nickname, discordBySiteId.get(member.id)?.name].some((name) =>
+          name?.toLocaleLowerCase('pt-BR').includes(searchTerm),
+        ),
+      )
+    : ranked.slice(3)
 
   // Rows per page follow the viewport height so the dashboard never scrolls; extra rows paginate.
   const rankListRef = useRef<HTMLUListElement>(null)
@@ -206,40 +216,62 @@ export function DashboardPage() {
 
       {/* ── Left: Ranking ─────────────────────────────────────────────────── */}
       <div className="dashboard__col dashboard__col--ranking" ref={rankingRef}>
-      <Panel title="Ranking" code={`${ranking.length} MBR`}>
-        <div className="podium">
-          {[1, 0, 2].map((rankIdx) => {
-            const member = top3[rankIdx]
-            if (!member) return null
-            const place = rankIdx + 1
-            return (
-              <div key={member.id} className={`podium__slot podium__slot--${place}`}>
-                <div className="podium__card">
-                  <MemberClassIcon
-                    classImageUrl={member.classImageUrl}
-                    classLabel={member.className}
-                    size="md"
-                  />
-                  <Link to={`/profile/${member.id}`} className="podium__name podium__name--link">
-                    {member.nickname}
-                  </Link>
-                  <DiscordTag member={discordBySiteId.get(member.id)} className="podium__discord" />
-                  <span className="podium__level">
-                    {gameStatusByMember.has(member.id)
-                      ? `Lv ${gameStatusByMember.get(member.id)!.level} · ${gameStatusByMember
-                          .get(member.id)!
-                          .expPercent.toFixed(2)}%`
-                      : '—'}
-                  </span>
-                  <span className="podium__points">{member.points}</span>
+      <Panel
+        title="Ranking"
+        code={`${ranking.length} MBR`}
+        actions={
+          <input
+            type="search"
+            className="ranking-search"
+            placeholder="Buscar membro"
+            aria-label="Buscar membro no ranking"
+            value={rankSearch}
+            onChange={(e) => {
+              setRankSearch(e.target.value)
+              setRankPage(0)
+            }}
+          />
+        }
+      >
+        {!searchTerm && (
+          <div className="podium">
+            {[1, 0, 2].map((rankIdx) => {
+              const member = top3[rankIdx]
+              if (!member) return null
+              const place = rankIdx + 1
+              return (
+                <div key={member.id} className={`podium__slot podium__slot--${place}`}>
+                  <div className="podium__card">
+                    <MemberClassIcon
+                      classImageUrl={member.classImageUrl}
+                      classLabel={member.className}
+                      size="md"
+                    />
+                    <Link to={`/profile/${member.id}`} className="podium__name podium__name--link">
+                      {member.nickname}
+                    </Link>
+                    <DiscordTag member={discordBySiteId.get(member.id)} className="podium__discord" />
+                    <span className="podium__level">
+                      {gameStatusByMember.has(member.id)
+                        ? `Lv ${gameStatusByMember.get(member.id)!.level} · ${gameStatusByMember
+                            .get(member.id)!
+                            .expPercent.toFixed(2)}%`
+                        : '—'}
+                    </span>
+                    <span className="podium__points">{member.points}</span>
+                  </div>
+                  <div className="podium__pedestal">
+                    <span className="podium__place">{place}</span>
+                  </div>
                 </div>
-                <div className="podium__pedestal">
-                  <span className="podium__place">{place}</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
+
+        {searchTerm && rest.length === 0 && (
+          <p className="dashboard__empty">Nenhum membro encontrado.</p>
+        )}
 
         {rest.length > 0 && (
           <div className="ranking-rest">
@@ -274,11 +306,9 @@ export function DashboardPage() {
               ref={rankListRef}
               style={rankRowHeight ? ({ '--rank-row-h': `${rankRowHeight}px` } as React.CSSProperties) : undefined}
             >
-              {pagedRest.map((m, i) => (
+              {pagedRest.map(({ member: m, pos }) => (
                 <li key={m.id}>
-                  <span className="ranking-list__pos">
-                    {String(currentRankPage * rankPerPage + i + 4).padStart(2, '0')}
-                  </span>
+                  <span className="ranking-list__pos">{String(pos).padStart(2, '0')}</span>
                   {m.classImageUrl && m.className ? (
                     <MemberClassIcon classImageUrl={m.classImageUrl} classLabel={m.className} />
                   ) : (
@@ -305,7 +335,9 @@ export function DashboardPage() {
               {Array.from({ length: emptyRankRows }, (_, i) => (
                 <li key={`empty-${i}`} className="ranking-list__row--empty" aria-hidden="true">
                   <span className="ranking-list__pos">
-                    {String(currentRankPage * rankPerPage + pagedRest.length + i + 4).padStart(2, '0')}
+                    {searchTerm
+                      ? ''
+                      : String(currentRankPage * rankPerPage + pagedRest.length + i + 4).padStart(2, '0')}
                   </span>
                   <span className="ranking-list__empty-icon" />
                   <span className="ranking-list__empty-name">—</span>
