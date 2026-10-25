@@ -13,6 +13,7 @@ export const SLOT_CATEGORY: Record<EquipmentSlot, string> = {
 export interface EquipmentEffect { key: string; code: number | null; name: string; displayType: EffectDisplayType; value: number; description?: string | null; unitHint?: string | null }
 export interface EquipmentItem { id: number; category: string; gameCode: string; name: string; level: number; grade: number; effects: EquipmentEffect[]; iconId?: number | null; sourceHash?: string; effectsNote?: string | null }
 export interface EquipmentAssignment extends Omit<EquipmentItem, 'id' | 'effects'> {
+  gearScore?: { points: number | null; originalLevel: number | null; included: boolean }
   id: number; memberId: number; slot: EquipmentSlot; catalogId: number; effect: EquipmentEffect
   origin: 'INITIAL' | 'GUILD_DISTRIBUTION'; occurredOn: string; actorId: number; actorName: string
   createdAt: string; status: 'ACTIVE' | 'CANCELLED' | 'CORRECTED' | 'TRANSFERRED'; correctsId: number | null; reason: string | null
@@ -20,7 +21,7 @@ export interface EquipmentAssignment extends Omit<EquipmentItem, 'id' | 'effects
 }
 export type CurrentEquipment = Pick<EquipmentAssignment, 'id' | 'memberId' | 'slot' | 'catalogId' | 'gameCode' | 'name' | 'level' | 'grade' | 'category' | 'effect' | 'iconId' | 'sourceHash'> & Partial<EquipmentAssignment>
 export interface CurrentSlot { slot: EquipmentSlot; version: number; assignment: CurrentEquipment | null }
-export interface MemberEquipment { memberId: number; nickname: string; level: number; slots: CurrentSlot[] }
+export interface MemberEquipment { memberId: number; nickname: string; level: number; slots: CurrentSlot[]; gearScore?: { total: number; weapon: number; armor: number; accessories: number; unscored: number } }
 export interface EquipmentSlotEdit { operationId: string; memberId: number; slots: { slot: EquipmentSlot; expectedVersion: number }[]; reversesOperationId?: string }
 export interface EquipmentSlotEditResult { operationId: string; memberId: number; slots: CurrentSlot[] }
 export interface EquipmentOperation {

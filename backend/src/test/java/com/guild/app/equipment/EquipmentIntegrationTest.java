@@ -746,7 +746,7 @@ class EquipmentIntegrationTest {
         mvc.perform(get("/api/equipment/members/"+memberId+"/history").with(authentication(authenticationFor(memberId))))
             .andExpect(status().isForbidden());
         mvc.perform(get("/api/equipment").with(authentication(authenticationFor(memberId))))
-            .andExpect(status().isOk()).andExpect(jsonPath("$..actorId").isEmpty())
+            .andExpect(status().isOk()).andExpect(jsonPath("$..gearScore.total").isNotEmpty()).andExpect(jsonPath("$..actorId").isEmpty())
             .andExpect(jsonPath("$..actorName").isEmpty()).andExpect(jsonPath("$..createdAt").isEmpty())
             .andExpect(jsonPath("$..occurredOn").isEmpty()).andExpect(jsonPath("$..statusReason").isEmpty());
         authenticate(actorId);

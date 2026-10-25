@@ -15,6 +15,7 @@ import java.util.*;
 public class EquipmentRepository {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
+    private final com.guild.app.equipment.EquipmentGearScore gearScore;
 
     public ReviewStatus review(long memberId) {
         return jdbc.query("""
@@ -62,7 +63,9 @@ public class EquipmentRepository {
             r.getString("actor_name"), r.getTimestamp("created_at").toInstant(), r.getString("status"),
             r.getObject("corrects_id",Long.class), r.getString("reason"), r.getObject("icon_id",Integer.class),
             r.getString("source_hash"), r.getString("status_reason"), r.getString("status_actor_name"),
-            r.getTimestamp("status_changed_at")==null?null:r.getTimestamp("status_changed_at").toInstant());
+            r.getTimestamp("status_changed_at")==null?null:r.getTimestamp("status_changed_at").toInstant(),
+            gearScore.score(r.getString("category"),r.getString("game_code"),r.getString("item_name"),
+                r.getInt("item_level"),r.getInt("item_grade"),r.getString("source_hash")));
     }
     public List<Assignment> history(long memberId) {
         return jdbc.query(ASSIGNMENTS+" WHERE a.member_id=? ORDER BY a.created_at DESC,a.id DESC", assignmentMapper(),memberId);
