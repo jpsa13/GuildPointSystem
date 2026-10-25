@@ -196,7 +196,7 @@ $drawer-breakpoint: 960px;
     padding: 8px 10px;
     position: relative;
     font-family: theme.$font-heading;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -230,25 +230,12 @@ $drawer-breakpoint: 960px;
         width: 3px;
         background: theme.$color-primary;
       }
-
-      .layout__nav-key {
-        color: theme.$color-on-primary;
-        background: theme.$color-primary;
-        border-color: theme.$color-primary;
-      }
     }
 
     &:hover,
     &:focus {
       text-decoration: none;
     }
-  }
-
-  &__nav-key {
-    @include theme.tag;
-    min-width: 40px;
-    justify-content: center;
-    letter-spacing: 0;
   }
 
   &__nav-label {
@@ -268,18 +255,8 @@ $drawer-breakpoint: 960px;
     opacity: 0.75;
   }
 
-  &__nav-link--admin {
-    .layout__nav-key { color: theme.$color-amber; }
-
-    &.layout__nav-link--active {
-      &::before { background: theme.$color-amber; }
-
-      .layout__nav-key {
-        background: theme.$color-amber;
-        border-color: theme.$color-amber;
-        color: theme.$color-on-primary;
-      }
-    }
+  &__nav-link--admin.layout__nav-link--active::before {
+    background: theme.$color-amber;
   }
 
   &__logout {
@@ -289,7 +266,7 @@ $drawer-breakpoint: 960px;
     gap: theme.$spacing-sm;
     padding: 8px 10px;
     font-family: theme.$font-heading;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -302,8 +279,6 @@ $drawer-breakpoint: 960px;
     &:hover {
       color: theme.$color-danger;
       border-color: rgba(theme.$color-danger, 0.6);
-
-      .layout__nav-key { color: theme.$color-danger; }
     }
   }
 
