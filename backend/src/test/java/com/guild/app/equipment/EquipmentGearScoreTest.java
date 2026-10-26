@@ -61,9 +61,9 @@ class EquipmentGearScoreTest {
         for (var slot:List.of(Slot.Helmet,Slot.Upper,Slot.Lower,Slot.Gloves,Slot.Shoes)) slots.add(new CurrentSlot(slot,1,assignment(slot,new GearScore(547,50,true))));
         for (var slot:List.of(Slot.Amulet1,Slot.Amulet2,Slot.Ring1,Slot.Ring2)) slots.add(new CurrentSlot(slot,1,assignment(slot,new GearScore(1350,null,true))));
         slots.add(new CurrentSlot(Slot.Cloak,1,assignment(Slot.Cloak,new GearScore(null,null,false))));
-        var member=new MemberEquipment(1,"Player",50,slots);
+        var member=new MemberEquipment(1,"Player",50,null,null,null,null,slots);
         assertEquals(new GearScoreTotal(10870,2735,2735,5400,0),member.gearScore());
-        assertEquals(member.gearScore(),new MemberEquipment(1,"Player",50,slots.stream().map(s->new CurrentSlot(s.slot(),s.version(),s.assignment().withoutAudit())).toList()).gearScore());
+        assertEquals(member.gearScore(),new MemberEquipment(1,"Player",50,null,null,null,null,slots.stream().map(s->new CurrentSlot(s.slot(),s.version(),s.assignment().withoutAudit())).toList()).gearScore());
         slots.add(new CurrentSlot(Slot.Gloves,1,assignment(Slot.Gloves,new GearScore(null,null,true))));
         assertEquals(1,member.gearScore().unscored());
     }

@@ -45,7 +45,7 @@ public final class EquipmentDtos {
     public record SlotEditResult(UUID operationId, long memberId, List<CurrentSlot> slots) {}
     public record GearScore(Integer points, Integer originalLevel, boolean included) {}
     public record GearScoreTotal(int total,int weapon,int armor,int accessories,int unscored) {}
-    public record MemberEquipment(long memberId, String nickname, int level, List<CurrentSlot> slots) {
+    public record MemberEquipment(long memberId, String nickname, int level, Float expPercent, Long classId, String className, String classImageUrl, List<CurrentSlot> slots) {
         @com.fasterxml.jackson.annotation.JsonProperty("gearScore")
         public GearScoreTotal gearScore() {
             int weapon=0,armor=0,accessories=0,unscored=0;

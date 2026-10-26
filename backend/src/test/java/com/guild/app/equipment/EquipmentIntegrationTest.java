@@ -241,6 +241,34 @@ class EquipmentIntegrationTest {
         assertTrue(found);
     }
 
+    @Test void boardIncludesLatestCharacterProgressAndProfileClassForMembers() throws Exception {
+        long classId=jdbc.queryForObject("SELECT id FROM character_class ORDER BY id LIMIT 1",Long.class);
+        String className=jdbc.queryForObject("SELECT name FROM character_class WHERE id=?",String.class,classId);
+        String classImageUrl=jdbc.queryForObject("SELECT image_url FROM character_class WHERE id=?",String.class,classId);
+        jdbc.update("UPDATE member SET class_id=?,level=43 WHERE id=?",classId,memberId);
+        var fallback=service.board().stream().filter(m->m.memberId()==memberId).findFirst().orElseThrow();
+        assertNull(fallback.expPercent());
+        assertEquals(className,fallback.className());
+        jdbc.update("""
+            INSERT INTO character_status(member_id,gid,character_name,level,exp_percent,hp,hp_max,fp,fp_max,sp,sp_max,updated_at)
+            VALUES (?,1,'Old character',60,99,1,1,1,1,1,1,now()-interval '1 hour'),
+                   (?,2,'Current character',45,12.5,1,1,1,1,1,1,now())
+            """,memberId,memberId);
+        for(long viewer:List.of(actorId,memberId)) {
+            var response=mvc.perform(get("/api/equipment").with(authentication(authenticationFor(viewer))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            var row=json.readTree(response).findValues("memberId");
+            assertFalse(row.isEmpty());
+            for(var entry:json.readTree(response)) if(entry.get("memberId").asLong()==memberId) {
+                assertEquals(45,entry.get("level").asInt());
+                assertEquals(12.5,entry.get("expPercent").asDouble());
+                assertEquals(classId,entry.get("classId").asLong());
+                assertEquals(className,entry.get("className").asText());
+                assertEquals(classImageUrl,entry.get("classImageUrl").asText());
+            }
+        }
+    }
+
     Operation repass(Slot slot,long version,long target,Slot targetSlot,long targetVersion,boolean replace) {
         return new Operation(UUID.randomUUID(),Action.CREATE,memberId,slot,version,null,catalogId,"15:0.08",
             Origin.GUILD_DISTRIBUTION,LocalDate.now(),true,null,null,null,new Transfer(target,targetSlot,targetVersion,replace));

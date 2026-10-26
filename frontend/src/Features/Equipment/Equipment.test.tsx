@@ -17,7 +17,7 @@ vi.mock('@/Shared/ui/components/AppToast/AppToast', () => ({ useAppToast: () => 
 vi.mock('@/Domain/Equipment/hooks/useEquipment', () => ({
   useEquipmentReviews: () => ({ data: state.reviews }),
   useEquipmentReviewAction: () => ({ mutate: state.reviewAction, isPending: false }),
-  useEquipment: () => ({ data: [{ memberId: 1, nickname: 'Player local', level: 50, gearScore: { total: 1000, weapon: 1000, armor: 0, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.current && slot === state.currentSlot ? 1 : 0, assignment: state.current && slot === state.currentSlot ? { ...record, slot, level: state.currentLevel, grade: state.currentGrade } : null })) }, ...(state.transferTarget ? [{ memberId: 3, nickname: 'Destinatário local', level: 40, gearScore: { total: 2500, weapon: 1000, armor: 1500, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.targetEmpty ? 0 : 2, assignment: state.targetEmpty ? null : { ...record, id: 30, memberId: 3, slot, name: 'Item do destinatário' } })) }] : []), ...(state.extraMember ? [{ memberId: 4, nickname: 'Outro player', level: 50, slots: [] }] : [])], refetch: state.refetch }),
+  useEquipment: () => ({ data: [{ memberId: 1, nickname: 'Player local', level: 50, expPercent: 12.5, classId: 1, className: 'Warrior', classImageUrl: '/classes/warrior.png', gearScore: { total: 1000, weapon: 1000, armor: 0, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.current && slot === state.currentSlot ? 1 : 0, assignment: state.current && slot === state.currentSlot ? { ...record, slot, level: state.currentLevel, grade: state.currentGrade } : null })) }, ...(state.transferTarget ? [{ memberId: 3, nickname: 'Destinatário local', level: 40, expPercent: 0, classId: 2, className: 'Spiritualist', gearScore: { total: 2500, weapon: 1000, armor: 1500, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.targetEmpty ? 0 : 2, assignment: state.targetEmpty ? null : { ...record, id: 30, memberId: 3, slot, name: 'Item do destinatário' } })) }] : []), ...(state.extraMember ? [{ memberId: 4, nickname: 'Outro player', level: 50, slots: [] }] : [])], refetch: state.refetch }),
   useEquipmentImportStatus: () => ({ data: { imported_count: 100, excluded: '[]' } }),
   useEquipmentHistory: (id: number, enabled = true) => { state.historyQuery(id, enabled); return { data: enabled && id > 0 ? state.history : [], refetch: state.refetch } },
   useEquipmentCatalog: (category: string, search: string, page: number, enabled: boolean, filters: CatalogFilters) => {
@@ -42,6 +42,38 @@ function openEditor(slot = 'Weapon') {
 function selectItem() { fireEvent.click(screen.getByRole('button', { name: 'Selecionar Intense Staff · iwstb25' })) }
 
 describe('Equipamentos', () => {
+  it.each([true, false])('shows progress and class and combines class filtering with sorting and search (admin=%s)', admin => {
+    state.admin = admin; state.userId = 1; state.transferTarget = true; state.extraMember = true
+    render(<EquipmentPage />)
+    if (!admin) fireEvent.click(screen.getByRole('button', { name: 'Ver jogadores' }))
+    const roster = screen.getByRole('list', { name: 'Equipamentos dos personagens' })
+    const names = () => within(roster).getAllByRole('button', { name: /^(Player local|Destinatário local|Outro player)$/ }).map(b => b.textContent)
+    expect(within(roster).getByText('Lv. 50 · 12,50% XP')).toBeInTheDocument()
+    expect(within(roster).getByText('Lv. 40 · 0,00% XP')).toBeInTheDocument()
+    expect(within(roster).getByText('1.000 GS')).toBeInTheDocument()
+    expect(within(roster).getByLabelText('Warrior').querySelector('img')).toHaveAttribute('src', '/classes/warrior.png')
+    expect(within(roster).getByText(/EXP não informada/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'level-desc' } })
+    expect(names()).toEqual(['Outro player', 'Player local', 'Destinatário local'])
+    fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'level-asc' } })
+    expect(names()).toEqual(['Destinatário local', 'Outro player', 'Player local'])
+    const classes = screen.getByRole('group', { name: 'Classe do personagem' })
+    expect(within(classes).getAllByRole('button')).toHaveLength(3)
+    fireEvent.click(within(classes).getByRole('button', { name: 'MELEE' }))
+    expect(within(classes).getByRole('button', { name: 'MELEE' })).toHaveAttribute('aria-pressed', 'true')
+    expect(names()).toEqual(['Player local'])
+    fireEvent.change(screen.getByLabelText('Pesquisar personagem'), { target: { value: 'Destinatário' } })
+    expect(screen.getByText('Nenhum personagem encontrado com esses filtros.')).toBeInTheDocument()
+    fireEvent.click(within(classes).getByRole('button', { name: 'FORCE' }))
+    expect(names()).toEqual(['Destinatário local'])
+    fireEvent.change(screen.getByLabelText('Pesquisar personagem'), { target: { value: '' } })
+    fireEvent.click(within(classes).getByRole('button', { name: 'FORCE' }))
+    expect(names()).toEqual(['Destinatário local', 'Outro player', 'Player local'])
+    fireEvent.click(within(classes).getByRole('button', { name: 'RANGER' }))
+    expect(screen.getByText('Nenhum personagem encontrado com esses filtros.')).toBeInTheDocument()
+    expect(state.mutate).not.toHaveBeenCalled()
+    expect(state.slotEdit).not.toHaveBeenCalled()
+  })
   it.each([true, false])('defaults weapon class and clears the type when switching class (admin=%s)', admin => {
     state.admin = admin; state.userId = 1; state.className = 'Warlock'
     render(<EquipmentPage />); openEditor()
@@ -168,7 +200,7 @@ describe('Equipamentos', () => {
     render(<EquipmentPage />)
     const source = screen.getByRole('button', { name: /^Arma à esquerda de Player local:/ })
     fireEvent.mouseEnter(source)
-    const tooltip = screen.getByRole('tooltip')
+    const tooltip = document.getElementById('equipment-item-tooltip')!
     expect(tooltip).toHaveTextContent('Field Staff')
     expect(tooltip).toHaveTextContent('Lv. 25 · Normal')
     expect(tooltip).toHaveTextContent('Force Attack · 8%')
@@ -176,13 +208,13 @@ describe('Equipamentos', () => {
     expect(source).toHaveAttribute('aria-describedby', tooltip.id)
     expect(source).not.toHaveAttribute('title')
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(document.getElementById('equipment-item-tooltip')).not.toBeInTheDocument()
     fireEvent.focus(source)
-    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    expect(document.getElementById('equipment-item-tooltip')!).toBeInTheDocument()
     fireEvent.blur(source)
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(document.getElementById('equipment-item-tooltip')).not.toBeInTheDocument()
     fireEvent.mouseEnter(screen.getByRole('button', { name: /^Helmet de Player local:/ }))
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(document.getElementById('equipment-item-tooltip')).not.toBeInTheDocument()
   })
   it('keeps the tooltip open while hovered and closes it on exit, scrolling or drag start', async () => {
     state.current = true
@@ -190,16 +222,16 @@ describe('Equipamentos', () => {
     const source = screen.getByRole('button', { name: /^Arma à esquerda de Player local:/ })
     fireEvent.mouseEnter(source)
     fireEvent.mouseLeave(source)
-    fireEvent.mouseEnter(screen.getByRole('tooltip'))
-    expect(screen.getByRole('tooltip')).toBeInTheDocument()
-    fireEvent.mouseLeave(screen.getByRole('tooltip'))
-    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
+    fireEvent.mouseEnter(document.getElementById('equipment-item-tooltip')!)
+    expect(document.getElementById('equipment-item-tooltip')!).toBeInTheDocument()
+    fireEvent.mouseLeave(document.getElementById('equipment-item-tooltip')!)
+    await waitFor(() => expect(document.getElementById('equipment-item-tooltip')).not.toBeInTheDocument())
     fireEvent.mouseEnter(source)
     fireEvent.scroll(window)
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(document.getElementById('equipment-item-tooltip')).not.toBeInTheDocument()
     fireEvent.mouseEnter(source)
     fireEvent.dragStart(source, { dataTransfer: { setData: vi.fn() } })
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(document.getElementById('equipment-item-tooltip')).not.toBeInTheDocument()
   })
   it('orders by name or profile level with alphabetical ties and keeps the selected filter', () => {
     state.transferTarget = true; state.extraMember = true
