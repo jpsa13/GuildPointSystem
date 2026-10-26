@@ -83,9 +83,16 @@ public class EquipmentRepository {
             slots.computeIfAbsent(r.getLong("member_id"),k->new HashMap<>()).put(r.getString("slot"),
                 new CurrentSlot(Slot.valueOf(r.getString("slot")),r.getLong("version"),id==null?null:byId.get(id)));
         });
-        return jdbc.query("SELECT id,nickname,level FROM member WHERE status='APROVADO' ORDER BY lower(nickname),id",(r,n)->{
+        return jdbc.query("""
+            SELECT m.id,m.nickname,COALESCE(cs.level,m.level) AS level,cs.exp_percent,m.class_id,c.name AS class_name,c.image_url AS class_image_url
+            FROM member m LEFT JOIN character_class c ON c.id=m.class_id
+            LEFT JOIN LATERAL (SELECT level,exp_percent FROM character_status WHERE member_id=m.id
+                ORDER BY updated_at DESC,id DESC LIMIT 1) cs ON true
+            WHERE m.status='APROVADO' ORDER BY lower(m.nickname),m.id
+            """,(r,n)->{
             long id=r.getLong("id");
-            return new MemberEquipment(id,r.getString("nickname"),r.getInt("level"), Arrays.stream(Slot.values())
+            return new MemberEquipment(id,r.getString("nickname"),r.getInt("level"),r.getObject("exp_percent",Float.class),
+                r.getObject("class_id",Long.class),r.getString("class_name"),r.getString("class_image_url"), Arrays.stream(Slot.values())
                 .map(s->slots.getOrDefault(id,Map.of()).getOrDefault(s.name(),new CurrentSlot(s,0,null))).toList());
         });
     }

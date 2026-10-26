@@ -9,6 +9,7 @@ import { armorClassForCharacter, weaponClassForCharacter } from '@/Domain/Equipm
 import { gradeLabel as catalogGradeLabel } from '@/Domain/Catalog/utils/catalogUtils'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { Button } from '@/Shared/ui/components/Button/Button'
+import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberClassIcon'
 import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { EquipmentIcon, EmptyEquipmentSlot } from './EquipmentIcon'
@@ -142,6 +143,7 @@ export function EquipmentPage() {
   const [search, setSearch] = useState('')
   const [filled, setFilled] = useState(false)
   const [sort, setSort] = useState('name')
+  const [playerClass, setPlayerClass] = useState('')
   const [historyId, setHistoryId] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>('Weapon')
   const [tab, setTab] = useState<'current' | 'history' | 'deliveries'>('current')
@@ -162,7 +164,7 @@ export function EquipmentPage() {
   }, [historyId])
   const canEdit = admin || inspected?.memberId === user?.memberId
   const filteringSelection = onlySelected && selectedMembers.size > 0
-  const filtered = members.filter(m => m.nickname.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) && (!filled || m.slots.some(s => s.assignment)) && (!filteringSelection || selectedMembers.has(m.memberId)))
+  const filtered = members.filter(m => m.nickname.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) && (!playerClass || armorClassForCharacter(m.className ?? undefined) === playerClass) && (!filled || m.slots.some(s => s.assignment)) && (!filteringSelection || selectedMembers.has(m.memberId)))
     .sort((a, b) => (sort === 'gs-asc' ? (a.gearScore?.total ?? 0) - (b.gearScore?.total ?? 0) : sort === 'gs-desc' ? (b.gearScore?.total ?? 0) - (a.gearScore?.total ?? 0) : sort === 'name-desc' ? b.nickname.localeCompare(a.nickname, 'pt-BR', { sensitivity: 'base' }) : sort === 'level-asc' ? a.level - b.level : sort === 'level-desc' ? b.level - a.level : 0) || a.nickname.localeCompare(b.nickname, 'pt-BR', { sensitivity: 'base' }) || a.memberId - b.memberId)
   const acceptsDrop = (memberId: number, slot?: EquipmentSlot, source = dragged) => !!(admin && source && source.memberId !== memberId && !transferMutation.isPending && (!slot || slot === source.position.slot ||
     (['RING', 'AMULET'].includes(SLOT_CATEGORY[source.position.slot]) && SLOT_CATEGORY[slot] === SLOT_CATEGORY[source.position.slot])))
@@ -235,6 +237,7 @@ export function EquipmentPage() {
     {managing && <Panel title="Personagens" code={`${members.length} PERSONAGENS`}>
       <div className="equipment-toolbar">
         <label>Pesquisar personagem<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nick do personagem" /></label>
+        <div className="equipment-player-classes" role="group" aria-label="Classe do personagem"><span>Classe</span><div>{(['MELEE', 'RANGER', 'FORCE'] as const).map(value => <Button key={value} size="sm" variant="secondary" aria-pressed={playerClass === value} onClick={() => setPlayerClass(current => current === value ? '' : value)}>{value}</Button>)}</div></div>
         <label>Ordenar jogadores<select value={sort} onChange={e => setSort(e.target.value)}><option value="name">Nome · A–Z</option><option value="name-desc">Nome · Z–A</option><option value="gs-desc">Gear score decrescente</option><option value="gs-asc">Gear score crescente</option><option value="level-asc">Nível crescente</option><option value="level-desc">Nível decrescente</option></select></label>
         <label className="equipment-check"><input type="checkbox" checked={filled} onChange={e => setFilled(e.target.checked)} />Somente com equipamento informado</label>
         <label className="equipment-check"><input type="checkbox" checked={filteringSelection} disabled={selectedMembers.size === 0} onChange={e => setOnlySelected(e.target.checked)} />Somente selecionados ({selectedMembers.size})</label>
@@ -256,7 +259,7 @@ export function EquipmentPage() {
             const checked = e.target.checked
             if (!checked && selectedMembers.size === 1) setOnlySelected(false)
             setSelectedMembers(previous => { const next = new Set(previous); if (checked) next.add(member.memberId); else next.delete(member.memberId); return next })
-          }} /><div><button className="equipment-nick-link" title={member.nickname} onClick={() => inspect(member.memberId)}>{member.nickname}</button><small>Lv. {member.level} · {memberScore(member)}</small></div></div>
+          }} /><span className="equipment-roster__class" tabIndex={0} title={member.className ?? 'Classe não informada'}>{member.classImageUrl && member.className ? <MemberClassIcon classImageUrl={member.classImageUrl} classLabel={member.className} /> : <span className="equipment-roster__class-fallback" role="img" aria-label={member.className ?? 'Classe não informada'}>?</span>}</span><div className="equipment-roster__summary"><button className="equipment-nick-link" title={member.nickname} onClick={() => inspect(member.memberId)}>{member.nickname}</button><strong className="equipment-roster__score" title={memberScore(member)}>{memberScore(member)}</strong><small>Lv. {member.level} · {member.expPercent != null ? `${member.expPercent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% XP` : 'EXP não informada'}</small></div></div>
           {EQUIPMENT_GROUPS.map(group => <div key={group.id} className="equipment-roster__group" role="group" aria-label={`${group.label} de ${member.nickname}`}>
             <span className="equipment-roster__label">{group.label}</span>
             <div className="equipment-mini-slots">{group.slots.map(slot => {

@@ -9,6 +9,7 @@ import type { EquipmentReview } from '../types'
 const state = vi.hoisted(() => ({
   admin: true, enabled: true, reviews: [] as EquipmentReview[], api: vi.fn(),
   messages: new Set<(message: { body: string }) => void>(), connects: new Set<() => void>(),
+  statuses: new Set<(message: { body: string }) => void>(),
 }))
 vi.mock('@/Features/Auth/contexts/AuthContext', () => ({ useAuthContext: () => ({
   hasRole: () => state.admin, user: { memberId: 1, profileComplete: state.enabled, status: 'APROVADO' },
@@ -16,9 +17,10 @@ vi.mock('@/Features/Auth/contexts/AuthContext', () => ({ useAuthContext: () => (
 vi.mock('@/Shared/api/client', () => ({ apiClient: (path: string) => state.api(path) }))
 vi.mock('@/Shared/websocket/socketClient', () => ({
   subscribeTopicEffect: (topic: string, handler: (message: { body: string }) => void) => {
-    expect(topic).toBe('/topic/equipment')
-    state.messages.add(handler)
-    return () => state.messages.delete(handler)
+    expect(['/topic/equipment', '/topic/character-status']).toContain(topic)
+    const handlers = topic === '/topic/equipment' ? state.messages : state.statuses
+    handlers.add(handler)
+    return () => handlers.delete(handler)
   },
   onSocketConnect: (handler: () => void) => { state.connects.add(handler); return () => state.connects.delete(handler) },
 }))
@@ -44,7 +46,7 @@ function useQueries() {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-10-23T12:00:00Z'))
-  state.admin = true; state.enabled = true; state.reviews = []; state.messages.clear(); state.connects.clear()
+  state.admin = true; state.enabled = true; state.reviews = []; state.messages.clear(); state.statuses.clear(); state.connects.clear()
   state.api.mockReset().mockImplementation(async (path: string) => path === '/equipment/reviews' ? state.reviews : path.includes('/catalog?')
     ? { items: [], total: 0, page: 0, size: 30 } : path.endsWith('/catalog/status') ? { imported_count: 1 } : [])
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
@@ -52,6 +54,17 @@ beforeEach(() => {
 afterEach(() => { cleanup(); client.clear(); vi.useRealTimers() })
 
 describe('equipment WebSocket updates', () => {
+  it('refreshes the public board on character status updates without loading private history', async () => {
+    state.admin = false
+    const view = renderHook(useQueries, { wrapper: Wrapper }); await settle()
+    expect(state.statuses.size).toBe(1)
+    await act(async () => { state.statuses.forEach(handler => handler({ body: '{}' })) }); await settle()
+    expect(calls('/equipment')).toBe(2)
+    expect(calls('/equipment/reviews')).toBe(1)
+    expect(calls('/equipment/members/1/history')).toBe(0)
+    view.unmount()
+    expect(state.statuses.size).toBe(0)
+  })
   it('loads once, keeps one global subscription and makes no periodic HTTP requests', async () => {
     const view = renderHook(useQueries, { wrapper: Wrapper })
     await settle()

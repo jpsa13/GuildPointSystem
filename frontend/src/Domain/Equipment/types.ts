@@ -21,7 +21,7 @@ export interface EquipmentAssignment extends Omit<EquipmentItem, 'id' | 'effects
 }
 export type CurrentEquipment = Pick<EquipmentAssignment, 'id' | 'memberId' | 'slot' | 'catalogId' | 'gameCode' | 'name' | 'level' | 'grade' | 'category' | 'effect' | 'iconId' | 'sourceHash'> & Partial<EquipmentAssignment>
 export interface CurrentSlot { slot: EquipmentSlot; version: number; assignment: CurrentEquipment | null }
-export interface MemberEquipment { memberId: number; nickname: string; level: number; slots: CurrentSlot[]; gearScore?: { total: number; weapon: number; armor: number; accessories: number; unscored: number } }
+export interface MemberEquipment { memberId: number; nickname: string; level: number; expPercent?: number | null; classId?: number | null; className?: string | null; classImageUrl?: string | null; slots: CurrentSlot[]; gearScore?: { total: number; weapon: number; armor: number; accessories: number; unscored: number } }
 export interface EquipmentSlotEdit { operationId: string; memberId: number; slots: { slot: EquipmentSlot; expectedVersion: number }[]; reversesOperationId?: string }
 export interface EquipmentSlotEditResult { operationId: string; memberId: number; slots: CurrentSlot[] }
 export interface EquipmentOperation {

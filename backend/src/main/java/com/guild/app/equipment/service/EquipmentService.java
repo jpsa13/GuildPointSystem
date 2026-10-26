@@ -51,7 +51,7 @@ public class EquipmentService {
         boolean admin=actor(false).getRole().isAtLeast(Role.ADMINISTRADOR);
         var board=repository.board();
         if(admin) return board;
-        return board.stream().map(m->new MemberEquipment(m.memberId(),m.nickname(),m.level(),m.slots().stream()
+        return board.stream().map(m->new MemberEquipment(m.memberId(),m.nickname(),m.level(),m.expPercent(),m.classId(),m.className(),m.classImageUrl(),m.slots().stream()
             .map(s->new CurrentSlot(s.slot(),s.version(),s.assignment()==null?null:s.assignment().withoutAudit())).toList())).toList();
     }
     public List<ReviewStatus> reviews() {

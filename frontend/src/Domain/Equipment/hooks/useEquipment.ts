@@ -29,9 +29,12 @@ export function useEquipmentSubscription() {
       try { refresh(JSON.parse(message.body)?.catalogChanged === true) }
       catch { refresh(true) }
     })
+    const unsubscribeStatus = subscribeTopicEffect('/topic/character-status', () => {
+      void queries.invalidateQueries({ queryKey: ['equipment', 'board'] })
+    })
     // A primeira conexão também recupera mudanças entre a carga HTTP e a assinatura.
     const disconnect = onSocketConnect(() => refresh(true))
-    return () => { unsubscribe(); disconnect() }
+    return () => { unsubscribe(); unsubscribeStatus(); disconnect() }
   }, [queries, admin, memberId, enabled])
 }
 export function useEquipment() {
