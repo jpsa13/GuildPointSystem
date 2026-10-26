@@ -71,6 +71,16 @@ export type DailyScheduledEvent = {
   timeZone?: string
 }
 
+/** Vários horários fixos por dia; conta para o próximo deles. */
+export type MultiDailyScheduledEvent = {
+  kind: 'multiDaily'
+  id: string
+  label: string
+  hours: number[]
+  minute: number
+  timeZone?: string
+}
+
 export type IntervalScheduledEvent = {
   kind: 'interval'
   id: string
@@ -80,11 +90,16 @@ export type IntervalScheduledEvent = {
   anchor: Date
 }
 
-export type ScheduledEvent = DailyScheduledEvent | IntervalScheduledEvent
+export type ScheduledEvent = DailyScheduledEvent | MultiDailyScheduledEvent | IntervalScheduledEvent
 
 export function getScheduledOccurrenceStart(event: ScheduledEvent, now: Date): Date {
   if (event.kind === 'daily') {
     return getNextDailyOccurrence(event.hour, event.minute, now, event.timeZone)
+  }
+  if (event.kind === 'multiDaily') {
+    return event.hours
+      .map((hour) => getNextDailyOccurrence(hour, event.minute, now, event.timeZone))
+      .reduce((earliest, d) => (d.getTime() < earliest.getTime() ? d : earliest))
   }
   return getNextIntervalOccurrence(event.anchor, event.intervalDays, now)
 }
@@ -116,4 +131,21 @@ export const HEADER_SCHEDULED_EVENTS: ScheduledEvent[] = [
   { kind: 'daily', id: 'cw1', label: 'CW1', hour: 6, minute: 0, timeZone: SERVER_TIME_ZONE },
   { kind: 'daily', id: 'cw2', label: 'CW2', hour: 14, minute: 0, timeZone: SERVER_TIME_ZONE },
   { kind: 'daily', id: 'cw3', label: 'CW3', hour: 22, minute: 0, timeZone: SERVER_TIME_ZONE },
+  // PBs no horário de Brasília.
+  {
+    kind: 'multiDaily',
+    id: 'pb-hq',
+    label: 'PB HQ',
+    hours: [2, 6, 10, 14, 18, 22],
+    minute: 0,
+    timeZone: SCHEDULE_TIME_ZONE,
+  },
+  {
+    kind: 'multiDaily',
+    id: 'pb-colonia',
+    label: 'PB Colônia',
+    hours: [2, 10, 18],
+    minute: 0,
+    timeZone: SCHEDULE_TIME_ZONE,
+  },
 ]

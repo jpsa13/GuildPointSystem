@@ -8,6 +8,7 @@ import java.time.ZonedDateTime;
 import static com.guild.app.schedule.GameEventDefinitions.GameEvent;
 import static com.guild.app.schedule.GameEventDefinitions.DailyGameEvent;
 import static com.guild.app.schedule.GameEventDefinitions.IntervalGameEvent;
+import static com.guild.app.schedule.GameEventDefinitions.MultiDailyGameEvent;
 import static com.guild.app.schedule.GameEventDefinitions.SCHEDULE_ZONE;
 
 @Component
@@ -19,6 +20,14 @@ public class GameEventScheduleCalculator {
         ZonedDateTime zonedNow = now.withZoneSameInstant(SCHEDULE_ZONE);
         if (event instanceof DailyGameEvent daily) {
             return nextDaily(daily.hour(), daily.minute(), zonedNow.withZoneSameInstant(daily.zone()))
+                    .withZoneSameInstant(SCHEDULE_ZONE);
+        }
+        if (event instanceof MultiDailyGameEvent multi) {
+            ZonedDateTime local = zonedNow.withZoneSameInstant(multi.zone());
+            return multi.hours().stream()
+                    .map(hour -> nextDaily(hour, multi.minute(), local))
+                    .min(ZonedDateTime::compareTo)
+                    .orElseThrow()
                     .withZoneSameInstant(SCHEDULE_ZONE);
         }
         if (event instanceof IntervalGameEvent interval) {

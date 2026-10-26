@@ -47,4 +47,20 @@ class GameEventScheduleCalculatorTest {
         assertEquals(1, next.getDayOfMonth());
         assertEquals(10, next.getMonthValue());
     }
+
+    @Test
+    void multiDailyPicksNearestServerHour() {
+        // PB Colônia 02/10/18 Brasília.
+        var event = new GameEventDefinitions.MultiDailyGameEvent(
+                "pb-colonia", "PB Colônia", java.util.List.of(2, 10, 18), 0, SCHEDULE_ZONE);
+        ZonedDateTime afternoon = ZonedDateTime.of(2026, 3, 26, 13, 0, 0, 0, SCHEDULE_ZONE);
+        ZonedDateTime next = calculator.nextOccurrence(event, afternoon);
+        assertEquals(26, next.getDayOfMonth());
+        assertEquals(18, next.getHour());
+
+        ZonedDateTime night = ZonedDateTime.of(2026, 3, 26, 21, 0, 0, 0, SCHEDULE_ZONE);
+        next = calculator.nextOccurrence(event, night);
+        assertEquals(27, next.getDayOfMonth());
+        assertEquals(2, next.getHour());
+    }
 }

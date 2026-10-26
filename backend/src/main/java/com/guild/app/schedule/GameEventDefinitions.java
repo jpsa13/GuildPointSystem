@@ -13,7 +13,7 @@ public final class GameEventDefinitions {
 
     private GameEventDefinitions() {}
 
-    public sealed interface GameEvent permits DailyGameEvent, IntervalGameEvent {
+    public sealed interface GameEvent permits DailyGameEvent, MultiDailyGameEvent, IntervalGameEvent {
         String id();
 
         String label();
@@ -26,6 +26,10 @@ public final class GameEventDefinitions {
         }
     }
 
+    /** Several fixed times per day; counts down to the nearest one. */
+    public record MultiDailyGameEvent(String id, String label, List<Integer> hours, int minute, ZoneId zone)
+            implements GameEvent {}
+
     public record IntervalGameEvent(String id, String label, int intervalDays, ZonedDateTime anchor)
             implements GameEvent {}
 
@@ -33,5 +37,8 @@ public final class GameEventDefinitions {
             // CW in server time: 06:00 / 14:00 / 22:00 (= 00:00 / 08:00 / 16:00 Brasília).
             new DailyGameEvent("cw1", "CW1", 6, 0, SERVER_ZONE),
             new DailyGameEvent("cw2", "CW2", 14, 0, SERVER_ZONE),
-            new DailyGameEvent("cw3", "CW3", 22, 0, SERVER_ZONE));
+            new DailyGameEvent("cw3", "CW3", 22, 0, SERVER_ZONE),
+            // PBs in Brasília time.
+            new MultiDailyGameEvent("pb-hq", "PB HQ", List.of(2, 6, 10, 14, 18, 22), 0, SCHEDULE_ZONE),
+            new MultiDailyGameEvent("pb-colonia", "PB Colônia", List.of(2, 10, 18), 0, SCHEDULE_ZONE));
 }
