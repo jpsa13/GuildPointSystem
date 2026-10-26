@@ -165,10 +165,11 @@ export function useRemoveFromPartyLfg() {
   })
 }
 
-export function useAddAllToPartyLfg() {
+/** Admin: puts another member on the waiting list. */
+export function useAddToPartyLfg() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiClient<PartyBoard>('/parties/lfg/all', { method: 'POST' }),
+    mutationFn: (memberId: number) => apiClient<PartyBoard>(`/parties/lfg/${memberId}`, { method: 'POST' }),
     onSuccess: (data) => setBoard(queryClient, data),
   })
 }

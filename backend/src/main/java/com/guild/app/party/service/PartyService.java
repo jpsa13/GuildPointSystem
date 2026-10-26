@@ -624,34 +624,32 @@ public class PartyService {
         return getBoard(actor);
     }
 
-    /** Admin shortcut: every approved member not already in a PT or on the list joins the waiting list. */
+    /** Admin: puts another approved member on the waiting list (the queue clock starts now). */
     @Transactional
-    public PartyBoardResponse addAllMembersToLfg(MemberPrincipal actor) {
+    public PartyBoardResponse addMemberToLfg(Long memberId, MemberPrincipal actor) {
         var organizer = requireApproved(actor);
         if (!canOrganizeParties(organizer)) {
             throw new AppException(
-                    "Apenas administradores podem adicionar todos à lista de espera",
+                    "Apenas administradores podem adicionar membros à lista de espera",
                     HttpStatus.FORBIDDEN);
         }
-
-        Set<Long> busy = new HashSet<>();
-        partyMemberRepository.findAll().forEach(pm -> busy.add(pm.getMemberId()));
-        partyLfgRepository.findAll().forEach(l -> busy.add(l.getMemberId()));
-
-        var now = Instant.now();
-        var entries = memberRepository.findByStatusOrderByPointsDesc(MemberStatus.APROVADO).stream()
-                .filter(m -> !busy.contains(m.getId()))
-                .map(m -> {
-                    var entry = new PartyLfg();
-                    entry.setMemberId(m.getId());
-                    entry.setCreatedAt(now);
-                    return entry;
-                })
-                .toList();
-        if (!entries.isEmpty()) {
-            partyLfgRepository.saveAll(entries);
-            publishBoard();
+        var member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new AppException("Membro não encontrado", HttpStatus.NOT_FOUND));
+        if (member.getStatus() != MemberStatus.APROVADO) {
+            throw new AppException("Membro não está aprovado", HttpStatus.BAD_REQUEST);
         }
+        if (partyMemberRepository.findByMemberId(memberId).isPresent()) {
+            throw new AppException("Membro já está em uma PT", HttpStatus.BAD_REQUEST);
+        }
+        if (partyLfgRepository.findByMemberId(memberId).isPresent()) {
+            throw new AppException("Membro já está na lista de espera", HttpStatus.BAD_REQUEST);
+        }
+
+        var entry = new PartyLfg();
+        entry.setMemberId(memberId);
+        entry.setCreatedAt(Instant.now());
+        partyLfgRepository.save(entry);
+        publishBoard();
         return getBoard(actor);
     }
 

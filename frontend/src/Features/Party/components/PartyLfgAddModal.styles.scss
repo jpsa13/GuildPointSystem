@@ -1,0 +1,50 @@
+.party-lfg-add {
+  max-width: 460px;
+  width: 100%;
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-md;
+  }
+
+  &__search {
+    @include theme.field-input;
+    @include theme.field-control-height;
+    width: 100%;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: theme.$spacing-sm;
+    padding: 6px theme.$spacing-xs;
+    border-bottom: 1px solid theme.$color-border;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__empty {
+    margin: 0;
+    color: theme.$color-text-muted;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

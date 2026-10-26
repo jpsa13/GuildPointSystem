@@ -2,7 +2,7 @@ import { useCallback, useState, type DragEvent, type ReactNode } from 'react'
 import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import {
   useAcceptPartyPending,
-  useAddAllToPartyLfg,
+  useAddToPartyLfg,
   useCancelPartyPending,
   useCreateEmptyParty,
   useCreateParty,
@@ -31,6 +31,7 @@ import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { playScheduleAlertSound } from '@/Shared/utils/notificationSound'
 import { PartyCreateModal, type PartyCreateMode } from '@/Features/Party/components/PartyCreateModal'
 import { PartyLfgList, WaitingTime } from '@/Features/Party/components/PartyLfgList'
+import { PartyLfgAddModal } from '@/Features/Party/components/PartyLfgAddModal'
 import { sortByWaiting } from '@/Features/Party/utils/partyWait'
 import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
 import {
@@ -403,11 +404,12 @@ export function PartyPage() {
   const cancelPending = useCancelPartyPending()
   const upsertLfg = useUpsertPartyLfg()
   const leaveLfg = useLeavePartyLfg()
-  const addAllToLfg = useAddAllToPartyLfg()
+  const addToLfg = useAddToPartyLfg()
   const removeFromLfg = useRemoveFromPartyLfg()
   const [lfgRemovingId, setLfgRemovingId] = useState<number | null>(null)
   const [lfgSearch, setLfgSearch] = useState('')
-  const [addAllOpen, setAddAllOpen] = useState(false)
+  const [addLfgOpen, setAddLfgOpen] = useState(false)
+  const closeAddLfg = useCallback(() => setAddLfgOpen(false), [])
 
   const onPartyNotice = useCallback(
     (notice: { message: string }) => {
@@ -699,8 +701,8 @@ export function PartyPage() {
                   />
                 )}
                 {my.canOrganizeParties && (
-                  <Button size="sm" variant="secondary" onClick={() => setAddAllOpen(true)}>
-                    Adicionar todos
+                  <Button size="sm" variant="secondary" onClick={() => setAddLfgOpen(true)}>
+                    Adicionar membro
                   </Button>
                 )}
               </>
@@ -739,36 +741,22 @@ export function PartyPage() {
         </div>
       )}
 
-      <ConfirmDialog
-        open={addAllOpen}
-        title="Adicionar todos à lista de espera"
-        code="LFP"
-        confirmLabel="Adicionar todos"
-        loading={addAllToLfg.isPending}
-        onConfirm={() => {
-          const before = board?.lfg.length ?? 0
-          addAllToLfg.mutate(undefined, {
-            onSuccess: (data) => {
-              const added = data.lfg.length - before
-              showToast(
-                added > 0
-                  ? `${added} ${added === 1 ? 'membro adicionado' : 'membros adicionados'} à lista de espera.`
-                  : 'Todos os membros já estão em uma PT ou na lista de espera.',
-                'success',
-              )
-              setAddAllOpen(false)
-            },
-            onError: (err) => {
-              failToast(err)
-              setAddAllOpen(false)
-            },
-          })
-        }}
-        onCancel={() => setAddAllOpen(false)}
-      >
-        <p>Todos os membros aprovados que não estão em uma PT entram na lista de espera.</p>
-        <p className="confirm-dialog__note">Quem já está em uma PT ou na lista continua como está.</p>
-      </ConfirmDialog>
+      {addLfgOpen && board && (
+        <PartyLfgAddModal
+          board={board}
+          addingId={addToLfg.isPending ? (addToLfg.variables ?? null) : null}
+          onClose={closeAddLfg}
+          onAdd={(memberId) =>
+            addToLfg.mutate(memberId, {
+              onSuccess: (data) => {
+                const nickname = data.lfg.find((e) => e.memberId === memberId)?.nickname
+                showToast(`${nickname ?? 'Membro'} adicionado à lista de espera.`, 'success')
+              },
+              onError: failToast,
+            })
+          }
+        />
+      )}
 
       <ConfirmDialog
         open={disbandTarget !== null}
