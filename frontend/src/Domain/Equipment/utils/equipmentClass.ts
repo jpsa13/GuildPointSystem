@@ -4,7 +4,7 @@ const ARMOR_CLASSES: Record<string, NonNullable<CatalogFilters['equipmentClass']
   warrior: 'MELEE', melee: 'MELEE', berserker: 'MELEE', armsman: 'MELEE', 'shield miller': 'MELEE',
   'templar knight': 'MELEE', guardian: 'MELEE', 'black knight': 'MELEE', punisher: 'MELEE', assaulter: 'MELEE', mercenary: 'MELEE',
   ranger: 'RANGER', 'hidden soldier': 'RANGER', sentinel: 'RANGER', infiltrator: 'RANGER', adventurer: 'RANGER',
-  stealer: 'RANGER', assassin: 'RANGER', 'phantom shadow': 'RANGER',
+  stealer: 'RANGER', assassin: 'RANGER', 'phantom shadow': 'RANGER', artist: 'RANGER',
   force: 'FORCE', spiritualist: 'FORCE', wizard: 'FORCE', astralist: 'FORCE', 'holy chandra': 'FORCE',
   warlock: 'FORCE', 'dark priest': 'FORCE', grazier: 'FORCE',
 }

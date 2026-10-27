@@ -17,7 +17,7 @@ vi.mock('@/Shared/ui/components/AppToast/AppToast', () => ({ useAppToast: () => 
 vi.mock('@/Domain/Equipment/hooks/useEquipment', () => ({
   useEquipmentReviews: () => ({ data: state.reviews }),
   useEquipmentReviewAction: () => ({ mutate: state.reviewAction, isPending: false }),
-  useEquipment: () => ({ data: [{ memberId: 1, nickname: 'Player local', level: 50, expPercent: 12.5, classId: 1, className: 'Warrior', classImageUrl: '/classes/warrior.png', gearScore: { total: 1000, weapon: 1000, armor: 0, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.current && slot === state.currentSlot ? 1 : 0, assignment: state.current && slot === state.currentSlot ? { ...record, slot, level: state.currentLevel, grade: state.currentGrade } : null })) }, ...(state.transferTarget ? [{ memberId: 3, nickname: 'Destinatário local', level: 40, expPercent: 0, classId: 2, className: 'Spiritualist', gearScore: { total: 2500, weapon: 1000, armor: 1500, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.targetEmpty ? 0 : 2, assignment: state.targetEmpty ? null : { ...record, id: 30, memberId: 3, slot, name: 'Item do destinatário' } })) }] : []), ...(state.extraMember ? [{ memberId: 4, nickname: 'Outro player', level: 50, slots: [] }] : [])], refetch: state.refetch }),
+  useEquipment: () => ({ data: [{ memberId: 1, nickname: 'Player local', level: 50, expPercent: 12.5, classId: 1, className: 'Warrior', classImageUrl: '/classes/warrior.png', gearScore: { total: 1000, weapon: 1000, armor: 0, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.current && slot === state.currentSlot ? 1 : 0, assignment: state.current && slot === state.currentSlot ? { ...record, slot, level: state.currentLevel, grade: state.currentGrade } : null })) }, ...(state.transferTarget ? [{ memberId: 3, nickname: 'Destinatário local', level: 40, expPercent: 0, classId: 2, className: 'Spiritualist', gearScore: { total: 2500, weapon: 1000, armor: 1500, accessories: 0, unscored: 0 }, slots: EQUIPMENT_GROUPS.flatMap(g => g.slots).map(slot => ({ slot, version: state.targetEmpty ? 0 : 2, assignment: state.targetEmpty ? null : { ...record, id: 30, memberId: 3, slot, name: 'Item do destinatário' } })) }] : []), ...(state.extraMember ? [{ memberId: 4, nickname: 'Outro player', level: 50, className: 'Artist', slots: [] }] : [])], refetch: state.refetch }),
   useEquipmentImportStatus: () => ({ data: { imported_count: 100, excluded: '[]' } }),
   useEquipmentHistory: (id: number, enabled = true) => { state.historyQuery(id, enabled); return { data: enabled && id > 0 ? state.history : [], refetch: state.refetch } },
   useEquipmentCatalog: (category: string, search: string, page: number, enabled: boolean, filters: CatalogFilters) => {
@@ -70,7 +70,7 @@ describe('Equipamentos', () => {
     fireEvent.click(within(classes).getByRole('button', { name: 'FORCE' }))
     expect(names()).toEqual(['Destinatário local', 'Outro player', 'Player local'])
     fireEvent.click(within(classes).getByRole('button', { name: 'RANGER' }))
-    expect(screen.getByText('Nenhum personagem encontrado com esses filtros.')).toBeInTheDocument()
+    expect(names()).toEqual(['Outro player'])
     expect(state.mutate).not.toHaveBeenCalled()
     expect(state.slotEdit).not.toHaveBeenCalled()
   })
@@ -101,7 +101,7 @@ describe('Equipamentos', () => {
     fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de acessório' })).getByRole('button', { name: 'Todos' }))
     expect(state.catalog.mock.lastCall?.[4]).toMatchObject({ race: 'ACCRETIA', accessoryEffect: undefined })
   })
-  it.each([['Warrior', 'Melee', 'MELEE'], ['Adventurer', 'Ranger', 'RANGER'], ['Warlock', 'Force', 'FORCE']])('defaults armor to the inspected character class %s', (className, label, equipmentClass) => {
+  it.each([['Warrior', 'Melee', 'MELEE'], ['Adventurer', 'Ranger', 'RANGER'], ['Artist', 'Ranger', 'RANGER'], ['Warlock', 'Force', 'FORCE']])('defaults armor to the inspected character class %s', (className, label, equipmentClass) => {
     state.className = className
     render(<EquipmentPage />); openEditor('Helmet')
     expect(state.profileQuery).toHaveBeenLastCalledWith(1)
@@ -117,7 +117,7 @@ describe('Equipamentos', () => {
     expect(state.catalog).not.toHaveBeenCalled()
   })
   it('keeps unknown classes and weapons without an automatic armor filter', () => {
-    state.className = 'Artist'
+    state.className = 'Mental Smith'
     render(<EquipmentPage />); openEditor('Helmet')
     expect(screen.getByRole('button', { name: 'Todas as classes' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(within(screen.getByRole('group', { name: 'Inventário de Player local' })).getByRole('button', { name: /^Arma à esquerda:/ }))
