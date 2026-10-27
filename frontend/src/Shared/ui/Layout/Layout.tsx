@@ -15,6 +15,7 @@ import { ScheduleAlertListener } from '@/Features/Schedule/ScheduleAlertListener
 import { AuctionCreatedListener } from '@/Features/Auction/AuctionCreatedListener'
 import { AuctionNavBadge } from '@/Features/Auction/components/AuctionNavBadge/AuctionNavBadge'
 import { AccountDeletedListener } from '@/Features/Auth/AccountDeletedListener'
+import { PartyGameInviteListener } from '@/Features/Party/PartyGameInviteListener'
 import { ApprovalsListener } from '@/Features/Admin/Approvals/ApprovalsListener'
 import { ApprovalsNavBadge } from '@/Features/Admin/Approvals/components/ApprovalsNavBadge/ApprovalsNavBadge'
 import type { Role } from '@/Domain/types/models'
@@ -113,6 +114,7 @@ function LayoutShell() {
       <ScheduleAlertListener />
       <AuctionCreatedListener />
       <AccountDeletedListener />
+      <PartyGameInviteListener />
       {hasRole('MODERADOR') && <ApprovalsListener />}
       <aside className="layout__sidebar">
         <div className="layout__brand">

@@ -3,19 +3,24 @@ package com.guild.app.party;
 import com.guild.app.auth.security.MemberPrincipal;
 import com.guild.app.common.exception.AppException;
 import com.guild.app.member.repository.MemberRepository;
+import com.guild.app.party.dto.PartyMemberNoticeMessage;
 import com.guild.app.party.service.PartyGameInviteService;
+import com.guild.app.websocket.WebSocketPublisher;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import java.lang.reflect.Field;
 import java.time.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -28,6 +33,7 @@ class PartyGameInviteTest {
     @Autowired MemberRepository members;
     @Autowired JdbcTemplate jdbc;
     @Autowired MockMvc mvc;
+    @MockitoBean WebSocketPublisher ws;
     long leaderId, memberA, memberB, pendingId, outsiderId, adminId, partyId;
     String leaderNick, nickA, nickB;
     Instant now = Instant.parse("2026-10-27T13:00:00Z");
@@ -84,6 +90,18 @@ class PartyGameInviteTest {
         assertTrue(service.done(created.id(), leaderNick));
         assertFalse(service.done(created.id(), leaderNick));
         assertEquals("COMPLETE", service.current(partyId, as(leaderId)).state());
+    }
+    @Test void completedInviteNotifiesEachInvitedMemberOnce() {
+        var created = service.start(partyId, as(leaderId));
+        service.pending(leaderNick);
+        verify(ws, never()).publishPartyMemberNotice(anyLong(), any());
+        service.done(created.id(), leaderNick);
+        service.done(created.id(), leaderNick);
+        for (long id : new long[]{memberA, memberB})
+            verify(ws).publishPartyMemberNotice(eq(id), argThat(n -> n instanceof PartyMemberNoticeMessage m
+                && m.type().equals("PARTY_GAME_INVITE") && m.partyId().equals(partyId)));
+        verify(ws, never()).publishPartyMemberNotice(eq(leaderId), any());
+        verify(ws, never()).publishPartyMemberNotice(eq(pendingId), any());
     }
     @Test void expiredInvitesAreNeverDelivered() throws Exception {
         service.start(partyId, as(leaderId));

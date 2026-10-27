@@ -138,3 +138,29 @@ export function playPbHqWarningSound() {
       .catch(() => scheduleWarningBeeps(ctx, ctx.currentTime))
   })
 }
+
+const PARTY_INVITE_URL = '/sounds/aceita-pt-meo.mp3'
+let partyInvite: Promise<AudioBuffer> | null = null
+
+/** "Aceita a PT": tocado para quem o líder convidou pelo jogo. */
+export function playPartyInviteSound() {
+  withRunningContext((ctx) => {
+    if (!partyInvite) {
+      partyInvite = fetch(PARTY_INVITE_URL)
+        .then((res) => res.arrayBuffer())
+        .then((data) => ctx.decodeAudioData(data))
+        .catch((err: unknown) => {
+          partyInvite = null
+          throw err
+        })
+    }
+    partyInvite
+      .then((buffer) => {
+        const src = ctx.createBufferSource()
+        src.buffer = buffer
+        src.connect(ctx.destination)
+        src.start()
+      })
+      .catch(() => scheduleWarningBeeps(ctx, ctx.currentTime))
+  })
+}

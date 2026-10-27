@@ -9,8 +9,10 @@ import com.guild.app.common.exception.AppException;
 import com.guild.app.log.service.AuditLogService;
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
+import com.guild.app.party.dto.PartyMemberNoticeMessage;
 import com.guild.app.party.repository.PartyMemberRepository;
 import com.guild.app.party.repository.PartyRepository;
+import com.guild.app.websocket.WebSocketPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +42,7 @@ public class PartyGameInviteService {
     private final MemberRepository members;
     private final AuditLogService audit;
     private final ObjectMapper json;
+    private final WebSocketPublisher ws;
     Clock clock = Clock.systemUTC();
 
     public record InviteView(Long partyId, UUID id, String leader, String state, List<String> nicks,
@@ -119,13 +122,25 @@ public class PartyGameInviteService {
         return Optional.of(new PendingInvite((UUID) row.get("id"), decode(row.get("nicks").toString())));
     }
 
-    /** Conclusão informada pela DLL do mesmo líder que recebeu o pedido. */
+    /**
+     * Conclusão informada pela DLL do mesmo líder que recebeu o pedido. Cada convidado recebe o
+     * aviso PARTY_GAME_INVITE no seu tópico, e o site toca o som de "aceita a PT".
+     */
     @Transactional
     public boolean done(UUID id, String character) {
         var leader = members.findByNicknameIgnoreCase(character);
-        return leader.isPresent() && jdbc.update("""
+        if (leader.isEmpty()) return false;
+        var rows = jdbc.queryForList("""
             UPDATE party_game_invite SET completed_at=? WHERE id=? AND leader_id=? AND delivered_at IS NOT NULL AND completed_at IS NULL
-            """, Timestamp.from(clock.instant()), id, leader.get().getId()) > 0;
+            RETURNING party_id,nicks
+            """, Timestamp.from(clock.instant()), id, leader.get().getId());
+        if (rows.isEmpty()) return false;
+        Long partyId = ((Number) rows.getFirst().get("party_id")).longValue();
+        String message = leader.get().getNickname() + " te convidou para a PT no jogo.";
+        for (String nick : decode(rows.getFirst().get("nicks").toString()))
+            members.findByNicknameIgnoreCase(nick).ifPresent(m -> ws.publishPartyMemberNotice(m.getId(),
+                new PartyMemberNoticeMessage("PARTY_GAME_INVITE", message, partyId, null)));
+        return true;
     }
 
     private InviteView view(Long partyId) {
