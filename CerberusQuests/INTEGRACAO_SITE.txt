@@ -1,5 +1,10 @@
 INTEGRAÇÃO LOCAL COM GuildPointSystem — monitor local 0.2
 
+ATUALIZAÇÃO 26/10/2026: site unificado em 15177, API em 18084. O monitor
+atual está incluído neste repositório e compartilha completion-current.json
+com o backend. Consulte preparacao/UNIFICACAO_SITE.md antes das instruções
+históricas abaixo. Não é necessário instalar ou substituir uma DLL.
+
 O fluxo ao vivo agora usa tools/monitor_site.py, leitura externa do cliente Stage
 Era 4 GB, com nome, nível, XP e journal. Abra /quests, informe o nome exato, crie
 um pareamento e execute com Python 3 instalado:

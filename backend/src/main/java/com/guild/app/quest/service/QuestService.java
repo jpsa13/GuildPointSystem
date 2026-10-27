@@ -61,19 +61,11 @@ public class QuestService {
         boolean more=events.size()>500;
         var visibility=repository.visibility(); boolean admin=member(id).getRole().isAtLeast(Role.ADMINISTRADOR);
         var signals=repository.signals(id,periodStart(day,resetPeriod),periodStart(day.plusDays(1),resetPeriod));
-        // Sobreposicao do monitor name-based do CerberusBags: uma quest que sumiu do
-        // journal no dia marca a checklist como concluida (display-only, imprecisao aceita).
-        var doneCodes=questStatus.doneCodesForDay(id,day);
         var expected=catalog.coupons.quests().stream()
-            .map(row->{
-                long sig=signals.getOrDefault(row.quest().definitionHash(),0L);
-                if(sig==0 && doneCodes.contains(row.quest().code())) sig=1;
-                return new ExpectedQuest(row,sig,visibility.getOrDefault(row.quest().definitionHash(),catalog.defaultHidden(row.quest().definitionHash())));
-            })
+            .map(row->new ExpectedQuest(row,signals.getOrDefault(row.quest().code(),0L),catalog.hidden(row.quest(),visibility)))
             .filter(row->admin||!row.hidden()).toList();
-        // Sem o monitor antigo (token), o "player" vem do que o CerberusBags envia,
-        // para o cabecalho mostrar "Monitor conectado" + nome em vez de desconectado.
         var player=repository.player(id);
+        // Native status remains a fallback for display; journal disappearance never checks off a quest.
         if(player==null) player=questStatus.playerStatus(member(id)).orElse(null);
         return new History(id,simulationEnabled,repository.sessions(id),events.stream().limit(500).toList(),more,offset+Math.min(500,events.size()),liveEnabled,player,expected,catalog.coupons.npcs());
     }
@@ -144,14 +136,13 @@ public class QuestService {
         for(var quest:sample.quests()) requireDefinition(quest.code(),quest.definitionHash(),quest.title());
         for(var event:batch.events()) {
             requireDefinition(event.code(),event.definitionHash(),event.title());
-            if(!QuestCatalog.CLIENT.equals(event.clientHash()) || !QuestCatalog.EDF.equals(event.edfHash()) || event.occurredAt().isAfter(sample.sampledAt()))
+            if(!catalog.matchesContext(event.clientHash(),event.edfHash(),event.code(),event.definitionHash(),event.title()) || event.occurredAt().isAfter(sample.sampledAt()))
                 throw error("Contexto da definição inválido.",HttpStatus.BAD_REQUEST);
         }
         var result=acceptEvents(owner,batch.events()); repository.sample(owner.sessionId(),sample); return result;
     }
     private void requireDefinition(String code,String hash,String title) {
-        var definition=catalog.find(hash);
-        if(definition==null || !definition.code().equals(code) || !definition.title().equals(title))
+        if(!catalog.matches(code,hash,title))
             throw error("Definição não reconhecida para este build.",HttpStatus.BAD_REQUEST);
     }
     @Transactional public void visibility(String hash,VisibilityRequest request) {
@@ -175,16 +166,16 @@ public class QuestService {
             event.group()!=previous.group() || event.type()!=previous.type() || previous.state()==State.REMOVED_UNKNOWN)
             throw error("Continuidade de execução inválida. Reinicie com outra execução.",HttpStatus.CONFLICT);
         if(event.state()==State.COMPLETION_SIGNAL) {
-            // shortcut: only individually observed cases qualify; expand after controlled deliveries.
-            if(previous.state()!=State.PRESENT || event.slot()-previous.slot()!=103 ||
-                !event.clientHash().equals("8343dc2afba9537f5c41c713b3af5516d0be75f6ad9a9bdb6ed9722238645379") ||
-                !event.edfHash().equals("fa5e6d236cce98265cae4fc3bc5374ba8560824bbdef94ffb0ed8ec269456e98") ||
-                !event.definitionHash().equals(Map.of(
+            boolean legacy=event.clientHash().equals("8343dc2afba9537f5c41c713b3af5516d0be75f6ad9a9bdb6ed9722238645379") &&
+                event.edfHash().equals("fa5e6d236cce98265cae4fc3bc5374ba8560824bbdef94ffb0ed8ec269456e98") &&
+                event.definitionHash().equals(Map.of(
                     "Q082000","8ff9cb699fa6dd13d37cbec6cdbb2334bc1774ea8c9579efad5c3ecc2ad6472d",
                     "Q082010","011cef16f49fbee284b90ff0117633a0be15d943165cfec7b16c928dfe4a0a86",
                     "Q071356","0d1df9a6f52f3984cd6248b833da423856268627ec112413404753e5f4aa4831",
-                    "Q071396","94e3b2f4d52c89ef506e66ba5404deaec370d85a7a48f695ab96ab76dba66177").get(event.code())) ||
-                !(Set.of("Q071356","Q071396").contains(event.code()) ? event.group()==1 && event.type()==1 : event.group()==0 && event.type()==0))
+                    "Q071396","94e3b2f4d52c89ef506e66ba5404deaec370d85a7a48f695ab96ab76dba66177").get(event.code())) &&
+                (Set.of("Q071356","Q071396").contains(event.code()) ? event.group()==1 && event.type()==1 : event.group()==0 && event.type()==0);
+            if(previous.state()!=State.PRESENT || previous.slot()>=103 || event.slot()-previous.slot()!=103 ||
+                !(legacy || QuestCatalog.supportsCurrentCompletion(event)))
                 throw error("Sinal de conclusão não validado para este caso.",HttpStatus.BAD_REQUEST);
         } else if(event.state()!=State.REMOVED_UNKNOWN && event.state()!=State.STATE_CHANGED) {
             throw error("Transição não suportada.",HttpStatus.CONFLICT);

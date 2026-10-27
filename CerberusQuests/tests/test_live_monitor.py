@@ -3,11 +3,19 @@ from pathlib import Path
 import struct
 import sys
 import unittest
+import threading
+import tempfile
+import json
+import urllib.error
+from unittest.mock import Mock, patch
+import hashlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from live_reader import player, AVATAR_POINTER
-from monitor_site import Tracker
+from monitor_site import Tracker, Sender, write_state
+from client_profiles import PROFILES, LEGACY_CLIENT, validate_data
 from extract_coupon_catalog import store_names, item_rewards
+from current_completion import PROFILE, validate_native_path
 
 
 class FakeReader:
@@ -27,7 +35,7 @@ class FakeReader:
     def read(self, address, size):
         if address == 0x100000 and size == 64:
             return bytes(self.head)
-        if address == 0x10580c and size == 4:
+        if address == 0x1057dc and size == 4:
             return struct.pack('<f', self.rate)
         raise ValueError('Unexpected memory read')
 
@@ -37,7 +45,9 @@ class LiveMonitorTests(unittest.TestCase):
         sample = player(FakeReader())
         self.assertEqual((sample['name'], sample['level'], sample['xpPercent']), ('meow', 55, 0))
         self.assertNotIn('avatar', sample)
-        for reader in (FakeReader(level=0), FakeReader(rate=float('nan')), FakeReader(rate=1.1), FakeReader(name=b'')):
+        self.assertAlmostEqual(player(FakeReader(rate=0.7115))['xpPercent'], 0.7115)
+        self.assertAlmostEqual(player(FakeReader(rate=65.75))['xpPercent'], 65.75)
+        for reader in (FakeReader(level=0), FakeReader(rate=float('nan')), FakeReader(rate=100.1), FakeReader(name=b'')):
             with self.assertRaises(ValueError):
                 player(reader)
         self.assertNotEqual(sample['identityEpoch'], player(FakeReader(name=b'another'))['identityEpoch'])
@@ -87,6 +97,120 @@ class LiveMonitorTests(unittest.TestCase):
         self.assertEqual(item_rewards(row), {(20, 0xc5081623)})
         with self.assertRaises(ValueError):
             item_rewards(row[:-1])
+
+    def test_gap_does_not_turn_an_old_observation_into_delivery(self):
+        row = dict(code='Q071396', title='Easy Reward 1', definitionHash='a' * 64, group=1, type=1, slot=8)
+        tracker = Tracker()
+        before = tracker.update({123: row}, '2026-10-26T12:00:00Z')[0]
+        tracker.interrupt()
+        after = tracker.update({123: dict(row, slot=111)}, '2026-10-26T12:01:00Z')[0]
+        self.assertEqual(after['state'], 'PRESENT')
+        self.assertNotEqual(before['runId'], after['runId'])
+
+    def test_current_build_preserves_provenance_and_confirms_selected_definition(self):
+        build = next(value for value in PROFILES if value != LEGACY_CLIENT)
+        tracker = Tracker(client_hash=build, edf_hash=PROFILES[build][0])
+        row = dict(code='Q071396', title='Easy Reward 1', definitionHash='44db199b1dcb6eec1760f17a821d1e97f127a388fd52eeede706839921567002', group=1, type=1, slot=8)
+        first = tracker.update({123: row}, '2026-10-26T12:00:00Z')[0]
+        changed = tracker.update({123: dict(row, slot=111)}, '2026-10-26T12:00:01Z')[0]
+        self.assertEqual((first['clientHash'], first['edfHash']), (build, PROFILES[build][0]))
+        self.assertEqual(changed['state'], 'COMPLETION_SIGNAL')
+        self.assertEqual(tracker.update({}, '2026-10-26T12:00:02Z')[0]['state'], 'REMOVED_UNKNOWN')
+        with self.assertRaises(ValueError):
+            validate_data(build, b'unknown update', b'unknown text')
+
+    def test_all_selected_definitions_completion_retry_removal_and_gap(self):
+        self.assertEqual(len(PROFILE['quests']), 15)
+        for code, definition in PROFILE['quests'].items():
+            with self.subTest(code=code):
+                row = dict(code=code, definitionHash=definition, title=code, group=1, type=1, slot=14)
+                tracker = Tracker(client_hash=PROFILE['clientHash'], edf_hash=PROFILE['edfHash'])
+                first = tracker.update({123: row}, '2026-10-26T22:00:00Z')[0]
+                done = dict(row, slot=117)
+                self.assertEqual(tracker.update({123: done}, '2026-10-26T22:00:01Z')[0]['state'], 'COMPLETION_SIGNAL')
+                self.assertEqual(tracker.update({123: done}, '2026-10-26T22:00:02Z'), [])
+                self.assertEqual(tracker.update({}, '2026-10-26T22:00:03Z')[0]['state'], 'REMOVED_UNKNOWN')
+                second = tracker.update({123: row}, '2026-10-26T22:00:04Z')[0]
+                self.assertNotEqual(first['runId'], second['runId'])
+                self.assertEqual(tracker.update({}, '2026-10-26T22:00:05Z')[0]['state'], 'REMOVED_UNKNOWN')
+                tracker.update({123: row}, '2026-10-26T22:00:06Z')
+                tracker.interrupt()
+                self.assertEqual(tracker.update({123: done}, '2026-10-26T22:00:07Z')[0]['state'], 'PRESENT')
+                self.assertEqual(tracker.update({123: dict(row, slot=220)}, '2026-10-26T22:00:08Z')[0]['state'], 'STATE_CHANGED')
+
+    def test_current_completion_rejects_unknown_context_or_delta(self):
+        row = dict(code='Q071396', definitionHash=PROFILE['quests']['Q071396'], title='Easy', group=1, type=1, slot=14)
+        cases = [(dict(row, **change), PROFILE['clientHash'], PROFILE['edfHash'], 117) for change in
+                 ({'code': 'Q334314'}, {'definitionHash': '0' * 64}, {'group': 0}, {'type': 0})]
+        cases += [(row, '0' * 64, PROFILE['edfHash'], 117), (row, PROFILE['clientHash'], '0' * 64, 117),
+                  (row, PROFILE['clientHash'], PROFILE['edfHash'], 116)]
+        for entry, build, edf, slot in cases:
+            with self.subTest(entry=entry, build=build, edf=edf, slot=slot):
+                tracker = Tracker(client_hash=build, edf_hash=edf)
+                tracker.update({123: entry}, '2026-10-26T22:00:00Z')
+                self.assertEqual(tracker.update({123: dict(entry, slot=slot)}, '2026-10-26T22:00:01Z')[0]['state'], 'STATE_CHANGED')
+
+    def test_native_guard_refuses_changed_loaded_code(self):
+        region = dict(address=1234, size=3, sha256=hashlib.sha256(b'abc').hexdigest())
+        reader = Mock(client_hash=PROFILE['clientHash'])
+        with patch.dict(PROFILE, nativeRanges=[region]):
+            reader.read.return_value = b'abc'
+            validate_native_path(reader)
+            reader.read.assert_called_once_with(1234, 3)
+            reader.read.return_value = b'abd'
+            with self.assertRaisesRegex(ValueError, 'code changed'):
+                validate_native_path(reader)
+
+    def test_slow_network_does_not_block_observation_and_queue_is_durable(self):
+        started, release = threading.Event(), threading.Event()
+        def post(batch):
+            started.set()
+            self.assertTrue(release.wait(5))
+        sender = Sender(post)
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / 'queue.json'
+                state = {'pending': [{'events': [{'eventId': 'first'}]}]}
+                save = lambda: write_state(path, state)
+                save()
+                sender.tick(state, save, 0)
+                self.assertTrue(started.wait(2))
+                # A new observed transition can be persisted while HTTP is still blocked.
+                state['pending'].append({'events': [{'eventId': 'second'}]})
+                save()
+                sender.tick(state, save, 1)
+                self.assertEqual(len(json.loads(path.read_text())['pending']), 2)
+                release.set()
+                sender.future.result(timeout=2)
+                sender.tick(state, save, 2)
+                self.assertEqual(state['pending'][0]['events'][0]['eventId'], 'second')
+                self.assertEqual(len(json.loads(path.read_text())['pending']), 1)
+        finally:
+            release.set()
+            sender.close()
+
+    def test_failed_delivery_retains_same_batch_and_revocation_stops_sender(self):
+        batch = {'events': [{'eventId': 'stable'}]}
+        state = {'pending': [batch]}
+        post = Mock(side_effect=OSError('offline'))
+        sender = Sender(post)
+        try:
+            sender.tick(state, lambda: None, 0)
+            with self.assertRaises(OSError):
+                sender.future.result(timeout=2)
+            sender.tick(state, lambda: None, 1)
+            sender.tick(state, lambda: None, 5)
+            self.assertEqual(post.call_count, 1)
+            self.assertIs(state['pending'][0], batch)
+            post.side_effect = urllib.error.HTTPError('http://localhost', 401, 'expired', {}, None)
+            sender.tick(state, lambda: None, 6)
+            with self.assertRaises(urllib.error.HTTPError):
+                sender.future.result(timeout=2)
+            with self.assertRaisesRegex(ValueError, '401'):
+                sender.tick(state, lambda: None, 7)
+            self.assertEqual(state['pending'], [batch])
+        finally:
+            sender.close()
 
     def test_store_text_bounds(self):
         name = b'Coupon Reward Manager 2'.ljust(32, b'\0')

@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 import struct
+from client_profiles import client_hash
 
 CLIENT_HASH = '8343dc2afba9537f5c41c713b3af5516d0be75f6ad9a9bdb6ed9722238645379'
 AVATAR_POINTER = 0x0233B5F8
@@ -30,6 +31,7 @@ class Reader:
         k.VirtualQueryEx.restype = c.c_size_t
         k.QueryFullProcessImageNameW.argtypes = [w.HANDLE, w.DWORD, w.LPWSTR, c.POINTER(w.DWORD)]
         k.GetProcessTimes.argtypes = [w.HANDLE, c.POINTER(w.FILETIME), c.POINTER(w.FILETIME), c.POINTER(w.FILETIME), c.POINTER(w.FILETIME)]
+        k.GetExitCodeProcess.argtypes = [w.HANDLE, c.POINTER(w.DWORD)]
         self.handle = k.OpenProcess(0x410, False, pid)  # QUERY_INFORMATION | VM_READ only
         if not self.handle:
             raise OSError(c.get_last_error(), 'Read access unavailable')
@@ -38,8 +40,7 @@ class Reader:
             size = w.DWORD(len(path))
             if not k.QueryFullProcessImageNameW(self.handle, 0, path, c.byref(size)) or Path(path.value).resolve() != client.resolve():
                 raise ValueError('Process path mismatch')
-            if hashlib.sha256(client.read_bytes()).hexdigest() != CLIENT_HASH:
-                raise ValueError('Unsupported client build')
+            self.client_hash = client_hash(client)
             times = [w.FILETIME() for _ in range(4)]
             if not k.GetProcessTimes(self.handle, *(c.byref(value) for value in times)):
                 raise ValueError('Process creation time unavailable')
@@ -52,6 +53,10 @@ class Reader:
         if self.handle:
             self.kernel.CloseHandle(self.handle)
             self.handle = None
+
+    def alive(self):
+        code = w.DWORD()
+        return bool(self.handle and self.kernel.GetExitCodeProcess(self.handle, c.byref(code)) and code.value == 259)
 
     def read(self, address, size):
         if not self.handle or address < 0x10000 or size < 1 or size > 65536 or address + size > 0x100000000:
@@ -85,11 +90,11 @@ def probe(reader):
         raise ValueError('Invalid name candidate')
     name = raw_name.decode('cp1251', errors='strict')
     levels = {hex(off): reader.uint(avatar + off) for off in (0x1e0, 0x11f0, 0x4024)}
-    rate, = struct.unpack('<f', reader.read(avatar + 0x580c, 4))
+    rate, = struct.unpack('<f', reader.read(avatar + 0x57dc, 4))
     if reader.uint(AVATAR_POINTER) != avatar or reader.read(avatar, 0x40) != head:
         raise ValueError('Changing identity; discard sample')
     return dict(name=name, serial=struct.unpack_from('<I', head, 8)[0], vtable=hex(struct.unpack_from('<I', head)[0]),
-                levelCandidates=levels, xpCandidatePercent=round(rate * 100, 6) if math.isfinite(rate) and 0 <= rate <= 1 else None)
+                levelCandidates=levels, xpCandidatePercent=round(rate, 6) if math.isfinite(rate) and 0 <= rate <= 100 else None)
 
 
 def player(reader):
@@ -103,13 +108,13 @@ def player(reader):
         raise ValueError('Invalid character name')
     serial = struct.unpack_from('<I', head, 8)[0]
     level = reader.uint(avatar + 0x4024)
-    rate, = struct.unpack('<f', reader.read(avatar + 0x580c, 4))
-    if not 0 < serial < 0xffffffff or not 1 <= level <= 150 or not math.isfinite(rate) or not 0 <= rate <= 1:
+    rate, = struct.unpack('<f', reader.read(avatar + 0x57dc, 4))
+    if not 0 < serial < 0xffffffff or not 1 <= level <= 150 or not math.isfinite(rate) or not 0 <= rate <= 100:
         raise ValueError('Invalid character stats')
     if reader.uint(AVATAR_POINTER) != avatar or reader.read(avatar, 0x40) != head or reader.uint(avatar + 0x4024) != level:
         raise ValueError('Changing character sample')
     epoch = hashlib.sha256(f'{reader.created}:{avatar}:{serial}:{name}'.encode()).hexdigest()
-    return dict(name=name, serial=serial, identityEpoch=epoch, level=level, xpPercent=round(rate * 100, 6))
+    return dict(name=name, serial=serial, identityEpoch=epoch, level=level, xpPercent=round(rate, 6))
 
 
 def journal(reader, definitions):

@@ -44,7 +44,7 @@ def store_names(data):
 
 
 def extract(client):
-    definitions = catalog(client)  # Pins client, Quest and English quest text hashes.
+    definitions = catalog(client, allow_current=True)  # Pins client, Quest and English quest text hashes.
     spec = importlib.util.spec_from_file_location('coupon_edf', Path(__file__).resolve().parents[2] / 'outputs/cerberus-quest-monitor/edf/analyze_edf.py')
     edf = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(edf)
@@ -71,7 +71,10 @@ def extract(client):
     emblems = {reward for record, code, title in definitions.values()
                if re.search(r'\b(Easy|Medium|Hard)\+? Cartella Quest Reward', title)
                for reward in item_rewards(record) if reward[0] == 20}
-    if emblems != {(20, 0xc5081622), (20, 0xc5081623), (20, 0xc5081624)}:
+    expected_emblems = ({(20, 0xc5081622), (20, 0xc5081623), (20, 0xc5081624)}
+                        if hashlib.sha256(raw['quest']).hexdigest() == EDF_HASH else
+                        {(20, 0xc5081655), (20, 0xc5081656), (20, 0xc5081657)})
+    if emblems != expected_emblems:
         raise ValueError('Unexpected Cartella emblem identities')
     # A 336-byte NPC offer row has three 108-byte alternatives. Each carries
     # a quest/reference pair; all alternatives must be joined, not only the first.
@@ -131,7 +134,7 @@ def main():
     result = extract(args.client)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_bytes(gzip.compress(json.dumps(result, ensure_ascii=False, separators=(',', ':')).encode(), mtime=0))
-    all_rows = [dict(code=code, title=title or code, definitionHash=hash_) for hash_, (_, code, title) in catalog(args.client).items()]
+    all_rows = [dict(code=code, title=title or code, definitionHash=hash_) for hash_, (_, code, title) in catalog(args.client, allow_current=True).items()]
     args.out.with_name('catalog.json.gz').write_bytes(gzip.compress(json.dumps(all_rows, ensure_ascii=False, separators=(',', ':')).encode(), mtime=0))
     print(json.dumps(dict(npcs=result['npcs'], rows=len(result['quests']), sourceHashes=result['sourceHashes']), indent=2))
 

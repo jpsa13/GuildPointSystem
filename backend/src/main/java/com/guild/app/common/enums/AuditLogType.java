@@ -32,6 +32,7 @@ public enum AuditLogType {
     EQUIPMENT_CHANGED,
     EQUIPMENT_CATALOG_IMPORTED,
     QUEST_CATALOG_UPDATED,
+    ROTATION_UPDATED,
     PARTY_DISCORD_CALLED;
 
     public boolean isEquipmentPrivate() {

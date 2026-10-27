@@ -1,6 +1,7 @@
 import type { AuditLogEntry, AuditLogType } from '@/Domain/types/models'
 
 const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
+  ROTATION_UPDATED: 'Rotação de bosses atualizada',
   PARTY_DISCORD_CALLED: 'PT chamada no Discord',
   QUEST_CATALOG_UPDATED: 'Lista de quests revisada',
   EQUIPMENT_CHANGED: 'Equipamento atualizado',
@@ -62,6 +63,8 @@ export function formatLogDetails(log: AuditLogEntry): string {
   const p = log.payload
 
   switch (log.type) {
+    case 'ROTATION_UPDATED':
+      return `${str(p.slots)} horários · Versão ${str(p.version)}`
     case 'PARTY_DISCORD_CALLED':
       return str(p.party)
     case 'QUEST_CATALOG_UPDATED':

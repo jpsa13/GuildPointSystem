@@ -27,9 +27,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Ingestao name-based (sem token) do status de quests do cliente, e sobreposicao
- * na checklist. Display-only: "done" marca a quest como concluida na checklist,
- * com a imprecisao de que um sumico do journal pode nao ser conclusao real.
+ * Ingestao name-based (sem token) mantida para compatibilidade e cabecalho.
+ * O "done" nativo e preservado como dado bruto; nao confirma conclusao na checklist.
  */
 @Service
 @RequiredArgsConstructor

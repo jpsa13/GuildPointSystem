@@ -23,7 +23,8 @@ export function useQuests(day: string, resetPeriod: boolean) {
     initialPageParam: 0,
     queryFn: ({ pageParam }) => apiClient<QuestHistory>(`/quests?${new URLSearchParams({ day, resetPeriod: String(resetPeriod), offset: String(pageParam) })}`),
     getNextPageParam: last => last.hasMore ? last.nextOffset : undefined,
-    staleTime: Infinity,
+    staleTime: 10_000,
+    refetchInterval: 10_000,
   })
 }
 export function useLiveQuestPairing() {

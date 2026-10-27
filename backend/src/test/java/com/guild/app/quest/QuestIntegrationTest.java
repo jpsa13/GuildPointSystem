@@ -189,14 +189,14 @@ class QuestIntegrationTest {
         var m=members.findById(memberId).orElseThrow(); m.setRole(com.guild.app.common.enums.Role.ADMINISTRADOR); members.saveAndFlush(m);
         authenticate(memberId);
         var history=service.history(LocalDate.of(2026,10,23),true,0);
-        assertEquals(63,history.expected().size());
-        assertEquals(List.of(30,30,0,1,2),history.npcCoverage().stream().map(NpcCoverage::questCount).toList());
+        assertEquals(49,history.expected().size());
+        assertEquals(List.of(15,6,12,2,14),history.npcCoverage().stream().map(NpcCoverage::questCount).toList());
         assertTrue(history.expected().stream().allMatch(row->!row.definition().objectives().isEmpty() && row.completionSignals()==0));
         assertTrue(history.expected().stream().allMatch(row->row.definition().races().equals(List.of(1))));
         var codes=history.expected().stream().map(row->row.definition().quest().code()).collect(java.util.stream.Collectors.toSet());
         assertTrue(codes.containsAll(Set.of("Q071382","Q070944","Q070947","Q071450","Q071396")));
         assertFalse(codes.contains("Q071449")); assertFalse(codes.contains("Q071451"));
-        assertEquals(List.of("04121"),history.expected().stream().filter(row->row.definition().quest().code().equals("Q071382")).findFirst().orElseThrow().definition().npcCodes());
+        assertEquals(List.of("04122"),history.expected().stream().filter(row->row.definition().quest().code().equals("Q071382")).findFirst().orElseThrow().definition().npcCodes());
         service.visibility(selectedHash,new VisibilityRequest(true));
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE type='QUEST_CATALOG_UPDATED' AND actor_id=?",Integer.class,memberId));
         authenticate(otherId);
@@ -214,6 +214,95 @@ class QuestIntegrationTest {
         assertThrows(RuntimeException.class,()->service.ingestLive(first.token(),new LiveBatch(sample("meow","a".repeat(64),0),List.of())));
         var run=UUID.randomUUID();
         assertDoesNotThrow(()->QuestService.validateTransition(event(run,0,State.PRESENT,8),event(run,1,State.STATE_CHANGED,111),Instant.now()));
+    }
+    @Test void currentClientSyncRetainsProvenanceAndDoesNotInventCompletion() {
+        var pair=service.pairLive(new LivePairRequest("local-0.3","meow"));
+        var definition=catalog.coupons.quests().stream().filter(q->q.quest().code().equals("Q071396")).findFirst().orElseThrow().quest();
+        var run=UUID.randomUUID();
+        var first=new Event(UUID.randomUUID(),run,0,Instant.now().minusSeconds(2),definition.code(),definition.title(),
+            com.guild.app.quest.service.QuestCatalog.CURRENT_CLIENT,com.guild.app.quest.service.QuestCatalog.CURRENT_EDF,definition.definitionHash(),1,1,8,State.PRESENT);
+        var changed=new Event(UUID.randomUUID(),run,1,Instant.now().minusSeconds(1),first.code(),first.title(),first.clientHash(),first.edfHash(),first.definitionHash(),1,1,111,State.STATE_CHANGED);
+        var batch=new LiveBatch(sample("meow","a".repeat(64),0),List.of(first,changed));
+        assertEquals(2,service.ingestLive(pair.token(),batch).get("accepted"));
+        assertEquals(2,service.ingestLive(pair.token(),batch).get("duplicates"));
+        assertTrue(service.history(LocalDate.now(ZoneId.of("America/Sao_Paulo")),false,0).expected().stream().allMatch(q->q.completionSignals()==0));
+        var completion=new Event(changed.eventId(),run,1,changed.occurredAt(),first.code(),first.title(),first.clientHash(),first.edfHash(),first.definitionHash(),1,1,111,State.COMPLETION_SIGNAL);
+        assertDoesNotThrow(()->QuestService.validateTransition(first,completion,Instant.now()));
+        assertFalse(catalog.matchesContext(first.clientHash(),com.guild.app.quest.service.QuestCatalog.EDF,first.code(),first.definitionHash(),first.title()));
+        assertFalse(catalog.matchesContext(com.guild.app.quest.service.QuestCatalog.CLIENT,com.guild.app.quest.service.QuestCatalog.EDF,first.code(),first.definitionHash(),first.title()));
+    }
+    Event currentEvent(CatalogQuest quest,UUID run,int seq,State state,int slot) {
+        return new Event(UUID.randomUUID(),run,seq,Instant.parse("2026-10-26T18:00:00Z").plusSeconds(seq),quest.code(),quest.title(),
+            com.guild.app.quest.service.QuestCatalog.CURRENT_CLIENT,com.guild.app.quest.service.QuestCatalog.CURRENT_EDF,
+            quest.definitionHash(),1,1,slot,state);
+    }
+    @Test void allSelectedCurrentQuestsReachChecklistOnceWithoutRewards() {
+        jdbc.update("DELETE FROM quest_catalog_visibility");
+        var day=LocalDate.of(2026,10,26);
+        var selected=service.history(day,true,0).expected();
+        assertEquals(15,selected.size());
+        var pair=service.pairLive(new LivePairRequest("completion-test","boi"));
+        var events=new ArrayList<Event>();
+        for(var row:selected) {
+            var quest=row.definition().quest(); var run=UUID.randomUUID();
+            events.add(currentEvent(quest,run,0,State.PRESENT,14));
+            events.add(currentEvent(quest,run,1,State.COMPLETION_SIGNAL,117));
+            events.add(currentEvent(quest,run,2,State.REMOVED_UNKNOWN,117));
+            var abandoned=UUID.randomUUID();
+            events.add(currentEvent(quest,abandoned,0,State.PRESENT,14));
+            events.add(currentEvent(quest,abandoned,1,State.REMOVED_UNKNOWN,14));
+            // First sight after a restart already in the terminal slot proves no transition.
+            events.add(currentEvent(quest,UUID.randomUUID(),0,State.PRESENT,117));
+        }
+        var batch=new LiveBatch(sample("boi","a".repeat(64),0),events);
+        assertEquals(90,service.ingestLive(pair.token(),batch).get("accepted"));
+        assertEquals(90,service.ingestLive(pair.token(),batch).get("duplicates"));
+        assertTrue(service.history(day,true,0).expected().stream().allMatch(q->q.completionSignals()==1));
+        assertTrue(service.history(day.plusDays(1),true,0).expected().stream().allMatch(q->q.completionSignals()==0));
+        var repeat=UUID.randomUUID(); var quest=selected.getFirst().definition().quest();
+        service.ingestLive(pair.token(),new LiveBatch(sample("boi","a".repeat(64),1),List.of(
+            currentEvent(quest,repeat,0,State.PRESENT,14),currentEvent(quest,repeat,1,State.COMPLETION_SIGNAL,117))));
+        assertEquals(2,service.history(day,true,0).expected().stream().filter(q->q.definition().quest().code().equals(quest.code())).findFirst().orElseThrow().completionSignals());
+        authenticate(otherId);
+        assertTrue(service.history(day,true,0).expected().stream().allMatch(q->q.completionSignals()==0));
+    }
+    @Test void currentCompletionRejectsWrongContextAndRepeatedSignals() {
+        var quest=catalog.coupons.quests().stream().filter(q->q.quest().code().equals("Q071396")).findFirst().orElseThrow().quest();
+        for(int kind=0;kind<7;kind++) {
+            var run=UUID.randomUUID();
+            var first=currentEvent(quest,run,0,State.PRESENT,14);
+            var code=kind==0?"Q334314":first.code();
+            var hash=kind==1?"0".repeat(64):first.definitionHash();
+            var build=kind==2?"0".repeat(64):first.clientHash();
+            var edf=kind==3?"0".repeat(64):first.edfHash();
+            int group=kind==4?0:1, type=kind==5?0:1, slot=kind==6?116:117;
+            var before=new Event(first.eventId(),run,0,first.occurredAt(),code,first.title(),build,edf,hash,group,type,14,State.PRESENT);
+            var after=new Event(UUID.randomUUID(),run,1,first.occurredAt().plusSeconds(1),code,first.title(),build,edf,hash,group,type,slot,State.COMPLETION_SIGNAL);
+            assertThrows(RuntimeException.class,()->QuestService.validateTransition(before,after,Instant.now()));
+        }
+        var run=UUID.randomUUID();
+        var completed=currentEvent(quest,run,1,State.COMPLETION_SIGNAL,117);
+        assertThrows(RuntimeException.class,()->QuestService.validateTransition(completed,currentEvent(quest,run,2,State.COMPLETION_SIGNAL,220),Instant.now()));
+        assertThrows(RuntimeException.class,()->QuestService.validateTransition(currentEvent(quest,run,0,State.PRESENT,117),completed,Instant.now()));
+    }
+    @Test void currentCatalogKeepsLegacyAdminSelection() {
+        jdbc.update("DELETE FROM quest_catalog_visibility");
+        var legacy="94e3b2f4d52c89ef506e66ba5404deaec370d85a7a48f695ab96ab76dba66177";
+        jdbc.update("INSERT INTO quest_catalog_visibility(definition_hash,hidden,updated_by) VALUES(?,true,?)",legacy,memberId);
+        assertEquals(14,service.history(LocalDate.now(),true,0).expected().size());
+        assertTrue(service.history(LocalDate.now(),true,0).expected().stream().noneMatch(q->q.definition().quest().code().equals("Q071396")));
+    }
+    @Test void nativeStatusKeepsDisplayButNeverCreatesChecklistCompletion() {
+        var day=LocalDate.of(2026,10,26);
+        jdbc.update("INSERT INTO quest_status(member_id,quest_day,done_codes) VALUES(?,?,'Q071396')",memberId,day);
+        var nativeView=service.history(day,true,0);
+        assertNotNull(nativeView.player());
+        assertNull(nativeView.player().sessionId());
+        assertTrue(nativeView.expected().stream().allMatch(q->q.completionSignals()==0));
+        var pair=service.pairLive(new LivePairRequest("unified-0.4","boi"));
+        service.ingestLive(pair.token(),new LiveBatch(sample("boi","a".repeat(64),0),List.of()));
+        assertEquals("boi",service.history(day,true,0).player().sample().name());
+        assertEquals(pair.sessionId(),service.history(day,true,0).player().sessionId());
     }
     Event easyEvent(UUID run,int sequence,State state,int slot) {
         var base=event(run,sequence,state,slot);

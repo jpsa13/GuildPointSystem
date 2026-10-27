@@ -13,6 +13,16 @@ function fixture(): QuestHistory {
     npcCoverage: [{ name: 'Coupon Reward Manager 4', npcCodes: ['060C2'], questCount: 0 }] }
 }
 describe('live character and curated checklist', () => {
+  it('preserves the native 60-second heartbeat without accepting delayed samples', () => {
+    const data = fixture()
+    data.player!.sessionId = null
+    data.player!.receivedAt = data.player!.sample.sampledAt = new Date(Date.now() - 60_000).toISOString()
+    const view = render(<QuestPlayerPanel data={data} />)
+    expect(screen.getByText('Monitor conectado')).toBeInTheDocument()
+    data.player!.sample.sampledAt = new Date(Date.now() - 120_000).toISOString()
+    view.rerender(<QuestPlayerPanel data={data} />)
+    expect(screen.getByText('Sem leitura recente')).toBeInTheDocument()
+  })
   it('shows observed player stats and stale status', () => {
     const data = fixture()
     const view = render(<QuestPlayerPanel data={data} />)
@@ -36,6 +46,13 @@ describe('live character and curated checklist', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ocultar da lista' }))
     expect(state.mutate).toHaveBeenCalledWith({ hash: 'a', hidden: true })
     expect(screen.getByText(/nenhum vínculo de quest encontrado/)).toBeInTheDocument()
+  })
+  it('does not present a delayed queued sample as a connected character', () => {
+    const data = fixture()
+    data.player!.sample.sampledAt = '2020-01-01T00:00:00Z'
+    render(<QuestPlayerPanel data={data} />)
+    expect(screen.getByText('Sem leitura recente')).toBeInTheDocument()
+    expect(screen.queryByText('Monitor conectado')).not.toBeInTheDocument()
   })
   it('groups reward variants and keeps hidden quests out of progress', () => {
     const data = fixture()

@@ -11,6 +11,7 @@ import struct
 import urllib.request
 from urllib.parse import urlsplit
 import uuid
+from client_profiles import client_hash, validate_data
 
 ROOT = Path(__file__).resolve().parents[2]
 CLIENT_HASH = '8343dc2afba9537f5c41c713b3af5516d0be75f6ad9a9bdb6ed9722238645379'
@@ -25,14 +26,16 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def catalog(client):
+def catalog(client, *, allow_current=False):
     spec = importlib.util.spec_from_file_location('quest_edf', ROOT / 'outputs/cerberus-quest-monitor/edf/analyze_edf.py')
     edf = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(edf)
     quest = (client / 'DataTable/Quest.edf').read_bytes()
     names = (client / 'DataTable/en-gb/NDQuest.edf').read_bytes()
-    if digest((client / 'RF_Online_4gb.bin').read_bytes()) != CLIENT_HASH or digest(quest) != EDF_HASH or digest(names) != TEXT_HASH:
-        raise ValueError('Unsupported build/EDF')
+    build = client_hash(client / 'RF_Online_4gb.bin')
+    if not allow_current and build != CLIENT_HASH:
+        raise ValueError('Historical replay requires its original client build')
+    validate_data(build, quest, names)
     body = edf.decrypt(quest)
     texts = edf.nd_strings(edf.decrypt(names), 'cp1252')
     result = {}

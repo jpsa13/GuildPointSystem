@@ -53,7 +53,7 @@ public class QuestRepository {
         var result=new HashMap<String,Long>();
         // Include the confirmed Easy delivery captured before its detector was enabled, preserving the original event.
         jdbc.query("""
-            SELECT o.definition_hash,count(DISTINCT (o.session_id,o.run_id)) AS total FROM quest_observation o JOIN quest_monitor_session s ON s.id=o.session_id
+            SELECT o.code,count(DISTINCT (o.session_id,o.run_id)) AS total FROM quest_observation o JOIN quest_monitor_session s ON s.id=o.session_id
             WHERE s.member_id=? AND s.source='LOCAL_MONITOR' AND (o.state='COMPLETION_SIGNAL' OR (
                 o.state='STATE_CHANGED' AND o.code='Q071396'
                 AND o.client_hash='8343dc2afba9537f5c41c713b3af5516d0be75f6ad9a9bdb6ed9722238645379'
@@ -62,7 +62,7 @@ public class QuestRepository {
                 AND (o.payload->>'group')::int=1 AND (o.payload->>'type')::int=1 AND (o.payload->>'slot')::int=111
                 AND EXISTS (SELECT 1 FROM quest_observation p WHERE p.session_id=o.session_id AND p.run_id=o.run_id
                     AND p.sequence=o.sequence-1 AND p.state='PRESENT' AND (p.payload->>'slot')::int=8)))
-            AND o.occurred_at>=? AND o.occurred_at<? GROUP BY o.definition_hash
+            AND o.occurred_at>=? AND o.occurred_at<? GROUP BY o.code
             """,(org.springframework.jdbc.core.RowCallbackHandler) r->result.put(r.getString(1),r.getLong(2)),memberId,Timestamp.from(start),Timestamp.from(end));
         return result;
     }

@@ -19,7 +19,7 @@ export interface QuestHistory {
 export interface QuestPairing { sessionId: string; token: string; expiresAt: string }
 export interface QuestBrief { code: string; title: string; definitionHash: string; group: number; type: number; slot: number }
 export interface PlayerStatus {
-  sessionId: string; receivedAt: string; revoked: boolean
+  sessionId: string | null; receivedAt: string; revoked: boolean
   sample: { sequence: number; sampledAt: string; status: 'OBSERVED' | 'UNAVAILABLE'; name: string; serial: number
     identityEpoch: string; level: number; xpPercent: number | null; quests: QuestBrief[] }
 }
