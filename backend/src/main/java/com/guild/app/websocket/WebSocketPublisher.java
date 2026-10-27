@@ -83,6 +83,8 @@ public class WebSocketPublisher {
         send("/topic/news", payload);
     }
 
+    public void publishRotationChanged() { send("/topic/rotation", java.util.Map.of("changed",true)); }
+
     public void publishDonations(Object payload) {
         send("/topic/donations", payload);
     }

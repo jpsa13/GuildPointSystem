@@ -37,6 +37,11 @@ $color-bronze: #cd7f32;
 // Misc
 $color-accent: #e8a23f;
 
+// Guild identifiers used by the boss rotation.
+$color-rotation-energy: #287bff;
+$color-rotation-espada: #ed8abb;
+$color-rotation-quit: #83d1ff;
+
 // Metal — derived from the panel surface, no new brand colors
 $metal-950: color.adjust($color-bg, $lightness: -1%);
 $metal-900: color.adjust($color-bg-elevated, $lightness: -2.5%);

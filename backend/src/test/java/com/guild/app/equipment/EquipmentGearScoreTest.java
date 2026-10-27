@@ -42,6 +42,13 @@ class EquipmentGearScoreTest {
         }
         assertEquals(2735,item("WEAPON","iwsze50").points());
     }
+    @Test void cafeOnlyWindElvenBladeHasZeroScoreWithoutBeingUnscored() throws Exception {
+        var score=item("WEAPON","iwepc01");
+        assertEquals(new GearScore(0,1,true),score);
+        var member=new MemberEquipment(1,"Player",50,null,null,null,null,
+            List.of(new CurrentSlot(Slot.Weapon,1,assignment(Slot.Weapon,score))));
+        assertEquals(new GearScoreTotal(0,0,0,0,0),member.gearScore());
+    }
     @Test void weightsAllAccessoryEffectsAndHandlesNegativeFpConsumption() throws Exception {
         assertEquals(1050,item("RING","iiccb02").points()); // ataque 25%
         assertEquals(1350,item("AMULET","iacca80").points()); // ataque 25% + defesa 20%

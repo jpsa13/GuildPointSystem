@@ -3,6 +3,7 @@ import type { AuditLogEntry, AuditLogType } from '@/Domain/types/models'
 const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
   PARTY_DISCORD_CALLED: 'PT chamada no Discord',
   PARTY_GAME_INVITE: 'PT chamada no jogo',
+  ROTATION_UPDATED: 'Rotação atualizada',
   QUEST_CATALOG_UPDATED: 'Lista de quests revisada',
   EQUIPMENT_CHANGED: 'Equipamento atualizado',
   EQUIPMENT_CATALOG_IMPORTED: 'Catálogo EDF importado',
@@ -120,6 +121,8 @@ export function formatLogDetails(log: AuditLogEntry): string {
     }
     case 'AUCTION_DELETED':
       return `#${str(p.auctionId)} · ${str(p.items)}`
+    case 'ROTATION_UPDATED':
+      return `Versão ${str(p.version)} · ${str(p.slots)} horários`
     case 'PROFILE_UPDATED': {
       const field = PROFILE_FIELD_LABELS[str(p.field)] ?? str(p.field)
       return `${field}: ${str(p.oldValue)} → ${str(p.newValue)}`
