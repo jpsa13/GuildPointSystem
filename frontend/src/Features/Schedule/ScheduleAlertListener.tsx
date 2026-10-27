@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   useLocalScheduleAlertPolling,
   useScheduleAlertSubscription,
@@ -6,44 +6,34 @@ import {
 } from '@/Domain/Schedule/hooks/useScheduleAlerts'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { playPbHqWarningSound, playTenMinuteWarningSound } from '@/Shared/utils/notificationSound'
+import { onceAcrossTabs } from '@/Shared/utils/onceAcrossTabs'
 import './ScheduleAlert.styles.scss'
 
+/** Servidor manda "...:00Z" e o fallback local "...:00.000Z": compara pelo instante, não pelo texto. */
 function alertDedupeKey(alert: ScheduleTenMinuteAlert) {
-  return `${alert.eventId}|${alert.startsAt}`
-}
-
-function markAlertShown(key: string) {
-  try {
-    sessionStorage.setItem(`schedule-alert:${key}`, '1')
-  } catch {
-    /* ignore */
-  }
-}
-
-function wasAlertShown(key: string) {
-  try {
-    return sessionStorage.getItem(`schedule-alert:${key}`) === '1'
-  } catch {
-    return false
-  }
+  const at = Date.parse(alert.startsAt)
+  return `schedule-alert:${alert.eventId}|${Number.isNaN(at) ? alert.startsAt : at}`
 }
 
 export function ScheduleAlertListener() {
   const { showToast } = useAppToast()
   const [banner, setBanner] = useState<ScheduleTenMinuteAlert | null>(null)
+  // O fallback local repete o aviso a cada segundo: cada aba trata cada evento uma vez.
+  const seenInTab = useRef(new Set<string>())
 
   const onAlert = useCallback(
     (alert: ScheduleTenMinuteAlert) => {
       const key = alertDedupeKey(alert)
-      if (wasAlertShown(key)) {
-        return
-      }
-      markAlertShown(key)
-
-      if (alert.eventId === 'pb-hq') playPbHqWarningSound()
-      else playTenMinuteWarningSound()
-      const message = `Faltam ${alert.minutesRemaining} minutos para ${alert.label} começar`
-      showToast(message, 'info', { durationMs: 12_000 })
+      if (seenInTab.current.has(key)) return
+      seenInTab.current.add(key)
+      // Chega pelo WebSocket e pelo fallback local, e em todas as abas: toca uma vez só.
+      onceAcrossTabs(key, () => {
+        if (alert.eventId === 'pb-hq') playPbHqWarningSound()
+        else playTenMinuteWarningSound()
+        const message = `Faltam ${alert.minutesRemaining} minutos para ${alert.label} começar`
+        showToast(message, 'info', { durationMs: 12_000 })
+      })
+      // O banner aparece em toda aba aberta (sem som nas demais).
       setBanner(alert)
       window.setTimeout(() => setBanner(null), 12_000)
     },
