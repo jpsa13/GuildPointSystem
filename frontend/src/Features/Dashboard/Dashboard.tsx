@@ -11,6 +11,7 @@ import {
   useCharacterRanking,
   useCharacterStatusSubscription,
 } from '@/Domain/CharacterStatus/hooks/useCharacterStatus'
+import { useEquipment } from '@/Domain/Equipment/hooks/useEquipment'
 import { useDiscordMembers, type DiscordMember } from '@/Domain/Discord/hooks/useDiscordMembers'
 import { discordProfileUrl, openInDiscordApp } from '@/Shared/utils/discordLink'
 import { useActiveEvents, useClaimEvent } from '@/Domain/Event/hooks/useEvents'
@@ -21,6 +22,7 @@ import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import './Dashboard.styles.scss'
 
 const EVENT_PER_PAGE = 4
+type SortKey = 'points' | 'gameLevel' | 'gameExp' | 'gearScore'
 /** Natural ranking row (46px + 1px border; stretched to fill the viewport) and pagination block. */
 const RANK_ROW_HEIGHT = 47
 const PAGINATION_HEIGHT = 46
@@ -86,6 +88,10 @@ export function DashboardPage() {
     const current = gameStatusByMember.get(s.memberId)
     if (!current || Date.parse(s.updatedAt) > Date.parse(current.updatedAt)) gameStatusByMember.set(s.memberId, s)
   }
+  // GearScore de cada membro (soma dos equipamentos atuais); 0 = sem equipamento pontuado.
+  const { data: equipment = [] } = useEquipment()
+  const gearScoreByMember = new Map<number, number>()
+  for (const e of equipment) if (e.gearScore?.total) gearScoreByMember.set(e.memberId, e.gearScore.total)
   const cerberusLaunched = useCerberusLaunched()
   const { data: discord } = useDiscordMembers()
   const discordBySiteId = new Map<number, DiscordMember>()
@@ -99,18 +105,19 @@ export function DashboardPage() {
   const [claimErrors, setClaimErrors] = useState<Record<number, string>>({})
   const [rankPage, setRankPage] = useState(0)
   const [eventPage, setEventPage] = useState(0)
-  // Ordenação do ranking: por pontos (padrão), level ou EXP do jogo.
-  const [sortKey, setSortKey] = useState<'points' | 'gameLevel' | 'gameExp'>('points')
+  // Ordenação do ranking: por pontos (padrão), level, EXP do jogo ou GearScore.
+  const [sortKey, setSortKey] = useState<SortKey>('points')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [rankSearch, setRankSearch] = useState('')
 
   const sortValue = (memberId: number, points: number): number | null => {
     if (sortKey === 'points') return points
+    if (sortKey === 'gearScore') return gearScoreByMember.get(memberId) ?? null
     const s = gameStatusByMember.get(memberId)
     if (!s) return null // sem status de jogo vai sempre para o fim
     return sortKey === 'gameLevel' ? s.level : s.expPercent
   }
-  const toggleSort = (key: 'points' | 'gameLevel' | 'gameExp') => {
+  const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))
     else {
       setSortKey(key)
@@ -118,7 +125,7 @@ export function DashboardPage() {
     }
     setRankPage(0)
   }
-  const sortArrow = (key: 'points' | 'gameLevel' | 'gameExp') =>
+  const sortArrow = (key: SortKey) =>
     sortKey === key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''
 
   // Side columns end exactly where the ranking panel ends; events and news split theirs in half.
@@ -258,6 +265,9 @@ export function DashboardPage() {
                             .expPercent.toFixed(2)}%`
                         : '—'}
                     </span>
+                    <span className="podium__gs" title="GearScore">
+                      {gearScoreByMember.has(member.id) ? `GS ${gearScoreByMember.get(member.id)}` : 'GS —'}
+                    </span>
                     <span className="podium__points">{member.points}</span>
                   </div>
                   <div className="podium__pedestal">
@@ -292,6 +302,13 @@ export function DashboardPage() {
                 onClick={() => toggleSort('gameExp')}
               >
                 EXP{sortArrow('gameExp')}
+              </span>
+              <span
+                className={`ranking-list__sort${sortKey === 'gearScore' ? ' ranking-list__sort--active' : ''}`}
+                title="GearScore dos equipamentos atuais — clique para ordenar"
+                onClick={() => toggleSort('gearScore')}
+              >
+                GS{sortArrow('gearScore')}
               </span>
               <span
                 className={`ranking-list__sort${sortKey === 'points' ? ' ranking-list__sort--active' : ''}`}
@@ -329,6 +346,7 @@ export function DashboardPage() {
                       ? `${gameStatusByMember.get(m.id)!.expPercent.toFixed(2)}%`
                       : '—'}
                   </span>
+                  <span className="ranking-list__gs">{gearScoreByMember.get(m.id) ?? '—'}</span>
                   <span className="ranking-list__pts">{m.points}</span>
                 </li>
               ))}

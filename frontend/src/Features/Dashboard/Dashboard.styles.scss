@@ -124,6 +124,12 @@
     color: theme.$color-text-muted;
   }
 
+  &__gs {
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-heading;
+    color: theme.$color-text-muted;
+  }
+
   &__discord {
     max-width: 100%;
     margin-top: -4px;
@@ -190,8 +196,8 @@
 .ranking-list__head,
 .ranking-list li {
   display: grid;
-  // Colunas: # | icone | Membro | Lv(jogo) | EXP | Pontos.
-  grid-template-columns: 36px 32px minmax(0, 1fr) 3.2rem 4.2rem 4.5rem;
+  // Colunas: # | icone | Membro | Lv(jogo) | EXP | GS | Pontos.
+  grid-template-columns: 36px 32px minmax(0, 1fr) 3.2rem 4.2rem 3.8rem 4.5rem;
   align-items: center;
   gap: theme.$spacing-md;
   padding: 0 theme.$spacing-lg;
@@ -202,17 +208,19 @@
   height: 32px;
   border-top: 1px solid theme.$color-border-strong;
 
-  // Lv(jogo), EXP e Pontos centralizados.
+  // Lv(jogo), EXP, GS e Pontos centralizados.
   span:nth-child(4),
   span:nth-child(5),
-  span:nth-child(6) {
+  span:nth-child(6),
+  span:nth-child(7) {
     text-align: center;
   }
 }
 
-// Status de jogo (level/EXP do CerberusBags): centralizado e discreto.
+// Status de jogo (level/EXP do CerberusBags) e GearScore: centralizados e discretos.
 .ranking-list__game-lv,
-.ranking-list__game-exp {
+.ranking-list__game-exp,
+.ranking-list__gs {
   text-align: center;
   color: theme.$color-text-muted;
   font-variant-numeric: tabular-nums;
@@ -552,7 +560,7 @@
   // No mobile a coluna EXP sai; o nome fica com o espaço.
   .ranking-list__head,
   .ranking-list li {
-    grid-template-columns: 24px 32px minmax(0, 1fr) 3rem 3.5rem;
+    grid-template-columns: 24px 32px minmax(0, 1fr) 3rem 3.2rem 3.5rem;
     gap: theme.$spacing-sm;
     padding: 0 theme.$spacing-md;
   }
@@ -563,9 +571,10 @@
     display: none;
   }
 
-  // Lv(jogo) (4a) e Pontos (6a) centralizados.
+  // Lv(jogo) (4a), GS (6a) e Pontos (7a) centralizados.
   .ranking-list__head span:nth-child(4),
-  .ranking-list__head span:nth-child(6) {
+  .ranking-list__head span:nth-child(6),
+  .ranking-list__head span:nth-child(7) {
     text-align: center;
   }
 
