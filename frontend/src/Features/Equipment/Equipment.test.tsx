@@ -4,6 +4,7 @@ import { EquipmentPage } from './Equipment'
 import { EQUIPMENT_GROUPS, type CatalogFilters, type EquipmentAssignment, type EquipmentSlot } from '@/Domain/Equipment/types'
 import sheets from '@/Domain/Equipment/icon-sheets.json'
 import { EquipmentIcon } from './EquipmentIcon'
+vi.mock('./EquipmentRelics', () => ({ EquipmentRelics: ({ editable }: { editable: boolean }) => <section aria-label="Relics" data-editable={String(editable)} /> }))
 
 const state = vi.hoisted(() => ({ admin: true, userId: 2, className: '', profileLoading: false, profileError: null as Error | null, profileQuery: vi.fn(), multiEffects: false, current: false, currentSlot: 'Weapon' as EquipmentSlot, currentLevel: 25, currentGrade: 0, extraMember: false, transferTarget: false, targetEmpty: false, catalogGrade: 1, catalogTotal: 1, effectsNote: '', history: [] as EquipmentAssignment[], reviewAction: vi.fn(), reviews: [] as import('@/Domain/Equipment/types').EquipmentReview[], slotEdit: vi.fn(), mutate: vi.fn(), refetch: vi.fn(), catalog: vi.fn(), historyQuery: vi.fn() }))
 const effect = { key: '15:0.08', code: 15, name: 'Force Attack', displayType: 'FLAT' as const, value: 0.08, unitHint: 'percent_0_1' }
@@ -42,6 +43,24 @@ function openEditor(slot = 'Weapon') {
 function selectItem() { fireEvent.click(screen.getByRole('button', { name: 'Selecionar Intense Staff · iwstb25' })) }
 
 describe('Equipamentos', () => {
+  it.each([true, false])('restricts relic editing to admins even on their own inventory (admin=%s)', admin => {
+    state.admin = admin; state.userId = 1
+    render(<EquipmentPage />); inspect()
+    expect(screen.getByRole('region', { name: 'Relics' })).toHaveAttribute('data-editable', String(admin))
+  })
+  it('opens a delivery directly from the recipient row without editing equipment', async () => {
+    state.transferTarget = true; state.targetEmpty = true
+    render(<EquipmentPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar entrega para Destinatário local' }))
+    expect(screen.getByRole('form', { name: 'Registrar entrega de item' })).toBeInTheDocument()
+    expect(state.historyQuery).toHaveBeenLastCalledWith(3, true)
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Quantidade' }), { target: { value: '2' } })
+    selectItem()
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ memberId: 3, quantity: 2, useAsCurrent: false })
+    expect(state.slotEdit).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Itens entregues' })).toHaveAttribute('aria-selected', 'true'))
+  })
   it.each([true, false])('shows progress and class and combines class filtering with sorting and search (admin=%s)', admin => {
     state.admin = admin; state.userId = 1; state.transferTarget = true; state.extraMember = true
     render(<EquipmentPage />)
@@ -378,7 +397,7 @@ describe('Equipamentos', () => {
     render(<EquipmentPage />)
     const roster = screen.getByRole('list', { name: 'Equipamentos dos personagens' })
     expect(within(roster).getAllByRole('group')).toHaveLength(3)
-    expect(within(roster).getAllByRole('button')).toHaveLength(15)
+    expect(within(roster).getAllByRole('button')).toHaveLength(16)
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
   it('inspects twelve slots with amulets around Helmet and a Cloak slot', () => {
@@ -491,25 +510,26 @@ describe('Equipamentos', () => {
     expect(screen.getByRole('button', { name: expected === 1 ? 'B' : 'C' })).toHaveAttribute('aria-pressed', 'true')
     expect(state.catalog).toHaveBeenLastCalledWith('WEAPON', '', 0, true, { race: 'CORA', grade: expected, level: 45 })
   })
-  it('records an unequipped delivery only after submitting and opens its private history', async () => {
+  it('records an unequipped delivery on item selection with the previously chosen quantity', async () => {
     state.current = true; state.currentLevel = 45; state.currentGrade = 1
     render(<EquipmentPage />); inspect()
     fireEvent.click(screen.getByRole('button', { name: 'Registrar entrega' }))
     const form = screen.getByRole('form', { name: 'Registrar entrega de item' })
     expect(within(form).queryByLabelText('Destinatário')).not.toBeInTheDocument()
     fireEvent.click(within(form).getByRole('button', { name: 'B' }))
-    selectItem()
-    expect(state.mutate).not.toHaveBeenCalled()
+    expect(within(form).queryByRole('button', { name: 'Registrar entrega' })).not.toBeInTheDocument()
+    const candidate = within(form).getByRole('button', { name: 'Selecionar Intense Staff · iwstb25' })
     const quantity = within(form).getByRole('spinbutton', { name: 'Quantidade' })
     fireEvent.change(quantity, { target: { value: '0' } })
-    expect(within(form).getByRole('button', { name: 'Registrar entrega' })).toBeDisabled()
+    expect(candidate).toBeDisabled()
     fireEvent.change(quantity, { target: { value: '1.5' } })
-    expect(within(form).getByRole('button', { name: 'Registrar entrega' })).toBeDisabled()
+    expect(candidate).toBeDisabled()
+    expect(state.mutate).not.toHaveBeenCalled()
     fireEvent.change(quantity, { target: { value: '3' } })
-    fireEvent.click(within(form).getByRole('button', { name: 'Registrar entrega' }))
+    fireEvent.click(candidate)
     await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
     expect(state.mutate.mock.calls[0][0]).toMatchObject({ action: 'CREATE', memberId: 1, slot: 'Weapon', catalogId: 7, origin: 'GUILD_DISTRIBUTION', useAsCurrent: false, expectedVersion: 1, quantity: 3 })
-    await waitFor(() => expect(screen.getByRole('tab', { name: 'Entregas' })).toHaveAttribute('aria-selected', 'true'))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Itens entregues' })).toHaveAttribute('aria-selected', 'true'))
   })
   it('lets admins register deliveries in another category and hides the feature from members', () => {
     render(<EquipmentPage />); inspect()
@@ -519,23 +539,49 @@ describe('Equipamentos', () => {
     cleanup(); state.admin = false; state.userId = 1
     render(<EquipmentPage />)
     expect(screen.queryByRole('button', { name: 'Registrar entrega' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Entregas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Itens entregues' })).not.toBeInTheDocument()
     expect(state.historyQuery).toHaveBeenLastCalledWith(1, false)
+    fireEvent.click(screen.getByRole('button', { name: 'Ver jogadores' }))
+    expect(screen.queryByRole('button', { name: /^Registrar entrega para/ })).not.toBeInTheDocument()
+  })
+  it('waits for an explicit effect before registering a delivery and retries without duplicating the request', async () => {
+    state.multiEffects = true
+    state.mutate.mockRejectedValueOnce(new Error('Resposta perdida'))
+    render(<EquipmentPage />); inspect()
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar entrega' }))
+    const form = screen.getByRole('form', { name: 'Registrar entrega de item' })
+    selectItem()
+    expect(state.mutate).not.toHaveBeenCalled()
+    fireEvent.submit(form)
+    expect(state.mutate).not.toHaveBeenCalled()
+    fireEvent.change(within(form).getByLabelText('Efeito extra do item'), { target: { value: '15:0.1' } })
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ quantity: 1, effectKey: '15:0.1', useAsCurrent: false })
+    await waitFor(() => expect(within(form).getByRole('button', { name: 'Fechar' })).toBeEnabled())
+    fireEvent.change(within(form).getByLabelText('Efeito extra do item'), { target: { value: '15:0.1' } })
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(2))
+    expect(state.mutate.mock.calls[1][0]).toEqual(state.mutate.mock.calls[0][0])
   })
   it('shows totals grouped by level and grade in the private deliveries tab', () => {
     state.history = [
-      { ...record, id: 1, level: 45, grade: 1 },
-      { ...record, id: 2, level: 45, grade: 1, status: 'TRANSFERRED' },
-      { ...record, id: 3, level: 45, grade: 1, status: 'CANCELLED' },
+      { ...record, id: 1, deliveryOnly: true, level: 45, grade: 1 },
+      { ...record, id: 2, deliveryOnly: true, level: 45, grade: 1, status: 'TRANSFERRED' },
+      { ...record, id: 3, deliveryOnly: true, level: 45, grade: 1, status: 'CANCELLED' },
+      { ...record, id: 4, name: 'Distribuição equipada' },
     ]
     render(<EquipmentPage />); inspect()
-    fireEvent.click(screen.getByRole('tab', { name: 'Entregas' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Itens entregues' }))
     const totals = screen.getByRole('region', { name: 'Totais recebidos' })
     expect(totals).toHaveTextContent('Arma · Lv. 45 · B · Intense')
     expect(within(totals).getByRole('listitem')).toHaveTextContent('2')
-    expect(screen.getByRole('list', { name: 'Distribuições e histórico' })).toHaveTextContent('Cancelado')
+    expect(screen.getByRole('list', { name: 'Itens entregues' })).toHaveTextContent('Cancelado')
+    expect(screen.getByRole('list', { name: 'Itens entregues' })).not.toHaveTextContent('Distribuição equipada')
+    fireEvent.click(screen.getByRole('tab', { name: /^Histórico$/ }))
+    const equipmentHistory = screen.getByRole('list', { name: 'Histórico de equipamentos' })
+    expect(equipmentHistory).toHaveTextContent('Distribuição equipada')
+    expect(within(equipmentHistory).getAllByRole('listitem')).toHaveLength(1)
   })
-  it('filters weapons by a numeric level, supports focused wheel and keeps the bounds', () => {
+  it('filters weapons by a numeric level, supports hover wheel and keeps the bounds', () => {
     render(<EquipmentPage />); openEditor()
     const input=screen.getByRole('spinbutton', { name: 'Nível da arma' })
     fireEvent.change(input, { target: { value: '36' } })
@@ -543,8 +589,10 @@ describe('Equipamentos', () => {
     expect(input).toHaveValue(36)
     fireEvent.click(screen.getByRole('button', { name: 'C' }))
     expect(state.catalog).toHaveBeenLastCalledWith('WEAPON', '', 0, true, { race: 'CORA', grade: 3, level: 36 })
-    fireEvent.wheel(input, { deltaY: -100 }); expect(input).toHaveValue(36)
-    input.focus(); fireEvent.wheel(input, { deltaY: -100 }); expect(input).toHaveValue(37)
+    expect(input).not.toHaveFocus()
+    const wheel = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true })
+    fireEvent(input, wheel); expect(input).toHaveValue(37)
+    expect(wheel.defaultPrevented).toBe(true)
     fireEvent.wheel(input, { deltaY: 100 }); expect(input).toHaveValue(36)
     fireEvent.change(input, { target: { value: '50' } }); fireEvent.wheel(input, { deltaY: -100 }); expect(input).toHaveValue(50)
     fireEvent.change(input, { target: { value: '35' } }); fireEvent.wheel(input, { deltaY: 100 }); expect(input).toHaveValue(35)

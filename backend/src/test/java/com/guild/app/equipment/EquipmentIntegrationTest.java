@@ -84,11 +84,53 @@ class EquipmentIntegrationTest {
         return new Operation(id,Action.CREATE,memberId,Slot.Weapon,version,null,catalogId,"15:0.08",
             Origin.GUILD_DISTRIBUTION,LocalDate.now(),equip,null,null,null,null,BigDecimal.valueOf(quantity));
     }
+    @Test void relicsPersistAndReplayWithoutChangingSlotsScoreOrPublicAudit() throws Exception {
+        var before=service.board().stream().filter(m->m.memberId()==memberId).findFirst().orElseThrow();
+        authenticate(actorId);
+        assertEquals(List.of(),service.relics(memberId));
+        assertEquals(List.of(0),service.setRelic(memberId,0,new RelicState(true)));
+        assertEquals(List.of(0),service.setRelic(memberId,0,new RelicState(true)));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE target_id=? AND payload->>'action'='RELIC'",Integer.class,memberId));
+        assertEquals(actorId,jdbc.queryForObject("SELECT actor_id FROM audit_log WHERE target_id=? AND payload->>'action'='RELIC'",Long.class,memberId));
+        var after=service.board().stream().filter(m->m.memberId()==memberId).findFirst().orElseThrow();
+        assertEquals(before.slots(),after.slots());
+        assertEquals(before.gearScore(),after.gearScore());
+        mvc.perform(get("/api/equipment/members/"+memberId+"/relics").with(authentication(authenticationFor(actorId))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0]").value(0));
+        authenticate(actorId);
+        assertEquals(List.of(),service.setRelic(memberId,0,new RelicState(false)));
+        assertEquals(List.of(),service.relics(memberId));
+        assertTrue(service.history(memberId).isEmpty());
+    }
+    @Test void relicEndpointsEnforceOwnershipRolesAndValidIdentifiers() throws Exception {
+        mvc.perform(put("/api/equipment/members/"+actorId+"/relics/0").with(authentication(authenticationFor(memberId)))
+            .contentType("application/json").content("{\"active\":true}")).andExpect(status().isForbidden());
+        for(boolean active:List.of(true,false))
+            mvc.perform(put("/api/equipment/members/"+memberId+"/relics/0").with(authentication(authenticationFor(memberId)))
+                .contentType("application/json").content("{\"active\":"+active+"}")).andExpect(status().isForbidden());
+        for(int id:List.of(-1,120))
+            mvc.perform(put("/api/equipment/members/"+memberId+"/relics/"+id).with(authentication(authenticationFor(actorId)))
+                .contentType("application/json").content("{\"active\":true}")).andExpect(status().isBadRequest());
+        mvc.perform(put("/api/equipment/members/"+memberId+"/relics/0").with(authentication(authenticationFor(actorId)))
+            .contentType("application/json").content("{}")).andExpect(status().isBadRequest());
+        mvc.perform(put("/api/equipment/members/"+memberId+"/relics/119").with(authentication(authenticationFor(actorId)))
+            .contentType("application/json").content("{\"active\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$[0]").value(119));
+        mvc.perform(get("/api/equipment/members/"+memberId+"/relics").with(authentication(authenticationFor(memberId))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0]").value(119));
+        SecurityContextHolder.clearContext();
+        mvc.perform(get("/api/equipment/members/"+memberId+"/relics")
+            .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous())).andExpect(status().isUnauthorized());
+    }
     @Test void deliveryQuantityCreatesIndependentUnitsWithoutEquippingAndReplaysExactlyOnce() {
         var equipped=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        var scoreBefore=service.board().stream().filter(m->m.memberId()==memberId).findFirst().orElseThrow().gearScore();
         var request=delivery(UUID.randomUUID(),3,1,false);
         var receipt=service.operate(request);
         assertEquals(4,service.history(memberId).size());
+        assertFalse(equipped.deliveryOnly());
+        assertTrue(receipt.deliveryOnly());
+        assertEquals(3,service.history(memberId).stream().filter(r->Boolean.TRUE.equals(r.deliveryOnly())).count());
+        assertEquals(scoreBefore,service.board().stream().filter(m->m.memberId()==memberId).findFirst().orElseThrow().gearScore());
         assertEquals(equipped.id(),slot(Slot.Weapon).assignment().id()); assertEquals(1,slot(Slot.Weapon).version());
         assertEquals(receipt.id(),service.operate(request).id());
         assertEquals(4,service.history(memberId).size());
@@ -110,6 +152,27 @@ class EquipmentIntegrationTest {
             .contentType("application/json").content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
         authenticate(actorId);
         assertTrue(service.history(memberId).isEmpty());
+    }
+    @Test void deliveriesIgnoreSlotChangesAndStayClassifiedAfterCorrection() throws Exception {
+        var receipt=service.operate(delivery(UUID.randomUUID(),1,99,false));
+        assertNull(slot(Slot.Weapon).assignment());
+        assertEquals(0,slot(Slot.Weapon).version());
+        var corrected=service.operate(new Operation(UUID.randomUUID(),Action.CORRECT,memberId,Slot.Weapon,0L,receipt.id(),
+            catalogId,"15:0.08",Origin.GUILD_DISTRIBUTION,LocalDate.now(),false,null,null,"Corrigir entrega"));
+        assertTrue(corrected.deliveryOnly());
+        assertNull(slot(Slot.Weapon).assignment());
+        assertEquals("CORRECTED",repository.assignment(receipt.id()).status());
+        var ordinary=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        jdbc.update("UPDATE equipment_assignment SET delivery_only=false WHERE member_id=?",memberId);
+        try(var in=new org.springframework.core.io.ClassPathResource("db/migration/V73__equipment_delivery_ledger.sql").getInputStream()) {
+            var migration=new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+            jdbc.execute(migration.substring(migration.indexOf("WITH RECURSIVE")));
+        }
+        assertTrue(repository.assignment(receipt.id()).deliveryOnly());
+        assertTrue(repository.assignment(corrected.id()).deliveryOnly());
+        assertFalse(repository.assignment(ordinary.id()).deliveryOnly());
+        mvc.perform(get("/api/equipment/members/"+memberId+"/history").with(authentication(authenticationFor(memberId))))
+            .andExpect(status().isForbidden());
     }
     @Test
     @Transactional(propagation=Propagation.NOT_SUPPORTED)
@@ -776,7 +839,8 @@ class EquipmentIntegrationTest {
         mvc.perform(get("/api/equipment").with(authentication(authenticationFor(memberId))))
             .andExpect(status().isOk()).andExpect(jsonPath("$..gearScore.total").isNotEmpty()).andExpect(jsonPath("$..actorId").isEmpty())
             .andExpect(jsonPath("$..actorName").isEmpty()).andExpect(jsonPath("$..createdAt").isEmpty())
-            .andExpect(jsonPath("$..occurredOn").isEmpty()).andExpect(jsonPath("$..statusReason").isEmpty());
+            .andExpect(jsonPath("$..occurredOn").isEmpty()).andExpect(jsonPath("$..statusReason").isEmpty())
+            .andExpect(jsonPath("$..deliveryOnly").isEmpty());
         authenticate(actorId);
         var edited=service.operate(create(Slot.Weapon,1,true,"15:0.08"));
         assertEquals(actorId,edited.actorId().longValue());

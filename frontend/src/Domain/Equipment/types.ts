@@ -13,6 +13,7 @@ export const SLOT_CATEGORY: Record<EquipmentSlot, string> = {
 export interface EquipmentEffect { key: string; code: number | null; name: string; displayType: EffectDisplayType; value: number; description?: string | null; unitHint?: string | null }
 export interface EquipmentItem { id: number; category: string; gameCode: string; name: string; level: number; grade: number; effects: EquipmentEffect[]; iconId?: number | null; sourceHash?: string; effectsNote?: string | null }
 export interface EquipmentAssignment extends Omit<EquipmentItem, 'id' | 'effects'> {
+  deliveryOnly?: boolean | null
   gearScore?: { points: number | null; originalLevel: number | null; included: boolean }
   id: number; memberId: number; slot: EquipmentSlot; catalogId: number; effect: EquipmentEffect
   origin: 'INITIAL' | 'GUILD_DISTRIBUTION'; occurredOn: string; actorId: number; actorName: string

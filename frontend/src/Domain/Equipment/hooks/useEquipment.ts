@@ -16,6 +16,7 @@ export function useEquipmentSubscription() {
     const refresh = (catalogChanged = false) => {
       void queries.invalidateQueries({ queryKey: ['equipment', 'board'] })
       void queries.invalidateQueries({ queryKey: ['equipment', 'reviews'] })
+      void queries.invalidateQueries({ queryKey: ['equipment', 'relics'] })
       if (admin) {
         void queries.invalidateQueries({ queryKey: ['equipment', 'history'] })
         void queries.invalidateQueries({ queryKey: ['logs'] })
@@ -44,6 +45,18 @@ export function useEquipment() {
 }
 export function useEquipmentHistory(memberId: number, enabled = true) {
   return useQuery({ queryKey: ['equipment', 'history', memberId], queryFn: () => apiClient<EquipmentAssignment[]>(`/equipment/members/${memberId}/history`), enabled: enabled && memberId > 0, staleTime: Infinity })
+}
+export function useEquipmentRelics(memberId: number) {
+  return useQuery({ queryKey: ['equipment', 'relics', memberId], queryFn: () => apiClient<number[]>(`/equipment/members/${memberId}/relics`), enabled: memberId > 0, staleTime: Infinity })
+}
+export function useEquipmentRelicChange(memberId: number) {
+  const queries = useQueryClient()
+  const key = ['equipment', 'relics', memberId]
+  return useMutation({
+    mutationFn: ({ relicId, active }: { relicId: number; active: boolean }) => apiClient<number[]>(`/equipment/members/${memberId}/relics/${relicId}`, { method: 'PUT', body: { active } }),
+    onSuccess: data => { queries.setQueryData(key, data); void queries.invalidateQueries({ queryKey: ['logs'] }) },
+    onSettled: () => queries.invalidateQueries({ queryKey: key }),
+  })
 }
 export function useEquipmentCatalog(category: string, search: string, page: number, enabled: boolean, filters: CatalogFilters = {}) {
   const params = new URLSearchParams({ category, search, page: String(page), size: '30' })

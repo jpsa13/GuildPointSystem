@@ -67,6 +67,7 @@ export function formatLogDetails(log: AuditLogEntry): string {
     case 'QUEST_CATALOG_UPDATED':
       return `${str(p.code)} · ${p.hidden ? 'Ocultada da checklist' : 'Restaurada na checklist'}`
     case 'EQUIPMENT_CHANGED':
+      if (p.action === 'RELIC') return `Relic #${str(p.relicId)} · ${p.active ? 'Ativada' : 'Desativada'}`
       if (p.action === 'CREATE' && p.quantity) return `${str(p.slot)} · Entrega de ${str(p.quantity)} unidade(s) · Registro #${str(p.assignmentId)}`
       if (p.action === 'REVIEW_REQUEST') return `Revisão de equipamentos solicitada · Prazo: ${str(p.dueAt)}`
       if (p.action === 'REVIEW_CONFIRM') return 'Revisão de equipamentos confirmada'

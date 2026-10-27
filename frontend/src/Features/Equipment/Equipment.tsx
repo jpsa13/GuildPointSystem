@@ -13,6 +13,7 @@ import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberCl
 import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { EquipmentIcon, EmptyEquipmentSlot } from './EquipmentIcon'
+import { EquipmentRelics } from './EquipmentRelics'
 import { formatEquipmentEffect } from '@/Domain/Equipment/utils/equipmentEffects'
 import './Equipment.styles.scss'
 
@@ -52,7 +53,7 @@ function WeaponLevelInput({ value, onChange }: { value?: number; onChange: (leve
     const input = ref.current
     if (!input) return
     const wheel = (event: WheelEvent) => {
-      if (document.activeElement !== input || event.deltaY === 0) return
+      if (event.deltaY === 0) return
       event.preventDefault()
       onChange(Math.max(35, Math.min(50, (value ?? 35) + (event.deltaY < 0 ? 1 : -1))))
     }
@@ -151,7 +152,7 @@ export function EquipmentPage() {
   const { data: history = [], isLoading: historyLoading, error: historyError, refetch: refetchHistory } = useEquipmentHistory(managing ? historyId : user?.memberId ?? 0, admin)
   const inspected = members.find(m => m.memberId === (managing ? historyId : user?.memberId))
   const deliveryTotals = summarizeDeliveries(admin ? history : [])
-  const visibleHistory = tab === 'deliveries' ? history.filter(r => r.origin === 'GUILD_DISTRIBUTION') : history
+  const visibleHistory = history.filter(r => tab === 'deliveries' ? r.deliveryOnly : !r.deliveryOnly)
   const inspectedReview = reviews.find(r => r.memberId === inspected?.memberId)
   const position = inspected?.slots.find(s => s.slot === selectedSlot)
   const item = position?.assignment
@@ -205,6 +206,13 @@ export function EquipmentPage() {
       setEditor({ memberId: inspected.memberId, nickname: inspected.nickname, position: target, action, original })
     }
   }
+  const registerDelivery = (member: MemberEquipment) => {
+    if (!admin) return
+    const position = member.slots.find(s => s.slot === 'Weapon')
+    if (!position) return
+    setHistoryId(member.memberId); setSelectedSlot('Weapon'); setTab('current')
+    setEditor({ memberId: member.memberId, nickname: member.nickname, position, action: 'CREATE', delivery: true })
+  }
   const removeItems = (member: MemberEquipment, slot?: EquipmentSlot) => {
     if (slotBusy.current || failedEdit || (!admin && member.memberId !== user?.memberId)) return
     const slots = member.slots.filter(s => s.assignment && (!slot || s.slot === slot))
@@ -251,8 +259,8 @@ export function EquipmentPage() {
       {failedEdit && <div role="alert"><p>{slotMutation.error?.message ?? 'Não foi possível concluir a alteração.'}</p><div className="equipment-actions"><Button size="sm" onClick={() => void editSlots(failedEdit.request, failedEdit.direction)}>Tentar novamente</Button><Button size="sm" variant="secondary" onClick={() => setFailedEdit(null)}>Fechar aviso</Button></div></div>}
       {transferMutation.isPending && <p role="status">Enviando equipamento…</p>}
       {!isLoading && !error && <>
-        <div className="equipment-roster__header" aria-hidden="true"><span>Personagem</span><span>Armas</span><span>Armaduras</span><span>Acessórios</span><span>Ações</span></div>
-        <ul className="equipment-roster" aria-label="Equipamentos dos personagens">{filtered.map(member => <li key={member.memberId} className={`equipment-roster__row${member.memberId === historyId ? ' is-selected' : ''}${selectedMembers.has(member.memberId) ? ' is-checked' : ''}${acceptsDrop(member.memberId) ? ' is-drop-target' : ''}`}
+        <div className={`equipment-roster__header${admin ? ' equipment-roster__header--admin' : ''}`} aria-hidden="true"><span>Personagem</span><span>Armas</span><span>Armaduras</span><span>Acessórios</span><span>Ações</span></div>
+        <ul className="equipment-roster" aria-label="Equipamentos dos personagens">{filtered.map(member => <li key={member.memberId} className={`equipment-roster__row${admin ? ' equipment-roster__row--admin' : ''}${member.memberId === historyId ? ' is-selected' : ''}${selectedMembers.has(member.memberId) ? ' is-checked' : ''}${acceptsDrop(member.memberId) ? ' is-drop-target' : ''}`}
           onDragOver={e => { if (acceptsDrop(member.memberId, undefined, dragSource.current)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
           onDrop={e => { e.preventDefault(); dropOn(member) }}>
           <div className="equipment-roster__member"><input type="checkbox" aria-label={`Selecionar ${member.nickname}`} checked={selectedMembers.has(member.memberId)} onChange={e => {
@@ -286,7 +294,7 @@ export function EquipmentPage() {
               </button>{current && (admin || member.memberId === user?.memberId) && <button type="button" className="equipment-mini-remove" aria-label={`Remover ${slotDescription(slot)} de ${member.nickname}`} title="Remover equipamento" disabled={slotMutation.isPending || !!failedEdit} onClick={() => removeItems(member, slot)}>×</button>}</div>
             })}</div>
           </div>)}
-          <div className="equipment-roster__actions">{(admin || member.memberId === user?.memberId) && <Button size="sm" variant="danger" aria-label={`Limpar equipamentos de ${member.nickname}`} disabled={!member.slots.some(s => s.assignment) || slotMutation.isPending || !!failedEdit} onClick={() => removeItems(member)}>Limpar</Button>}<Button size="sm" variant="secondary" aria-label={`Inspecionar ${member.nickname}`} onClick={() => inspect(member.memberId)}>Ver</Button></div>
+          <div className="equipment-roster__actions">{admin && <Button size="sm" variant="secondary" aria-label={`Registrar entrega para ${member.nickname}`} onClick={() => registerDelivery(member)}>Registrar entrega</Button>}{(admin || member.memberId === user?.memberId) && <Button size="sm" variant="danger" aria-label={`Limpar equipamentos de ${member.nickname}`} disabled={!member.slots.some(s => s.assignment) || slotMutation.isPending || !!failedEdit} onClick={() => removeItems(member)}>Limpar</Button>}<Button size="sm" variant="secondary" aria-label={`Inspecionar ${member.nickname}`} onClick={() => inspect(member.memberId)}>Ver</Button></div>
         </li>)}</ul>
         {filtered.length === 0 && <p>Nenhum personagem encontrado com esses filtros.</p>}
       </>}
@@ -306,10 +314,7 @@ export function EquipmentPage() {
       <div className="equipment-page__heading"><h2 ref={inspectRef} tabIndex={-1}>{inspected.nickname} · {memberScore(inspected)}</h2>{managing && <Button variant="secondary" onClick={() => { setHistoryId(0); setEditor(null) }}>Fechar inspeção</Button>}</div>
       {inspected.gearScore && <small title="Itens +0. Arma ×5 (somente a maior), armaduras ×1, acessórios ×3. Capa fora do cálculo.">Arma: {inspected.gearScore.weapon.toLocaleString('pt-BR')} · Armaduras: {inspected.gearScore.armor.toLocaleString('pt-BR')} · Acessórios: {inspected.gearScore.accessories.toLocaleString('pt-BR')}{inspected.gearScore.unscored > 0 && ` · ${inspected.gearScore.unscored} item(ns) sem pontuação confirmada`}</small>}
       {admin && <div className="equipment-actions">
-        <Button size="sm" onClick={() => {
-          const position = inspected.slots.find(s => s.slot === 'Weapon')
-          if (position) { setTab('current'); setEditor({ memberId: inspected.memberId, nickname: inspected.nickname, position, action: 'CREATE', delivery: true }) }
-        }}>Registrar entrega</Button>
+        <Button size="sm" onClick={() => registerDelivery(inspected)}>Registrar entrega</Button>
         <Button size="sm" variant="secondary" disabled={reviewAction.isPending || (!!inspectedReview && inspectedReview.status !== 'CONFIRMED')} onClick={() => reviewAction.mutate({ memberId: inspected.memberId, operationId: crypto.randomUUID() })}>Solicitar revisão · 72h</Button>
         {inspectedReview && <small>{inspectedReview.status === 'OVERDUE' ? 'Revisão em atraso' : inspectedReview.status === 'PENDING' ? 'Revisão pendente' : 'Revisado'} · {new Date(inspectedReview.dueAt).toLocaleString('pt-BR')}</small>}
       </div>}
@@ -322,7 +327,7 @@ export function EquipmentPage() {
       }}>
         <button id="equipment-current-tab" role="tab" tabIndex={tab === 'current' ? 0 : -1} aria-selected={tab === 'current'} aria-controls="equipment-current-panel" onClick={() => setTab('current')}>Equipamento atual</button>
         <button id="equipment-history-tab" role="tab" tabIndex={tab === 'history' ? 0 : -1} aria-selected={tab === 'history'} aria-controls="equipment-history-panel" onClick={() => setTab('history')}>Histórico</button>
-        <button id="equipment-deliveries-tab" role="tab" tabIndex={tab === 'deliveries' ? 0 : -1} aria-selected={tab === 'deliveries'} aria-controls="equipment-deliveries-panel" onClick={() => setTab('deliveries')}>Entregas</button>
+        <button id="equipment-deliveries-tab" role="tab" tabIndex={tab === 'deliveries' ? 0 : -1} aria-selected={tab === 'deliveries'} aria-controls="equipment-deliveries-panel" onClick={() => setTab('deliveries')}>Itens entregues</button>
       </div>}
       {tab === 'current' || !admin ? <div id="equipment-current-panel" role={admin ? 'tabpanel' : 'region'} aria-labelledby={admin ? 'equipment-current-tab' : undefined} aria-label={admin ? undefined : 'Equipamento atual'} className="equipment-inspector">
         <div>
@@ -356,10 +361,10 @@ export function EquipmentPage() {
         </section>}
         {historyLoading && <p role="status">Carregando histórico…</p>}{historyError && <p role="alert">{historyError.message}</p>}
         {!historyLoading && !historyError && visibleHistory.length === 0 && <p>Nenhum equipamento registrado para este personagem.</p>}
-        <ul className="equipment-history" aria-label="Distribuições e histórico">{visibleHistory.map(record => {
+        <ul className="equipment-history" aria-label={tab === 'deliveries' ? 'Itens entregues' : 'Histórico de equipamentos'}>{visibleHistory.map(record => {
           const current = inspected.slots.find(s => s.slot === record.slot)?.assignment?.id === record.id
           return <li key={record.id}>
-            <div className="equipment-history__heading"><strong>{slotDescription(record.slot)} · {itemLabel(record)}</strong><span>{STATUS_LABELS[record.status]}{current && <strong className="equipment-current">Atual</strong>}</span></div>
+            <div className="equipment-history__heading"><div className="equipment-item-preview"><EquipmentIcon item={record} size={32} /><strong>{slotDescription(record.slot)} · {itemLabel(record)}</strong></div><span>{STATUS_LABELS[record.status]}{current && <strong className="equipment-current">Atual</strong>}</span></div>
             <small>{record.gameCode} · #{record.id}{record.correctsId ? ` · Corrige #${record.correctsId}` : ''}</small>
             <p>{effectLabel(record.effect)}</p>
             <p>{record.origin === 'INITIAL' ? 'Equipamento inicial' : 'Entrega da guild'} · {record.occurredOn.split('-').reverse().join('/')} · {record.actorName}</p>
@@ -371,6 +376,7 @@ export function EquipmentPage() {
           </li>
         })}</ul>
       </div>}
+      {(tab === 'current' || !admin) && <EquipmentRelics key={inspected.memberId} memberId={inspected.memberId} editable={admin} />}
     </Panel>}
     {tooltip && tooltipItem && createPortal(<div id="equipment-item-tooltip" role="tooltip" className="equipment-tooltip" style={{ left: tooltip.left, top: tooltip.top, bottom: tooltip.bottom }} onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
       <EquipmentIcon item={tooltipItem} size={48} /><div><strong>{tooltipItem.name}</strong><div className="equipment-tooltip__meta">Lv. {tooltipItem.level} · {gradeLabel(tooltipItem.grade)} · {itemScore(tooltipItem)}</div><p>{effectLabel(tooltipItem.effect)}</p></div>
@@ -451,7 +457,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
   const transferIncomplete = transfer && (!recipient || !destination || (!!destination.assignment && !replaceRecipient))
   const selectItem = (value: EquipmentItem) => {
     setAutoResolve(false); setItem(value); setEffect(value.effects.length === 1 ? value.effects[0].key : '')
-    if (editor.action === 'CREATE' && !editor.delivery && value.effects.length === 1) void saveDirect(value, value.effects[0].key)
+    if (editor.action === 'CREATE' && value.effects.length === 1) void saveDirect(value, value.effects[0].key)
     else setOperationId(crypto.randomUUID())
   }
   const changeFilters = (next: CatalogFilters) => {
@@ -461,14 +467,14 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
   const operation = (selectedItem = item, selectedKey = effect): EquipmentOperation => ({
     operationId, action: editor.action, memberId: editor.memberId, slot: editor.position.slot,
     expectedVersion: editor.position.version, assignmentId: editor.original?.id, catalogId: selectedItem?.id,
-    effectKey: selectedKey, ...(editor.delivery ? { quantity } : {}), origin: editor.delivery ? 'GUILD_DISTRIBUTION' : origin, occurredOn: date, useAsCurrent: editingItem ? equip : false,
+    effectKey: selectedKey, ...(editor.delivery ? { quantity } : {}), origin: editor.delivery ? 'GUILD_DISTRIBUTION' : origin, occurredOn: date, useAsCurrent: editor.delivery ? false : editingItem ? equip : false,
     replacementId: !equip && replacement && replacement !== 'empty' ? Number(replacement) : undefined,
     restoration: affectsCurrent && !equip ? replacement === 'empty' ? 'EMPTY' : 'PREVIOUS' : undefined, reason: reason.trim(),
     transfer: transfer && recipient && destination ? { memberId: recipient.memberId,
       slot: accessorySlots.length ? recipientSlot : undefined, expectedVersion: destination.version, replaceCurrent: replaceRecipient } : undefined,
   })
   const saveDirect = async (selectedItem: EquipmentItem | null, selectedKey: string, send = false) => {
-    if (saving.current || transferIncomplete || !validQuantity) return
+    if (saving.current || transferIncomplete || !validQuantity || (editor.delivery && (!date || date > today()))) return
     const next = operation(selectedItem, selectedKey)
     if (send) {
       if (!transfer) return
@@ -485,6 +491,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
   }
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    if (editor.delivery) return
     if (editingItem && (!item || !effect)) return
     if (transferIncomplete) return
     if (editor.action === 'CREATE' && item) void saveDirect(item, effect)
@@ -497,6 +504,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
   }
   return <div className="equipment-editor"><h3>{editor.delivery ? 'Registrar entrega' : ACTION_LABELS[editor.action]} · {SLOT_LABELS[editor.position.slot]}</h3>
     <form ref={formRef} aria-label={editor.delivery ? 'Registrar entrega de item' : undefined} onSubmit={submit} onChange={() => setOperationId(crypto.randomUUID())}>
+      {editor.delivery && <div className="equipment-form-row"><label>Quantidade<input type="number" required min={1} max={100} step={1} value={Number.isFinite(quantity) ? quantity : ''} onChange={e => setQuantity(e.target.valueAsNumber)} /></label><label>Data<input type="date" required max={today()} value={date} onChange={e => setDate(e.target.value)} /></label></div>}
       {editor.original && <p>Registro #{editor.original.id}: {itemLabel(editor.original)} · {effectLabel(editor.original.effect)}</p>}
       {editingItem && <>
         {canTransfer && <section className="equipment-transfer" aria-label="Repassar equipamento">
@@ -559,7 +567,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
         {completeCriteria && !isLoading && !waitingForSearch && data && data.total > 1 && <p role="status">{data.total} modelos correspondem aos critérios. Escolha o item ou refine pelo nome/código.</p>}
         {(isLoading || waitingForSearch) && <p role="status">Buscando catálogo…</p>}{error && <p role="alert">{error.message}</p>}
         {!isLoading && !waitingForSearch && !error && <div className="equipment-results" role="group" aria-label="Resultados de itens">
-          {data?.items.map(candidate => <button key={candidate.id} type="button" className="equipment-result" aria-pressed={item?.id === candidate.id} aria-label={`Selecionar ${candidate.name} · ${candidate.gameCode}`} disabled={mutation.isPending || transferIncomplete} onClick={() => selectItem(candidate)}>
+          {data?.items.map(candidate => <button key={candidate.id} type="button" className="equipment-result" aria-pressed={item?.id === candidate.id} aria-label={`Selecionar ${candidate.name} · ${candidate.gameCode}`} disabled={mutation.isPending || transferIncomplete || !validQuantity || (!!editor.delivery && (!date || date > today()))} onClick={() => selectItem(candidate)}>
             <EquipmentIcon item={candidate} size={40} /><span><strong>{candidate.name}</strong><small>Lv. {candidate.level} · {gradeLabel(candidate.grade)} · {candidate.gameCode} · {candidate.effects.length ? candidate.effects.map(effectLabel).join(' / ') : 'Sem efeito extra'}</small></span><span aria-hidden="true">{item?.id === candidate.id ? '●' : '○'}</span>
           </button>)}
           {data?.items.length === 0 && <p>Nenhum item encontrado nesta categoria com os filtros selecionados. Ajuste os botões ou tente parte do nome/código.</p>}
@@ -569,7 +577,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
         <label>{effectsNeedReview ? 'Efeito original — conferir separação do padrão' : 'Efeito extra do item'}<select required value={effect} disabled={!item} onChange={e => { setEffect(e.target.value); if (editor.action === 'CREATE' && item && e.target.value) void saveDirect(item, e.target.value) }}><option value="">Selecione o efeito</option>{item?.effects.map(e => <option key={e.key} value={e.key}>{effectLabel(e)}</option>)}</select></label>
         <small>Definições do dicionário de equipamentos do rf-loot-editor; bônus padrão de classe removidos quando confirmados na fonte.</small>
         {item?.effectsNote && <p className="equipment-note" role={effectsNeedReview ? 'alert' : undefined}>{item.effectsNote}</p>}
-        {admin && <><div className="equipment-form-row"><label>Data<input type="date" required max={today()} value={date} onChange={e => setDate(e.target.value)} /></label>{editor.delivery && <label>Quantidade<input type="number" required min={1} max={100} step={1} value={Number.isFinite(quantity) ? quantity : ''} onChange={e => setQuantity(e.target.valueAsNumber)} /></label>}{!editor.delivery && <label>Origem<select value={origin} onChange={e => setOrigin(e.target.value as EquipmentAssignment['origin'])}><option value="GUILD_DISTRIBUTION">Entrega da guild</option><option value="INITIAL">Equipamento inicial</option></select></label>}</div>
+        {admin && !editor.delivery && <><div className="equipment-form-row"><label>Data<input type="date" required max={today()} value={date} onChange={e => setDate(e.target.value)} /></label><label>Origem<select value={origin} onChange={e => setOrigin(e.target.value as EquipmentAssignment['origin'])}><option value="GUILD_DISTRIBUTION">Entrega da guild</option><option value="INITIAL">Equipamento inicial</option></select></label></div>
         {editor.action !== 'CREATE' && <label className="equipment-check"><input type="checkbox" checked={equip} onChange={e => { setEquip(e.target.checked); setReplacement('') }} />Usar como equipamento atual</label>}
         {editor.action !== 'CREATE' && !canTransfer && <p className="equipment-note">{equip ? 'Somente esta posição será atualizada após a confirmação.' : affectsCurrent ? 'A correção retira o registro atual. Escolha abaixo o estado que deve ficar.' : 'Somente o histórico será registrado; o equipamento atual será preservado.'}</p>}</>}
 
@@ -578,7 +586,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
       {(editor.action === 'CORRECT' || editor.action === 'CANCEL') && <label>Motivo<textarea required maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>}
       {admin && <p className="equipment-note">Responsável: {user?.nickname}. Nenhum ponto ou leilão será alterado.</p>}
       {mutation.error && <p role="alert">{mutation.error.message} Se houver conflito, feche este formulário e abra a posição atualizada.</p>}
-      <div className="equipment-actions"><Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>Fechar</Button><Button type="submit" disabled={mutation.isPending || !validQuantity || (editingItem && (!item || !effect)) || (transfer && (!destination || (!!destination.assignment && !replaceRecipient)))}>{editor.delivery ? 'Registrar entrega' : editor.action === 'CREATE' ? 'Adicionar ao slot' : 'Revisar e confirmar'}</Button></div>
+      <div className="equipment-actions"><Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>Fechar</Button>{!editor.delivery && <Button type="submit" disabled={mutation.isPending || !validQuantity || (editingItem && (!item || !effect)) || (transfer && (!destination || (!!destination.assignment && !replaceRecipient)))}>{editor.action === 'CREATE' ? 'Adicionar ao slot' : 'Revisar e confirmar'}</Button>}</div>
     </form>
     <ConfirmDialog open={!!pending} title={ACTION_LABELS[editor.action]} confirmLabel="Confirmar registro" variant={editor.action === 'CANCEL' ? 'danger' : 'primary'} loading={mutation.isPending} onCancel={() => setPending(null)} onConfirm={confirm}>
       <p><strong>{editor.nickname} · {slotDescription(editor.position.slot)}</strong></p><p>{item ? itemLabel(item) : editor.original ? itemLabel(editor.original) : ''}</p>

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { formatLogDetails } from './formatLogEntry'
 
+it.each([true, false])('formats relic activation status (active=%s)', active => {
+  expect(formatLogDetails({ id: 1, type: 'EQUIPMENT_CHANGED', actorId: 1, actorNickname: 'Admin',
+    targetId: 2, targetNickname: 'Player', payload: { action: 'RELIC', relicId: 0, active }, createdAt: '2026-10-27T12:00:00Z' }))
+    .toBe(`Relic #0 · ${active ? 'Ativada' : 'Desativada'}`)
+})
+
 describe('equipment removal audit labels', () => {
   it.each([
     ['REMOVE', 'Equipamento removido'],

@@ -136,7 +136,10 @@
 .equipment-class-grade { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px;
   > fieldset { min-width: 0; }
 }
-@media (min-width: 1251px) and (max-width: 1600px) {
+@media (min-width: 1251px) {
+  .equipment-roster__header--admin, .equipment-roster__row--admin { grid-template-columns: 290px repeat(3, minmax(0, 1fr)) 250px; }
+}
+@media (min-width: 1251px) and (max-width: 1800px) {
   .equipment-mini-slots { gap: 3px; }
   .equipment-mini-slot { position: relative; width: 24px; height: 30px;
     .equipment-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.555556); }

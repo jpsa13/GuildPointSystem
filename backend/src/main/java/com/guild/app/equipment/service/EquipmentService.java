@@ -62,6 +62,22 @@ public class EquipmentService {
         }
         return repository.board().stream().map(m->repository.review(m.memberId())).filter(Objects::nonNull).toList();
     }
+    public List<Integer> relics(long memberId) {
+        actor(false);
+        var member=members.findById(memberId).orElseThrow(()->error("Membro não encontrado.",HttpStatus.NOT_FOUND));
+        require(member.getStatus()==MemberStatus.APROVADO && member.isProfileComplete(),"O membro deve estar aprovado e com perfil completo.");
+        return repository.relics(memberId);
+    }
+    @Transactional
+    public List<Integer> setRelic(long memberId,int relicId,RelicState state) {
+        var actor=actor(true);
+        require(relicId>=0 && relicId<120 && state!=null && state.active()!=null,"Relic ou estado inválido.");
+        var member=members.findByIdForUpdate(memberId).orElseThrow(()->error("Membro não encontrado.",HttpStatus.NOT_FOUND));
+        require(member.getStatus()==MemberStatus.APROVADO && member.isProfileComplete(),"O membro deve estar aprovado e com perfil completo.");
+        if(repository.setRelic(memberId,relicId,state.active()))
+            audit.log(AuditLogType.EQUIPMENT_CHANGED,actor,member,Map.of("action","RELIC","relicId",relicId,"active",state.active()));
+        return repository.relics(memberId);
+    }
     @Transactional
     public ReviewStatus requestReview(ReviewRequest request) {
         var actor=actor(true);
@@ -219,7 +235,7 @@ public class EquipmentService {
             return admin?saved:saved.withoutAudit();
         }
         var current=repository.slot(member.getId(),op.slot());
-        if(current.version()!=op.expectedVersion())
+        if(op.quantity()==null && current.version()!=op.expectedVersion())
             throw error("Esta posição mudou em outra sessão. Atualize e confirme novamente.",HttpStatus.CONFLICT);
         Member recipient=null;
         CurrentSlot destination=null;
