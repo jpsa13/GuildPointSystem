@@ -6,7 +6,7 @@ import { EQUIPMENT_GROUPS, SLOT_CATEGORY, type CatalogFilters, type CurrentSlot,
 import { useMember } from '@/Domain/Member/hooks/useMembers'
 import { summarizeDeliveries } from '@/Domain/Equipment/utils/equipmentDeliveries'
 import { armorClassForCharacter, weaponClassForCharacter } from '@/Domain/Equipment/utils/equipmentClass'
-import { gradeLabel as catalogGradeLabel } from '@/Domain/Catalog/utils/catalogUtils'
+import { gradeLabel as catalogGradeLabel, gradeColor } from '@/Domain/Catalog/utils/catalogUtils'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { Button } from '@/Shared/ui/components/Button/Button'
 import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberClassIcon'
@@ -379,7 +379,7 @@ export function EquipmentPage() {
       {(tab === 'current' || !admin) && <EquipmentRelics key={inspected.memberId} memberId={inspected.memberId} editable={admin} />}
     </Panel>}
     {tooltip && tooltipItem && createPortal(<div id="equipment-item-tooltip" role="tooltip" className="equipment-tooltip" style={{ left: tooltip.left, top: tooltip.top, bottom: tooltip.bottom }} onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
-      <EquipmentIcon item={tooltipItem} size={48} /><div><strong>{tooltipItem.name}</strong><div className="equipment-tooltip__meta">Lv. {tooltipItem.level} · {gradeLabel(tooltipItem.grade)} · {itemScore(tooltipItem)}</div><p>{effectLabel(tooltipItem.effect)}</p></div>
+      <EquipmentIcon item={tooltipItem} size={48} /><div style={{ color: gradeColor(tooltipItem.grade) }}><strong>{tooltipItem.name}</strong><div className="equipment-tooltip__meta">Lv. {tooltipItem.level} · {gradeLabel(tooltipItem.grade)} · {itemScore(tooltipItem)}</div><p>{effectLabel(tooltipItem.effect)}</p></div>
     </div>, document.body)}
   </div>
 }

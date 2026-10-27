@@ -81,7 +81,7 @@
   box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
   > div { min-width: 0; overflow-wrap: anywhere; }
   strong { display: block; font-size: 16px; }
-  &__meta { color: theme.$color-equipment-armor; margin-top: 3px; }
+  &__meta { color: inherit; margin-top: 3px; }
   p { margin: 5px 0 0; }
 }
 .equipment-tabs { display: flex; border-bottom: 1px solid theme.$color-border-strong; margin-bottom: 20px; gap: 8px;
