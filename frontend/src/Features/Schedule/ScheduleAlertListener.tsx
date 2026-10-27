@@ -5,7 +5,7 @@ import {
   type ScheduleTenMinuteAlert,
 } from '@/Domain/Schedule/hooks/useScheduleAlerts'
 import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
-import { playTenMinuteWarningSound } from '@/Shared/utils/notificationSound'
+import { playPbHqWarningSound, playTenMinuteWarningSound } from '@/Shared/utils/notificationSound'
 import './ScheduleAlert.styles.scss'
 
 function alertDedupeKey(alert: ScheduleTenMinuteAlert) {
@@ -40,7 +40,8 @@ export function ScheduleAlertListener() {
       }
       markAlertShown(key)
 
-      playTenMinuteWarningSound()
+      if (alert.eventId === 'pb-hq') playPbHqWarningSound()
+      else playTenMinuteWarningSound()
       const message = `Faltam ${alert.minutesRemaining} minutos para ${alert.label} começar`
       showToast(message, 'info', { durationMs: 12_000 })
       setBanner(alert)
