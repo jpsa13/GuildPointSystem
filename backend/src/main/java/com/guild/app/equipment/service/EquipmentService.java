@@ -29,6 +29,7 @@ public class EquipmentService {
     private final MemberRepository members;
     private final EquipmentEffectDictionary dictionary;
     private final AuditLogService audit;
+    private final com.guild.app.websocket.WebSocketPublisher ws;
     private final ObjectMapper json;
     private final jakarta.validation.Validator validator;
 
@@ -333,8 +334,10 @@ public class EquipmentService {
     /**
      * Sincronização pela DLL do cliente, associada pelo nome do personagem e sem token
      * (mesma decisão do status e das quests). Mantém o quadro igual ao que está vestido no
-     * jogo; cada troca vira um registro GAME_CLIENT no histórico, auditado pela administração
-     * e corrigível pelas operações manuais. Posições não enviadas ficam como estão.
+     * jogo; cada troca vira um registro GAME_CLIENT no histórico, corrigível pelas operações
+     * manuais. Só itens novos para o membro entram no log (um único CLIENT_SYNC por envio):
+     * voltar para um item que ele já tinha (ex.: alternar arma de correr e de bater) ou
+     * esvaziar a posição não gera log. Posições não enviadas ficam como estão.
      */
     @Transactional
     public Map<String,Object> syncFromClient(ClientEquipment request) {
@@ -347,12 +350,14 @@ public class EquipmentService {
         var today=LocalDate.now(ZoneId.of("America/Sao_Paulo"));
         var changed=new ArrayList<String>();
         var unknown=new ArrayList<String>();
+        var changes=new ArrayList<Map<String,Object>>();
         for(var input:request.slots()) {
             var current=repository.slot(member.getId(),input.slot());
             var before=current.assignment();
             String code=input.code();
             if(code==null ? before==null : before!=null && code.equals(before.gameCode())) continue;
             Long target=null;
+            boolean created=false;
             if(code!=null) {
                 target=repository.idleAssignment(member.getId(),input.slot(),code);
                 if(target==null) {
@@ -362,15 +367,23 @@ public class EquipmentService {
                     var op=new Operation(null,Action.CREATE,member.getId(),input.slot(),current.version(),null,item.id(),effect.key(),
                         Origin.GAME_CLIENT,today,true,null,null,"Sincronizado pelo cliente do jogo");
                     target=repository.create(op,item,effect,item.sourceHash(),member.getId(),null).id();
+                    created=true;
                 }
             }
             repository.setSlot(member.getId(),input.slot(),target);
-            var payload=new LinkedHashMap<String,Object>();
-            payload.put("action","CLIENT_SYNC"); payload.put("slot",input.slot());
-            payload.put("before",before); payload.put("after",repository.slot(member.getId(),input.slot()).assignment());
-            audit.log(AuditLogType.EQUIPMENT_CHANGED,member,member,payload);
             changed.add(input.slot().name());
+            if(!created) continue;
+            var change=new LinkedHashMap<String,Object>();
+            change.put("slot",input.slot()); change.put("before",before);
+            change.put("after",repository.slot(member.getId(),input.slot()).assignment());
+            changes.add(change);
         }
+        if(!changes.isEmpty()) {
+            var payload=new LinkedHashMap<String,Object>();
+            payload.put("action","CLIENT_SYNC"); payload.put("changes",changes);
+            payload.put("slots",changes.stream().map(c->((Slot)c.get("slot")).name()).toList());
+            audit.log(AuditLogType.EQUIPMENT_CHANGED,member,member,payload);
+        } else if(!changed.isEmpty()) ws.publishEquipmentChanged(); // sem log, o quadro ainda precisa atualizar
         return Map.of("changed",changed,"unknown",unknown);
     }
     @Transactional

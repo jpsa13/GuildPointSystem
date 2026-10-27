@@ -8,6 +8,7 @@ import com.guild.app.equipment.dto.EquipmentDtos.*;
 import com.guild.app.equipment.repository.EquipmentRepository;
 import com.guild.app.equipment.service.EquipmentService;
 import com.guild.app.member.repository.MemberRepository;
+import com.guild.app.websocket.WebSocketPublisher;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,12 +17,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,6 +39,7 @@ class EquipmentClientSyncTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
+    @MockitoBean WebSocketPublisher ws;
     long adminId,memberId;
     String nickname,upperA,upperB,ring,weapon;
 
@@ -84,10 +88,13 @@ class EquipmentClientSyncTest {
         assertEquals("15:0.08",upper.effect().key());
         // Modelo com mais de um efeito possível: a administração confirma depois.
         assertEquals("client:unverified",slot(Slot.Ring1).assignment().effect().key());
-        assertEquals(2,audits());
+        // Um envio com várias trocas gera um único log, com todas as posições.
+        assertEquals(1,audits());
+        assertEquals("[\"Upper\", \"Ring1\"]",jdbc.queryForObject(
+            "SELECT payload->>'slots' FROM audit_log WHERE payload->>'action'='CLIENT_SYNC' AND target_id=?",String.class,memberId));
         long version=slot(Slot.Upper).version();
         assertEquals(List.of(),service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA),new ReportedSlot(Slot.Ring1,ring))).get("changed"));
-        assertEquals(version,slot(Slot.Upper).version()); assertEquals(2,audits());
+        assertEquals(version,slot(Slot.Upper).version()); assertEquals(1,audits());
     }
     @Test void swappingBackReusesThePreviousRecordInsteadOfDuplicatingHistory() {
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
@@ -96,7 +103,10 @@ class EquipmentClientSyncTest {
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
         assertEquals(first,slot(Slot.Upper).assignment().id());
         assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM equipment_assignment WHERE member_id=?",Integer.class,memberId));
-        assertEquals(3,audits());
+        // Voltar para um item que o membro já tinha (ex.: arma de correr e de bater) não gera log,
+        // mas o quadro ainda é avisado da troca.
+        assertEquals(2,audits());
+        verify(ws,times(3)).publishEquipmentChanged(); // 2 pelos logs + 1 direto na troca sem log
     }
     @Test void deliveryOnlyRecordsAreNeverReusedAsSynchronizedEquipment() {
         authenticate(adminId);
@@ -121,6 +131,7 @@ class EquipmentClientSyncTest {
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,null)));
         assertNull(slot(Slot.Upper).assignment());
+        assertEquals(1,audits()); // esvaziar a posição não gera log
         assertEquals(manual.id(),slot(Slot.Weapon2).assignment().id());
         assertEquals("ACTIVE",repository.assignment(manual.id()).status());
     }

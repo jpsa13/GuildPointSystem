@@ -73,6 +73,14 @@ export function formatLogDetails(log: AuditLogEntry): string {
     case 'EQUIPMENT_CHANGED':
       if (p.action === 'RELIC') return `Relic #${str(p.relicId)} · ${p.active ? 'Ativada' : 'Desativada'}`
       if (p.action === 'CREATE' && p.quantity) return `${str(p.slot)} · Entrega de ${str(p.quantity)} unidade(s) · Registro #${str(p.assignmentId)}`
+      if (p.action === 'CLIENT_SYNC' && Array.isArray(p.changes))
+        return `Sincronizado pelo jogo · ${p.changes.map((c: { slot?: unknown; after?: { name?: unknown } | null }) =>
+          `${str(c.slot)}: ${c.after?.name ? str(c.after.name) : 'vazio'}`).join(' · ')}`
+      if (p.action === 'CLIENT_SYNC') {
+        // Logs antigos: um por posição.
+        const after = p.after as { name?: unknown } | null | undefined
+        return `${str(p.slot)} · Sincronizado pelo jogo: ${after?.name ? str(after.name) : 'vazio'}`
+      }
       if (p.action === 'REVIEW_REQUEST') return `Revisão de equipamentos solicitada · Prazo: ${str(p.dueAt)}`
       if (p.action === 'REVIEW_CONFIRM') return 'Revisão de equipamentos confirmada'
       if (p.action === 'REMOVE' || p.action === 'CLEAR' || p.action === 'UNDO_REDO')
