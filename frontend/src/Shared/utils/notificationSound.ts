@@ -56,9 +56,6 @@ export function playScheduleAlertSound() {
   }
 }
 
-/** Duração total dos dois bipes de aviso (s). */
-const WARNING_BEEPS_DURATION = 0.44
-
 /** Agenda os dois bipes de aviso (onda quadrada) a partir de `start`. */
 function scheduleWarningBeeps(ctx: AudioContext, start: number) {
   const master = ctx.createGain()
@@ -115,25 +112,26 @@ function loadPbHqVoice(ctx: AudioContext): Promise<AudioBuffer> {
   return pbHqVoice
 }
 
-/** Aviso de 10 min da PB HQ: bipe → voz → 1s → bipe → voz. */
+/** Volume da voz da PB HQ (1 = original). */
+const PB_HQ_VOICE_VOLUME = 0.6
+
+/** Aviso de 10 min da PB HQ: voz → 1s → voz, sem bipes. */
 export function playPbHqWarningSound() {
   withRunningContext((ctx) => {
     loadPbHqVoice(ctx)
       .then((voice) => {
+        const volume = ctx.createGain()
+        volume.gain.value = PB_HQ_VOICE_VOLUME
+        volume.connect(ctx.destination)
         const playVoice = (at: number) => {
           const src = ctx.createBufferSource()
           src.buffer = voice
-          src.connect(ctx.destination)
+          src.connect(volume)
           src.start(at)
         }
-        const gap = 0.1
         const t = ctx.currentTime + 0.05
-        scheduleWarningBeeps(ctx, t)
-        const voice1 = t + WARNING_BEEPS_DURATION + gap
-        const beep2 = voice1 + voice.duration + 1
-        scheduleWarningBeeps(ctx, beep2)
-        playVoice(voice1)
-        playVoice(beep2 + WARNING_BEEPS_DURATION + gap)
+        playVoice(t)
+        playVoice(t + voice.duration + 1)
       })
       .catch(() => scheduleWarningBeeps(ctx, ctx.currentTime))
   })
