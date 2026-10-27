@@ -70,6 +70,7 @@ public class SecurityConfig {
                         // Ingestao do cliente CerberusBags: autentica pelo token de pareamento no proprio corpo/header.
                         .requestMatchers(HttpMethod.POST, "/api/character-status/ingest").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/quest-status/ingest").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/equipment-status/ingest").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/quests/ingest").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/quests/live/ingest").permitAll()
                         .requestMatchers("/ws/**").permitAll()

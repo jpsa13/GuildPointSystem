@@ -18,7 +18,7 @@ public final class EquipmentDtos {
         Slot(String category) { this.category = category; }
     }
     public enum Action { CREATE, EQUIP, CORRECT, CANCEL, TRANSFER }
-    public enum Origin { INITIAL, GUILD_DISTRIBUTION }
+    public enum Origin { INITIAL, GUILD_DISTRIBUTION, GAME_CLIENT }
     public enum Restoration { EMPTY, PREVIOUS }
     public record Effect(String key, Integer code, String name, String displayType, BigDecimal value,
                          String description, String unitHint) {}
@@ -44,6 +44,10 @@ public final class EquipmentDtos {
     public record SlotEdit(@NotNull UUID operationId, @NotNull @Positive Long memberId,
                            @NotNull @Size(min=1,max=12) List<@NotNull @Valid SlotVersion> slots, UUID reversesOperationId) {}
     public record SlotEditResult(UUID operationId, long memberId, List<CurrentSlot> slots) {}
+    /** Posição lida pela DLL; code nulo = posição vazia no jogo. Posições ausentes não são alteradas. */
+    public record ReportedSlot(@NotNull Slot slot, @Pattern(regexp="i[a-z]{2}[a-z0-9]{2,8}") String code) {}
+    public record ClientEquipment(@NotBlank @Size(max=32) String character,
+                                  @NotNull @Size(min=1,max=12) List<@NotNull @Valid ReportedSlot> slots) {}
     public record GearScore(Integer points, Integer originalLevel, boolean included) {}
     public record GearScoreTotal(int total,int weapon,int armor,int accessories,int unscored) {}
     public record MemberEquipment(long memberId, String nickname, int level, Float expPercent, Long classId, String className, String classImageUrl, List<CurrentSlot> slots) {

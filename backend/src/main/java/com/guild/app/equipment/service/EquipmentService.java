@@ -210,6 +210,7 @@ public class EquipmentService {
             require(op.action()==Action.CREATE && !op.useAsCurrent() && op.origin()==Origin.GUILD_DISTRIBUTION && op.transfer()==null,
                 "Quantidade é permitida somente para entregas sem equipar.");
         }
+        require(op.origin()!=Origin.GAME_CLIENT || op.action()!=Action.CREATE,"A origem do jogo é exclusiva da sincronização do cliente.");
         if(op.transfer()!=null && !admin)
             throw error("Somente administradores podem repassar equipamentos.",HttpStatus.FORBIDDEN);
         if(!admin && (!actor.getId().equals(op.memberId()) || op.action()!=Action.CREATE || !op.useAsCurrent()))
@@ -277,6 +278,8 @@ public class EquipmentService {
             case CORRECT, CANCEL -> {
                 require(op.reason()!=null && !op.reason().isBlank(),"Informe o motivo da correção/cancelamento.");
                 var original=owned(op.assignmentId(),member.getId(),op.slot());
+                require(op.action()!=Action.CORRECT || op.origin()!=Origin.GAME_CLIENT || original.origin()==Origin.GAME_CLIENT,
+                    "Somente registros enviados pelo jogo mantêm essa origem na correção.");
                 boolean isCurrent=current.assignment()!=null && current.assignment().id()==original.id();
                 if(isCurrent && !op.useAsCurrent()) {
                     require(op.restoration()!=null,"Escolha explicitamente posição vazia ou equipamento anterior.");
@@ -323,6 +326,52 @@ public class EquipmentService {
         if(op.transfer()!=null) payload.put("transfer",op.transfer());
         audit.log(AuditLogType.EQUIPMENT_CHANGED,actor,member,payload);
         return admin?result:result.withoutAudit();
+    }
+    // Modelos com mais de uma variação de efeito: a administração confirma a correta.
+    private static final Effect UNVERIFIED_EFFECT=new Effect("client:unverified",null,"Efeito a confirmar","FLAT",
+        BigDecimal.ZERO,"Enviado pelo jogo; a administração confirma o efeito.","");
+    /**
+     * Sincronização pela DLL do cliente, associada pelo nome do personagem e sem token
+     * (mesma decisão do status e das quests). Mantém o quadro igual ao que está vestido no
+     * jogo; cada troca vira um registro GAME_CLIENT no histórico, auditado pela administração
+     * e corrigível pelas operações manuais. Posições não enviadas ficam como estão.
+     */
+    @Transactional
+    public Map<String,Object> syncFromClient(ClientEquipment request) {
+        var found=members.findByNicknameIgnoreCase(request.character())
+            .orElseThrow(()->error("Nenhum membro com esse nome de personagem.",HttpStatus.NOT_FOUND));
+        var member=members.findByIdForUpdate(found.getId()).orElseThrow();
+        require(member.getStatus()==MemberStatus.APROVADO && member.isProfileComplete(),"O membro deve estar aprovado e com perfil completo.");
+        var seen=new HashSet<Slot>();
+        for(var input:request.slots()) require(input.slot()!=Slot.Weapon2 && seen.add(input.slot()),"Posição repetida ou não suportada.");
+        var today=LocalDate.now(ZoneId.of("America/Sao_Paulo"));
+        var changed=new ArrayList<String>();
+        var unknown=new ArrayList<String>();
+        for(var input:request.slots()) {
+            var current=repository.slot(member.getId(),input.slot());
+            var before=current.assignment();
+            String code=input.code();
+            if(code==null ? before==null : before!=null && code.equals(before.gameCode())) continue;
+            Long target=null;
+            if(code!=null) {
+                target=repository.idleAssignment(member.getId(),input.slot(),code);
+                if(target==null) {
+                    var item=repository.clientCatalogItem(input.slot().category,code);
+                    if(item==null) { unknown.add(input.slot().name()+":"+code); continue; }
+                    var effect=item.effects().size()==1?item.effects().getFirst():UNVERIFIED_EFFECT;
+                    var op=new Operation(null,Action.CREATE,member.getId(),input.slot(),current.version(),null,item.id(),effect.key(),
+                        Origin.GAME_CLIENT,today,true,null,null,"Sincronizado pelo cliente do jogo");
+                    target=repository.create(op,item,effect,item.sourceHash(),member.getId(),null).id();
+                }
+            }
+            repository.setSlot(member.getId(),input.slot(),target);
+            var payload=new LinkedHashMap<String,Object>();
+            payload.put("action","CLIENT_SYNC"); payload.put("slot",input.slot());
+            payload.put("before",before); payload.put("after",repository.slot(member.getId(),input.slot()).assignment());
+            audit.log(AuditLogType.EQUIPMENT_CHANGED,member,member,payload);
+            changed.add(input.slot().name());
+        }
+        return Map.of("changed",changed,"unknown",unknown);
     }
     @Transactional
     public Map<String,Object> importCatalog(ImportRequest request) {

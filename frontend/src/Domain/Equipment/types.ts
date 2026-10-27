@@ -16,7 +16,7 @@ export interface EquipmentAssignment extends Omit<EquipmentItem, 'id' | 'effects
   deliveryOnly?: boolean | null
   gearScore?: { points: number | null; originalLevel: number | null; included: boolean }
   id: number; memberId: number; slot: EquipmentSlot; catalogId: number; effect: EquipmentEffect
-  origin: 'INITIAL' | 'GUILD_DISTRIBUTION'; occurredOn: string; actorId: number; actorName: string
+  origin: 'INITIAL' | 'GUILD_DISTRIBUTION' | 'GAME_CLIENT'; occurredOn: string; actorId: number; actorName: string
   createdAt: string; status: 'ACTIVE' | 'CANCELLED' | 'CORRECTED' | 'TRANSFERRED'; correctsId: number | null; reason: string | null
   statusReason?: string | null; statusActorName?: string | null; statusChangedAt?: string | null
 }
