@@ -2,6 +2,7 @@ import type { AuditLogEntry, AuditLogType } from '@/Domain/types/models'
 
 const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
   PARTY_DISCORD_CALLED: 'PT chamada no Discord',
+  PARTY_GAME_INVITE: 'PT chamada no jogo',
   QUEST_CATALOG_UPDATED: 'Lista de quests revisada',
   EQUIPMENT_CHANGED: 'Equipamento atualizado',
   EQUIPMENT_CATALOG_IMPORTED: 'Catálogo EDF importado',
@@ -64,6 +65,8 @@ export function formatLogDetails(log: AuditLogEntry): string {
   switch (log.type) {
     case 'PARTY_DISCORD_CALLED':
       return str(p.party)
+    case 'PARTY_GAME_INVITE':
+      return Array.isArray(p.nicks) ? `Convites: ${p.nicks.join(', ')}` : ''
     case 'QUEST_CATALOG_UPDATED':
       return `${str(p.code)} · ${p.hidden ? 'Ocultada da checklist' : 'Restaurada na checklist'}`
     case 'EQUIPMENT_CHANGED':

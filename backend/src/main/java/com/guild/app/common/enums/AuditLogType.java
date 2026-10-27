@@ -32,7 +32,8 @@ public enum AuditLogType {
     EQUIPMENT_CHANGED,
     EQUIPMENT_CATALOG_IMPORTED,
     QUEST_CATALOG_UPDATED,
-    PARTY_DISCORD_CALLED;
+    PARTY_DISCORD_CALLED,
+    PARTY_GAME_INVITE;
 
     public boolean isEquipmentPrivate() {
         return this == EQUIPMENT_CHANGED || this == EQUIPMENT_CATALOG_IMPORTED;

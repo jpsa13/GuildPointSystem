@@ -47,6 +47,7 @@ import {
 import './Party.styles.scss'
 import { usePartyDiscordCalls, useCallPartyDiscord, type PartyDiscordCall as DiscordCall } from '@/Domain/Party/hooks/usePartyDiscord'
 import { PartyDiscordCall } from './components/PartyDiscordCall'
+import { PartyGameInvite } from './components/PartyGameInvite'
 
 function pendingActionLabel(p: PartyPendingItem, my: MyPartyState): string {
   if (p.kind === 'JOIN_REQUEST' && my.canOrganizeParties && my.partyId !== p.partyId) {
@@ -374,6 +375,7 @@ function PartyCard({
       </div>
       <PartyDiscordCall call={discordCall} canManage={canManage}
         unavailable={discordUnavailable} loading={discordLoading} onCall={onDiscordCall} />
+      <PartyGameInvite partyId={party.id} canManage={canManage} />
     </li>
   )
 }

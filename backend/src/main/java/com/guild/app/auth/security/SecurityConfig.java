@@ -71,6 +71,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/character-status/ingest").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/quest-status/ingest").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/equipment-status/ingest").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/party-invites/pending").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/party-invites/*/done").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/quests/ingest").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/quests/live/ingest").permitAll()
                         .requestMatchers("/ws/**").permitAll()
