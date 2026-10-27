@@ -164,6 +164,20 @@ public class EquipmentRepository {
         return jdbc.query("SELECT * FROM game_lua_item WHERE "+SELECTABLE+" AND id=? FOR SHARE",catalogMapper(),id)
             .stream().findFirst().orElse(null);
     }
+    // A sincronização pelo jogo aceita qualquer item do catálogo EDF, não só os selecionáveis no cadastro manual.
+    public CatalogItem clientCatalogItem(String category,String gameCode) {
+        return jdbc.query("SELECT * FROM game_lua_item WHERE edf_source_hash IS NOT NULL AND edf_effects IS NOT NULL AND category=? AND game_code=? FOR SHARE",
+            catalogMapper(),category,gameCode).stream().findFirst().orElse(null);
+    }
+    // Registro ativo mais recente do mesmo item na posição e fora de uso: reequipar não duplica o histórico.
+    public Long idleAssignment(long memberId,Slot slot,String gameCode) {
+        return jdbc.query("""
+            SELECT a.id FROM equipment_assignment a JOIN equipment_instance i ON i.id=a.instance_id
+            WHERE a.member_id=? AND a.slot=? AND i.game_code=? AND a.status='ACTIVE'
+              AND NOT EXISTS (SELECT 1 FROM member_equipment_slot s WHERE s.assignment_id=a.id)
+            ORDER BY a.created_at DESC,a.id DESC LIMIT 1
+            """,(r,n)->r.getLong(1),memberId,slot.name(),gameCode).stream().findFirst().orElse(null);
+    }
     private RowMapper<CatalogItem> catalogMapper() {
         return (r,n)->new CatalogItem(r.getLong("id"),r.getString("category"),r.getString("game_code"),
             r.getString("edf_name"),r.getInt("edf_level"),r.getInt("edf_grade"),effects(r.getString("edf_effects")),

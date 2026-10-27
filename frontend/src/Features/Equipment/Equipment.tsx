@@ -19,6 +19,8 @@ import './Equipment.styles.scss'
 function effectLabel(effect: EquipmentEffect) {
   return formatEquipmentEffect(effect)
 }
+const ORIGIN_LABELS: Record<EquipmentAssignment['origin'], string> = { INITIAL: 'Equipamento inicial', GUILD_DISTRIBUTION: 'Entrega da guild', GAME_CLIENT: 'Enviado pelo jogo' }
+function originLabel(origin?: EquipmentAssignment['origin']) { return origin ? ORIGIN_LABELS[origin] : '' }
 function gradeLabel(grade: number) { return grade === 3 ? 'Type C' : grade === 1 ? 'Intense' : catalogGradeLabel(grade) }
 function memberScore(member: MemberEquipment) { return member.gearScore ? `${member.gearScore.total.toLocaleString('pt-BR')} GS${member.gearScore.unscored ? ' · parcial' : ''}` : 'GS indisponível' }
 function itemScore(item: CurrentSlot['assignment']) { return item?.gearScore?.included === false ? 'Fora do GS' : item?.gearScore?.points != null ? `${item.gearScore.points.toLocaleString('pt-BR')} GS${item.gearScore.originalLevel != null ? ` · base Lv. ${item.gearScore.originalLevel}` : ''}` : 'GS pendente de classificação' }
@@ -343,7 +345,7 @@ export function EquipmentPage() {
             <EquipmentEditor key={`${editor.memberId}-${editor.position.slot}-${editor.action}-${editor.original?.id ?? 'new'}-${editor.delivery ? 'delivery' : 'equipment'}`} editor={editor} members={members} onClose={() => setEditor(null)} onSaved={() => { if (editor.delivery) setTab('deliveries'); setEditor(null) }} />
           </> : <section aria-label="Detalhes da posição" aria-live="polite">
             <h3>{SLOT_LABELS[selectedSlot]}</h3>
-            {item ? <><div className="equipment-item-preview"><EquipmentIcon item={item} size={64} /><div><strong>{itemLabel(item)}</strong><small>{item.gameCode}{admin && ` · Registro #${item.id}`}</small></div></div><p>{effectLabel(item.effect)} · {itemScore(item)}</p>{admin && <><p>{item.origin === 'INITIAL' ? 'Equipamento inicial' : 'Entrega da guild'} · {item.occurredOn?.split('-').reverse().join('/')}</p><p>Registrado por {item.actorName}</p></>}</> : <p>Equipamento não informado nesta posição.</p>}
+            {item ? <><div className="equipment-item-preview"><EquipmentIcon item={item} size={64} /><div><strong>{itemLabel(item)}</strong><small>{item.gameCode}{admin && ` · Registro #${item.id}`}</small></div></div><p>{effectLabel(item.effect)} · {itemScore(item)}</p>{admin && <><p>{originLabel(item.origin)} · {item.occurredOn?.split('-').reverse().join('/')}</p><p>Registrado por {item.actorName}</p></>}</> : <p>Equipamento não informado nesta posição.</p>}
             {canEdit && <Button onClick={() => openEditor(selectedSlot, 'CREATE')}>Registrar em {SLOT_LABELS[selectedSlot]}</Button>}
           </section>}
         </div>
@@ -362,7 +364,7 @@ export function EquipmentPage() {
             <div className="equipment-history__heading"><strong>{slotDescription(record.slot)} · {itemLabel(record)}</strong><span>{STATUS_LABELS[record.status]}{current && <strong className="equipment-current">Atual</strong>}</span></div>
             <small>{record.gameCode} · #{record.id}{record.correctsId ? ` · Corrige #${record.correctsId}` : ''}</small>
             <p>{effectLabel(record.effect)}</p>
-            <p>{record.origin === 'INITIAL' ? 'Equipamento inicial' : 'Entrega da guild'} · {record.occurredOn.split('-').reverse().join('/')} · {record.actorName}</p>
+            <p>{originLabel(record.origin)} · {record.occurredOn.split('-').reverse().join('/')} · {record.actorName}</p>
             <small>Registrado em {new Date(record.createdAt).toLocaleString('pt-BR')}</small>
             {record.reason && <p>Motivo: {record.reason}</p>}
             {record.statusReason && <p>Motivo da alteração: {record.statusReason}</p>}
@@ -569,7 +571,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
         <label>{effectsNeedReview ? 'Efeito original — conferir separação do padrão' : 'Efeito extra do item'}<select required value={effect} disabled={!item} onChange={e => { setEffect(e.target.value); if (editor.action === 'CREATE' && item && e.target.value) void saveDirect(item, e.target.value) }}><option value="">Selecione o efeito</option>{item?.effects.map(e => <option key={e.key} value={e.key}>{effectLabel(e)}</option>)}</select></label>
         <small>Definições do dicionário de equipamentos do rf-loot-editor; bônus padrão de classe removidos quando confirmados na fonte.</small>
         {item?.effectsNote && <p className="equipment-note" role={effectsNeedReview ? 'alert' : undefined}>{item.effectsNote}</p>}
-        {admin && <><div className="equipment-form-row"><label>Data<input type="date" required max={today()} value={date} onChange={e => setDate(e.target.value)} /></label>{editor.delivery && <label>Quantidade<input type="number" required min={1} max={100} step={1} value={Number.isFinite(quantity) ? quantity : ''} onChange={e => setQuantity(e.target.valueAsNumber)} /></label>}{!editor.delivery && <label>Origem<select value={origin} onChange={e => setOrigin(e.target.value as EquipmentAssignment['origin'])}><option value="GUILD_DISTRIBUTION">Entrega da guild</option><option value="INITIAL">Equipamento inicial</option></select></label>}</div>
+        {admin && <><div className="equipment-form-row"><label>Data<input type="date" required max={today()} value={date} onChange={e => setDate(e.target.value)} /></label>{editor.delivery && <label>Quantidade<input type="number" required min={1} max={100} step={1} value={Number.isFinite(quantity) ? quantity : ''} onChange={e => setQuantity(e.target.valueAsNumber)} /></label>}{!editor.delivery && <label>Origem<select value={origin} onChange={e => setOrigin(e.target.value as EquipmentAssignment['origin'])}><option value="GUILD_DISTRIBUTION">Entrega da guild</option><option value="INITIAL">Equipamento inicial</option>{editor.original?.origin === 'GAME_CLIENT' && editor.action === 'CORRECT' && <option value="GAME_CLIENT">Enviado pelo jogo</option>}</select></label>}</div>
         {editor.action !== 'CREATE' && <label className="equipment-check"><input type="checkbox" checked={equip} onChange={e => { setEquip(e.target.checked); setReplacement('') }} />Usar como equipamento atual</label>}
         {editor.action !== 'CREATE' && !canTransfer && <p className="equipment-note">{equip ? 'Somente esta posição será atualizada após a confirmação.' : affectsCurrent ? 'A correção retira o registro atual. Escolha abaixo o estado que deve ficar.' : 'Somente o histórico será registrado; o equipamento atual será preservado.'}</p>}</>}
 
@@ -583,7 +585,7 @@ function EquipmentEditorForm({ editor, members, onClose, onSaved, initialClass }
     <ConfirmDialog open={!!pending} title={ACTION_LABELS[editor.action]} confirmLabel="Confirmar registro" variant={editor.action === 'CANCEL' ? 'danger' : 'primary'} loading={mutation.isPending} onCancel={() => setPending(null)} onConfirm={confirm}>
       <p><strong>{editor.nickname} · {slotDescription(editor.position.slot)}</strong></p><p>{item ? itemLabel(item) : editor.original ? itemLabel(editor.original) : ''}</p>
       <p>Efeito: {selectedEffect ? effectLabel(selectedEffect) : editor.original ? effectLabel(editor.original.effect) : '—'}</p>
-      {editingItem && <p>{origin === 'INITIAL' ? 'Equipamento inicial' : 'Entrega da guild'} · {date.split('-').reverse().join('/')}</p>}
+      {editingItem && <p>{originLabel(origin)} · {date.split('-').reverse().join('/')}</p>}
       {reason.trim() && <p>Motivo: {reason.trim()}</p>}
       {pending?.action === 'EQUIP' || pending?.useAsCurrent ? <p>Atual: {current ? itemLabel(current) : 'Não informado'} → {item ? itemLabel(item) : editor.original ? itemLabel(editor.original) : ''}. A substituição será registrada no histórico.</p> : affectsCurrent ? <p>O registro atual sairá desta posição. Destino escolhido: {replacement === 'empty' ? 'posição vazia' : `registro #${replacement}`}.</p> : <p>O equipamento atual será preservado.</p>}
       {pending?.transfer && current && <><p><strong>Repasse para {recipient?.nickname} · {slotDescription(recipientSlot)}</strong></p>
