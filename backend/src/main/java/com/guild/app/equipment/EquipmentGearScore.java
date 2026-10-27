@@ -16,11 +16,11 @@ import java.util.zip.GZIPInputStream;
 public class EquipmentGearScore {
     private static final NavigableMap<Integer, BigDecimal> BASES = new TreeMap<>();
     static {
-        int[] levels = {1,39,40,41,43,45,47,50,53,55,57,60,63,65};
+        int[] levels = {35,39,40,41,43,45,47,50,53,55,57,60,63,65};
         String[] values = {"31","31","31.48","31.97","34.84","38.87","44.50","50.71","57","63","69","78","88.20","95"};
         for (int i=0;i<levels.length;i++) BASES.put(levels[i],new BigDecimal(values[i]));
     }
-    private static final Map<Integer,String> GRADES = Map.of(0,"0.95",1,"1",2,"1.03",3,"1.08",10,"1.15");
+    private static final Map<Integer,String> GRADES = Map.of(0,"0.95",1,"1",2,"1.03",3,"1.08");
     private static final Pattern MODEL_CODE = Pattern.compile("i[whulgs][a-z]{3}(\\d{2})");
     private record Item(String name,int level,int grade,JsonNode effects) {}
     private final Map<String,Item> catalog = new HashMap<>();
@@ -41,7 +41,6 @@ public class EquipmentGearScore {
 
     public GearScore score(String category,String code,String name,int level,int grade,String hash) {
         if (category.equals("CLOAK")) return new GearScore(null,null,false);
-        if (category.equals("WEAPON") && "iwepc01".equals(code)) return new GearScore(0,level,true);
         var item=catalog.get(category+":"+code);
         boolean verified=item!=null && Objects.equals(sourceHash,hash) && item.name().equals(name)
             && item.level()==level && item.grade()==grade;
@@ -49,20 +48,26 @@ public class EquipmentGearScore {
             return new GearScore(verified?accessory(item.effects()):null,null,true);
         if (!Set.of("WEAPON","HELMET","UPPER","LOWER","GLOVES","SHOES").contains(category))
             return new GearScore(null,null,true);
+        boolean weapon=category.equals("WEAPON");
+        if (level<35 || !GRADES.containsKey(grade) || (weapon && grade!=1 && grade!=3))
+            return new GearScore(0,level,true);
+        if (!verified) return new GearScore(null,null,true);
+        // A curva é dos modelos regulares; itens especiais não herdam GS só pelo nível/grade.
+        var model=MODEL_CODE.matcher(code);
+        if (!model.matches() || (weapon && !item.name().toLowerCase(Locale.ROOT).contains("intense")))
+            return new GearScore(0,level,true);
         Integer original=level;
         if (grade==3) {
-            // Só interpretar o código de modelo após conferir o registro no EDF distribuído.
-            var model=MODEL_CODE.matcher(code);
-            if (!verified || !model.matches()) return new GearScore(null,null,true);
             original=Integer.parseInt(model.group(1));
             if (original<level) return new GearScore(null,null,true);
         }
         Integer points=baseScore(original,grade);
-        return new GearScore(points==null?null:points*(category.equals("WEAPON")?5:1),original,true);
+        return new GearScore(points==null?null:points*(weapon?5:1),original,true);
     }
 
     public static Integer baseScore(int level,int grade) {
         if (level<1 || level>BASES.lastKey() || !GRADES.containsKey(grade)) return null;
+        if (level<35) return 0;
         var lo=BASES.floorEntry(level);
         var hi=BASES.ceilingEntry(level);
         BigDecimal base=lo.getValue();

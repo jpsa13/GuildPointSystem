@@ -49,6 +49,32 @@ class EquipmentGearScoreTest {
             List.of(new CurrentSlot(Slot.Weapon,1,assignment(Slot.Weapon,score))));
         assertEquals(new GearScoreTotal(0,0,0,0,0),member.gearScore());
     }
+    @Test void excludesAllWeaponsAndArmorBelow35IncludingReducedItems() {
+        for(var category:List.of("WEAPON","HELMET","UPPER","LOWER","GLOVES","SHOES"))
+            for(int level:List.of(1,30,34)) for(int grade:List.of(0,1,2,3,10))
+                assertEquals(new GearScore(0,level,true),calculator.score(category,"ihtws50","Item",level,grade,"unknown"));
+        assertEquals(0,EquipmentGearScore.baseScore(34,1));
+        assertEquals(310,EquipmentGearScore.baseScore(35,1));
+    }
+    @Test void excludesNormalAndTypeAWeaponsAtEveryLevel() throws Exception {
+        for(int level=1;level<=99;level++) for(int grade:List.of(0,2))
+            assertEquals(new GearScore(0,level,true),calculator.score("WEAPON","x","Item",level,grade,"unknown"));
+        assertEquals(0,item("WEAPON","iwkna45").points());
+        assertEquals(0,item("WEAPON","iwkha45").points());
+        assertEquals(294,item("HELMET","ihbwa35").points());
+    }
+    @Test void specialWeaponsAbove35CannotInheritRegularWeaponScores() throws Exception {
+        assertEquals(0,item("WEAPON","iwxap45").points()); // Novice B, nível 45
+        assertEquals(0,item("WEAPON","iwevn01").points()); // Legacy C, nível 47
+        assertNull(calculator.score("WEAPON","iwswb45","Intense Spadona",45,1,"unknown").points());
+        assertNull(calculator.score("WEAPON","invented","Intense special weapon",45,1,"unknown").points());
+    }
+    @Test void regularWeaponsRetainTheirWeightIncludingLauncherModelLevelDifferences() throws Exception {
+        assertEquals(1550,item("WEAPON","iwknb35").points());
+        assertEquals(1940,item("WEAPON","iwswb45").points());
+        assertEquals(1570,item("WEAPON","iwgeb30").points());
+        assertEquals(2735,item("WEAPON","iwsze50").points());
+    }
     @Test void weightsAllAccessoryEffectsAndHandlesNegativeFpConsumption() throws Exception {
         assertEquals(1050,item("RING","iiccb02").points()); // ataque 25%
         assertEquals(1350,item("AMULET","iacca80").points()); // ataque 25% + defesa 20%
