@@ -9,7 +9,6 @@ import com.guild.app.common.exception.AppException;
 import com.guild.app.log.service.AuditLogService;
 import com.guild.app.member.entity.Member;
 import com.guild.app.member.repository.MemberRepository;
-import com.guild.app.party.dto.PartyMemberNoticeMessage;
 import com.guild.app.party.repository.PartyMemberRepository;
 import com.guild.app.party.repository.PartyRepository;
 import com.guild.app.websocket.WebSocketPublisher;
@@ -48,6 +47,8 @@ public class PartyGameInviteService {
     public record InviteView(Long partyId, UUID id, String leader, String state, List<String> nicks,
                              List<String> skipped, Instant createdAt, Instant expiresAt) {}
     public record PendingInvite(UUID id, List<String> nicks) {}
+    /** Aviso ao convidado; inviteId deixa o site tocar o som uma vez só por chamado, mesmo com várias abas. */
+    public record InviteNotice(String type, String message, Long partyId, UUID inviteId) {}
 
     private Member approved(MemberPrincipal actor) {
         var member = members.findById(actor.getId()).orElseThrow(() -> new AppException("Membro não encontrado", HttpStatus.NOT_FOUND));
@@ -139,7 +140,7 @@ public class PartyGameInviteService {
         String message = leader.get().getNickname() + " te convidou para a PT no jogo.";
         for (String nick : decode(rows.getFirst().get("nicks").toString()))
             members.findByNicknameIgnoreCase(nick).ifPresent(m -> ws.publishPartyMemberNotice(m.getId(),
-                new PartyMemberNoticeMessage("PARTY_GAME_INVITE", message, partyId, null)));
+                new InviteNotice("PARTY_GAME_INVITE", message, partyId, id)));
         return true;
     }
 

@@ -3,7 +3,6 @@ package com.guild.app.party;
 import com.guild.app.auth.security.MemberPrincipal;
 import com.guild.app.common.exception.AppException;
 import com.guild.app.member.repository.MemberRepository;
-import com.guild.app.party.dto.PartyMemberNoticeMessage;
 import com.guild.app.party.service.PartyGameInviteService;
 import com.guild.app.websocket.WebSocketPublisher;
 import org.junit.jupiter.api.*;
@@ -98,8 +97,8 @@ class PartyGameInviteTest {
         service.done(created.id(), leaderNick);
         service.done(created.id(), leaderNick);
         for (long id : new long[]{memberA, memberB})
-            verify(ws).publishPartyMemberNotice(eq(id), argThat(n -> n instanceof PartyMemberNoticeMessage m
-                && m.type().equals("PARTY_GAME_INVITE") && m.partyId().equals(partyId)));
+            verify(ws).publishPartyMemberNotice(eq(id), argThat(n -> n instanceof PartyGameInviteService.InviteNotice m
+                && m.type().equals("PARTY_GAME_INVITE") && m.partyId().equals(partyId) && m.inviteId().equals(created.id())));
         verify(ws, never()).publishPartyMemberNotice(eq(leaderId), any());
         verify(ws, never()).publishPartyMemberNotice(eq(pendingId), any());
     }
