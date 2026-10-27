@@ -14,6 +14,11 @@ import java.util.*;
 public class EquipmentController {
     private final EquipmentService service;
     @GetMapping public List<MemberEquipment> board() { return service.board(); }
+    @GetMapping("/members/{id}/relics") public List<Integer> relics(@PathVariable long id) { return service.relics(id); }
+    @PutMapping("/members/{id}/relics/{relicId}")
+    public List<Integer> setRelic(@PathVariable long id,@PathVariable int relicId,@Valid @RequestBody RelicState state) {
+        return service.setRelic(id,relicId,state);
+    }
     @GetMapping("/reviews") public List<ReviewStatus> reviews() { return service.reviews(); }
     @PostMapping("/reviews") public ReviewStatus requestReview(@Valid @RequestBody ReviewRequest request) { return service.requestReview(request); }
     @PostMapping("/reviews/{id}/confirm") public ReviewStatus confirmReview(@PathVariable UUID id) { return service.confirmReview(id); }

@@ -29,13 +29,14 @@ public final class EquipmentDtos {
     public record Assignment(long id, long memberId, Slot slot, long catalogId, String gameCode, String name,
                              int level, int grade, String category, Effect effect, Origin origin, LocalDate occurredOn,
                              Long actorId, String actorName, Instant createdAt, String status, Long correctsId, String reason,
-                             Integer iconId, String sourceHash, String statusReason, String statusActorName, Instant statusChangedAt, GearScore gearScore) {
+                             Integer iconId, String sourceHash, String statusReason, String statusActorName, Instant statusChangedAt, GearScore gearScore, Boolean deliveryOnly) {
         public Assignment withoutAudit() {
             return new Assignment(id,memberId,slot,catalogId,gameCode,name,level,grade,category,effect,
-                null,null,null,null,null,null,null,null,iconId,sourceHash,null,null,null,gearScore);
+                null,null,null,null,null,null,null,null,iconId,sourceHash,null,null,null,gearScore,null);
         }
     }
     public record ReviewRequest(@NotNull UUID operationId, @NotNull @Positive Long memberId) {}
+    public record RelicState(@NotNull Boolean active) {}
     public record ReviewStatus(UUID id, long memberId, Instant requestedAt, Instant dueAt, Instant confirmedAt,
                                String status, boolean overdue) {}
     public record CurrentSlot(Slot slot, long version, Assignment assignment) {}

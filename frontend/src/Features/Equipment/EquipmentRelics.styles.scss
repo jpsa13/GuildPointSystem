@@ -1,0 +1,18 @@
+.equipment-relics {
+  margin-top: theme.$spacing-lg;
+  &__grades { display: grid; max-width: 1380px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px 35px; }
+  // Cores e medidas do bloco de referência do marketplace Cerberus.
+  &__grade { min-width: 0; padding: 10px; display: flex; flex-direction: column; gap: 25px; background: #1d1d22;
+    h4 { margin: 0; padding: 5px; height: 30px; box-sizing: border-box; text-align: center; font: 700 16px/20px theme.$font-family; color: #b9b9bd;
+      background: linear-gradient(90deg, transparent 10%, #43444f, transparent 90%); }
+  }
+  &__list { display: flex; flex-wrap: wrap; justify-content: center; flex-grow: 1; gap: 10px; }
+  &__icon { flex: 0 0 64px; width: 64px; height: 64px; border: 0; border-radius: 32px; padding: 0;
+    background-image: url('/relics/item-1-6.jpg'); background-color: transparent; background-repeat: no-repeat;
+    opacity: .25; cursor: pointer;
+    &.is-active { opacity: 1; box-shadow: inset 0 0 2px #b0b300, 0 0 3px #b0b300; }
+    &:disabled { cursor: default; }
+    &:focus-visible { outline: 2px solid theme.$color-primary; outline-offset: 3px; }
+  }
+  @media (max-width: 800px) { &__grades { grid-template-columns: minmax(0, 1fr); } }
+}

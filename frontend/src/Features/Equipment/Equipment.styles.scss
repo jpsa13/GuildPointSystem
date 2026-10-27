@@ -81,7 +81,7 @@
   box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
   > div { min-width: 0; overflow-wrap: anywhere; }
   strong { display: block; font-size: 16px; }
-  &__meta { color: theme.$color-equipment-armor; margin-top: 3px; }
+  &__meta { color: inherit; margin-top: 3px; }
   p { margin: 5px 0 0; }
 }
 .equipment-tabs { display: flex; border-bottom: 1px solid theme.$color-border-strong; margin-bottom: 20px; gap: 8px;
@@ -136,7 +136,10 @@
 .equipment-class-grade { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px;
   > fieldset { min-width: 0; }
 }
-@media (min-width: 1251px) and (max-width: 1600px) {
+@media (min-width: 1251px) {
+  .equipment-roster__header--admin, .equipment-roster__row--admin { grid-template-columns: 290px repeat(3, minmax(0, 1fr)) 250px; }
+}
+@media (min-width: 1251px) and (max-width: 1800px) {
   .equipment-mini-slots { gap: 3px; }
   .equipment-mini-slot { position: relative; width: 24px; height: 30px;
     .equipment-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.555556); }

@@ -52,7 +52,7 @@ class EquipmentGearScoreTest {
         assertFalse(calculator.score("CLOAK","x","Capa",50,0,"x").included());
     }
     Assignment assignment(Slot slot,GearScore score) {
-        return new Assignment(1,1,slot,1,"x","Item",45,3,slot.category,null,null,null,null,null,null,"ACTIVE",null,null,null,null,null,null,null,score);
+        return new Assignment(1,1,slot,1,"x","Item",45,3,slot.category,null,null,null,null,null,null,"ACTIVE",null,null,null,null,null,null,null,score,false);
     }
     @Test void countsOneWeaponFiveArmorPiecesAndFourAccessoriesWithoutAuditLeakage() {
         var slots=new ArrayList<CurrentSlot>();

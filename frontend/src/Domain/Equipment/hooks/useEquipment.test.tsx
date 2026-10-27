@@ -3,7 +3,7 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useEquipment, useEquipmentCatalog, useEquipmentHistory, useEquipmentImportStatus, useEquipmentReviews, useEquipmentSubscription } from './useEquipment'
+import { useEquipment, useEquipmentCatalog, useEquipmentHistory, useEquipmentImportStatus, useEquipmentReviews, useEquipmentSubscription, useEquipmentRelics } from './useEquipment'
 import type { EquipmentReview } from '../types'
 
 const state = vi.hoisted(() => ({
@@ -54,6 +54,16 @@ beforeEach(() => {
 afterEach(() => { cleanup(); client.clear(); vi.useRealTimers() })
 
 describe('equipment WebSocket updates', () => {
+  it('refreshes relics on equipment events and reconnection without polling', async () => {
+    renderHook(() => { useEquipmentSubscription(); return useEquipmentRelics(1) }, { wrapper: Wrapper }); await settle()
+    expect(calls('/equipment/members/1/relics')).toBe(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(90_000) })
+    expect(calls('/equipment/members/1/relics')).toBe(1)
+    await message()
+    expect(calls('/equipment/members/1/relics')).toBe(2)
+    await act(async () => { state.connects.forEach(handler => handler()) }); await settle()
+    expect(calls('/equipment/members/1/relics')).toBe(3)
+  })
   it('refreshes the public board on character status updates without loading private history', async () => {
     state.admin = false
     const view = renderHook(useQueries, { wrapper: Wrapper }); await settle()

@@ -98,6 +98,21 @@ class EquipmentClientSyncTest {
         assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM equipment_assignment WHERE member_id=?",Integer.class,memberId));
         assertEquals(3,audits());
     }
+    @Test void deliveryOnlyRecordsAreNeverReusedAsSynchronizedEquipment() {
+        authenticate(adminId);
+        long upperCatalog=service.catalog("UPPER",upperA,0,10).items().getFirst().id();
+        var delivery=service.operate(new Operation(UUID.randomUUID(),Action.CREATE,memberId,Slot.Upper,0L,null,upperCatalog,"15:0.08",
+            Origin.GUILD_DISTRIBUTION,LocalDate.now(),false,null,null,null,null,BigDecimal.ONE));
+        assertTrue(delivery.deliveryOnly());
+        SecurityContextHolder.clearContext();
+        service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
+        var current=slot(Slot.Upper).assignment();
+        assertNotEquals(delivery.id(),current.id());
+        assertEquals(Origin.GAME_CLIENT,current.origin());
+        assertFalse(current.deliveryOnly());
+        var kept=repository.assignment(delivery.id());
+        assertTrue(kept.deliveryOnly()); assertEquals("ACTIVE",kept.status());
+    }
     @Test void emptySlotClearsAndOmittedSlotsKeepManualRecords() {
         authenticate(adminId);
         var manual=service.operate(new Operation(UUID.randomUUID(),Action.CREATE,memberId,Slot.Weapon2,0L,null,

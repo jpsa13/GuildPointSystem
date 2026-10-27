@@ -17,6 +17,14 @@ public class EquipmentRepository {
     private final ObjectMapper json;
     private final com.guild.app.equipment.EquipmentGearScore gearScore;
 
+    public List<Integer> relics(long memberId) {
+        return jdbc.queryForList("SELECT relic_id FROM member_equipment_relic WHERE member_id=? ORDER BY relic_id",Integer.class,memberId);
+    }
+    public boolean setRelic(long memberId,int relicId,boolean active) {
+        return (active ? jdbc.update("INSERT INTO member_equipment_relic(member_id,relic_id) VALUES(?,?) ON CONFLICT DO NOTHING",memberId,relicId)
+            : jdbc.update("DELETE FROM member_equipment_relic WHERE member_id=? AND relic_id=?",memberId,relicId))>0;
+    }
+
     public ReviewStatus review(long memberId) {
         return jdbc.query("""
             SELECT *, confirmed_at IS NULL AND due_at<=now() AS overdue FROM equipment_review_request
@@ -65,7 +73,7 @@ public class EquipmentRepository {
             r.getString("source_hash"), r.getString("status_reason"), r.getString("status_actor_name"),
             r.getTimestamp("status_changed_at")==null?null:r.getTimestamp("status_changed_at").toInstant(),
             gearScore.score(r.getString("category"),r.getString("game_code"),r.getString("item_name"),
-                r.getInt("item_level"),r.getInt("item_grade"),r.getString("source_hash")));
+                r.getInt("item_level"),r.getInt("item_grade"),r.getString("source_hash")),r.getBoolean("delivery_only"));
     }
     public List<Assignment> history(long memberId) {
         return jdbc.query(ASSIGNMENTS+" WHERE a.member_id=? ORDER BY a.created_at DESC,a.id DESC", assignmentMapper(),memberId);
@@ -118,9 +126,10 @@ public class EquipmentRepository {
             VALUES(?,?,?,?,?,?,?,?::jsonb,?) RETURNING id
             """,Long.class,item.id(),item.gameCode(),item.category(),item.name(),item.level(),item.grade(),hash,encode(effect),item.iconId());
         Long id=jdbc.queryForObject("""
-            INSERT INTO equipment_assignment(member_id,instance_id,slot,origin,occurred_on,created_by_id,corrects_id,reason)
-            VALUES(?,?,?,?,?,?,?,?) RETURNING id
-            """,Long.class,op.memberId(),instanceId,op.slot().name(),op.origin().name(),op.occurredOn(),actorId,correctsId,op.reason());
+            INSERT INTO equipment_assignment(member_id,instance_id,slot,origin,occurred_on,created_by_id,corrects_id,reason,delivery_only)
+            VALUES(?,?,?,?,?,?,?,?,?) RETURNING id
+            """,Long.class,op.memberId(),instanceId,op.slot().name(),op.origin().name(),op.occurredOn(),actorId,correctsId,op.reason(),
+                op.quantity()!=null || (correctsId!=null && Boolean.TRUE.equals(assignment(correctsId).deliveryOnly())));
         return assignment(id);
     }
     public Assignment transfer(Assignment source, long memberId, Slot slot, long actorId, java.time.LocalDate date, String reason) {
@@ -170,10 +179,11 @@ public class EquipmentRepository {
             catalogMapper(),category,gameCode).stream().findFirst().orElse(null);
     }
     // Registro ativo mais recente do mesmo item na posição e fora de uso: reequipar não duplica o histórico.
+    // Entregas avulsas ficam no registro de itens entregues e não viram equipamento sincronizado.
     public Long idleAssignment(long memberId,Slot slot,String gameCode) {
         return jdbc.query("""
             SELECT a.id FROM equipment_assignment a JOIN equipment_instance i ON i.id=a.instance_id
-            WHERE a.member_id=? AND a.slot=? AND i.game_code=? AND a.status='ACTIVE'
+            WHERE a.member_id=? AND a.slot=? AND i.game_code=? AND a.status='ACTIVE' AND NOT a.delivery_only
               AND NOT EXISTS (SELECT 1 FROM member_equipment_slot s WHERE s.assignment_id=a.id)
             ORDER BY a.created_at DESC,a.id DESC LIMIT 1
             """,(r,n)->r.getLong(1),memberId,slot.name(),gameCode).stream().findFirst().orElse(null);
