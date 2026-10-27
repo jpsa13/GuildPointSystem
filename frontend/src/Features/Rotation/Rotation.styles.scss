@@ -1,0 +1,69 @@
+.rotation {
+  display: grid;
+  gap: theme.$spacing-md;
+  min-width: 0;
+  h1, h2, h3, p { margin: 0; }
+  h1 { font-family: theme.$font-heading; font-size: theme.$font-size-display; text-transform: uppercase; }
+  h2, h3 { font-family: theme.$font-heading; font-size: theme.$font-size-section; }
+  &__heading, &__toolbar, &__tabs, &__edit-time, &__editor-actions { display: flex; align-items: center; gap: theme.$spacing-md; flex-wrap: wrap; }
+  &__heading, &__toolbar { justify-content: space-between; }
+  &__toolbar p, &__footnote { color: theme.$color-text-muted; font-size: theme.$font-size-base; }
+  label { display: grid; gap: theme.$spacing-xs; font-size: theme.$font-size-base; }
+  select, input, textarea { @include theme.field-input; }
+  textarea { resize: vertical; min-height: 72px; }
+  &__totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: theme.$spacing-sm; }
+  &__total { @include theme.card; display: flex; align-items: center; justify-content: space-between; gap: theme.$spacing-sm; padding: theme.$spacing-sm; border-left: 3px solid var(--guild-color); }
+  &__total strong, &__assignment strong { color: var(--guild-color); font-size: theme.$font-size-section; }
+  &__total span { white-space: nowrap; font-family: theme.$font-mono; font-size: theme.$font-size-ui; }
+  &__table-wrap { overflow-x: auto; }
+  &__table { width: 100%; border-collapse: collapse; min-width: 820px; font-size: theme.$font-size-base;
+    thead { background: theme.$metal-700; }
+    thead th { font-family: theme.$font-heading; text-transform: uppercase; text-align: left; font-size: theme.$font-size-section; }
+    th, td { padding: theme.$spacing-sm; border-bottom: 1px solid theme.$color-border-strong; }
+    tbody th, .rotation__time { width: 85px; font-family: theme.$font-mono; font-size: theme.$font-size-section; white-space: nowrap; }
+    tbody th { color: theme.$color-primary; background: rgba(theme.$color-primary, .05); }
+    tbody td:nth-child(4) { width: 32%; }
+    tbody td:nth-child(5) { width: 42%; }
+    tbody tr:nth-child(even) { background: rgba(theme.$metal-700, .3); }
+    td { vertical-align: middle; }
+  }
+  &__assignments { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+  &__assignment { border-left: 3px solid var(--guild-color); background: theme.$metal-700; padding: 5px 8px;
+    p { line-height: 1.35; margin-top: 2px; }
+    strong span { font-family: theme.$font-mono; font-size: theme.$font-size-ui; }
+  }
+  &__empty { color: theme.$color-text-muted; }
+  &--Energy { --guild-color: #{theme.$color-rotation-energy}; }
+  &--Espada { --guild-color: #{theme.$color-rotation-espada}; }
+  &--Quit { --guild-color: #{theme.$color-rotation-quit}; }
+  &--Devotion { --guild-color: #{theme.$color-warning}; }
+  &--Yonkou { --guild-color: #{theme.$color-danger}; }
+  &--Blacklist { --guild-color: #{theme.$color-text}; }
+  &__editor, &__editor fieldset { display: grid; gap: theme.$spacing-md; }
+  &__editor fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  &__edit-areas { display: grid; grid-template-columns: 1fr 1fr; gap: theme.$spacing-md; margin-top: theme.$spacing-md;
+    section { display: grid; align-content: start; gap: theme.$spacing-sm; }
+  }
+  &__edit-assignment { @include theme.card; padding: theme.$spacing-sm; display: grid; gap: theme.$spacing-sm; }
+  &__editor-actions { justify-content: flex-end; }
+  [role='alert'] { color: theme.$color-danger; }
+  @media (max-width: theme.$mobile-breakpoint) {
+    &__edit-areas { grid-template-columns: 1fr; }
+    &__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    &__total { flex-wrap: wrap; }
+    &__table { min-width: 0;
+      thead { display: none; }
+      tbody { display: block; }
+      tr { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 2px solid theme.$color-border-strong; }
+      tbody th, .rotation__time { width: auto; text-align: center; }
+      th::before, .rotation__time::before { display: block; color: theme.$color-text-muted; font-family: theme.$font-family; font-size: theme.$font-size-base; margin-bottom: 4px; }
+      th::before { content: 'Brasília'; }
+      td:nth-child(2)::before { content: 'Moscou'; }
+      td:nth-child(3)::before { content: 'Jacarta'; }
+      tbody td:nth-child(4), tbody td:nth-child(5) { grid-column: 1 / -1; width: auto; }
+      td:nth-child(4)::before, td:nth-child(5)::before { display: block; font-family: theme.$font-heading; font-size: theme.$font-size-section; margin-bottom: 6px; }
+      td:nth-child(4)::before { content: 'QGs'; }
+      td:nth-child(5)::before { content: 'Outposts'; }
+    }
+  }
+}
