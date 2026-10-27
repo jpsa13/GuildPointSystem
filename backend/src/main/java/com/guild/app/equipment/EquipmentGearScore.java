@@ -41,6 +41,7 @@ public class EquipmentGearScore {
 
     public GearScore score(String category,String code,String name,int level,int grade,String hash) {
         if (category.equals("CLOAK")) return new GearScore(null,null,false);
+        if (category.equals("WEAPON") && "iwepc01".equals(code)) return new GearScore(0,level,true);
         var item=catalog.get(category+":"+code);
         boolean verified=item!=null && Objects.equals(sourceHash,hash) && item.name().equals(name)
             && item.level()==level && item.grade()==grade;
