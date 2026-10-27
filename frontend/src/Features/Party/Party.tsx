@@ -373,9 +373,13 @@ function PartyCard({
           </Button>
         )}
       </div>
-      <PartyDiscordCall call={discordCall} canManage={canManage}
-        unavailable={discordUnavailable} loading={discordLoading} onCall={onDiscordCall} />
-      <PartyGameInvite partyId={party.id} canManage={canManage} />
+      {canManage && (
+        <div className="party-calls">
+          <PartyDiscordCall call={discordCall} canManage={canManage}
+            unavailable={discordUnavailable} loading={discordLoading} onCall={onDiscordCall} />
+          <PartyGameInvite partyId={party.id} canManage={canManage} />
+        </div>
+      )}
     </li>
   )
 }

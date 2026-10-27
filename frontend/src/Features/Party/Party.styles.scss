@@ -20,6 +20,23 @@
   &:empty { display: none; }
 }
 
+// Chamadas da PT (Discord e jogo) lado a lado, com uma única divisória.
+.party-calls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: theme.$spacing-md;
+  margin-top: theme.$spacing-md;
+  padding-top: theme.$spacing-sm;
+  border-top: 1px solid theme.$color-border;
+  .party-discord {
+    flex: 1 1 14rem;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
 .party-page__tabs {
   display: flex;
   flex-wrap: wrap;
