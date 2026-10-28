@@ -20,6 +20,10 @@ import './Equipment.styles.scss'
 function effectLabel(effect: EquipmentEffect) {
   return formatEquipmentEffect(effect)
 }
+/** Registro criado pela DLL do jogo; uma correção da administração tem o admin como autor e continua aparecendo. */
+function isGameClientSync(record: EquipmentAssignment) {
+  return record.origin === 'GAME_CLIENT' && record.actorId === record.memberId
+}
 const ORIGIN_LABELS: Record<EquipmentAssignment['origin'], string> = { INITIAL: 'Equipamento inicial', GUILD_DISTRIBUTION: 'Entrega da guild', GAME_CLIENT: 'Enviado pelo jogo' }
 function originLabel(origin?: EquipmentAssignment['origin']) { return origin ? ORIGIN_LABELS[origin] : '' }
 function gradeLabel(grade: number) { return grade === 3 ? 'Type C' : grade === 1 ? 'Intense' : catalogGradeLabel(grade) }
@@ -154,7 +158,8 @@ export function EquipmentPage() {
   const { data: history = [], isLoading: historyLoading, error: historyError, refetch: refetchHistory } = useEquipmentHistory(managing ? historyId : user?.memberId ?? 0, admin)
   const inspected = members.find(m => m.memberId === (managing ? historyId : user?.memberId))
   const deliveryTotals = summarizeDeliveries(admin ? history : [])
-  const visibleHistory = history.filter(r => tab === 'deliveries' ? r.deliveryOnly : !r.deliveryOnly)
+  // Histórico mostra só o que a administração registrou: a sincronização do jogo (feita pelo próprio membro) fica de fora.
+  const visibleHistory = history.filter(r => tab === 'deliveries' ? r.deliveryOnly : !r.deliveryOnly && !isGameClientSync(r))
   const inspectedReview = reviews.find(r => r.memberId === inspected?.memberId)
   const position = inspected?.slots.find(s => s.slot === selectedSlot)
   const item = position?.assignment

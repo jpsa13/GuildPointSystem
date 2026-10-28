@@ -581,6 +581,19 @@ describe('Equipamentos', () => {
     expect(equipmentHistory).toHaveTextContent('Distribuição equipada')
     expect(within(equipmentHistory).getAllByRole('listitem')).toHaveLength(1)
   })
+  it('hides game client syncs from the history but keeps admin corrections', () => {
+    state.history = [
+      { ...record, id: 1, name: 'Sincronizado pelo jogo', origin: 'GAME_CLIENT', actorId: record.memberId },
+      { ...record, id: 2, name: 'Corrigido pela administração', origin: 'GAME_CLIENT', actorId: record.memberId + 1000 },
+      { ...record, id: 3, name: 'Entrega manual', origin: 'GUILD_DISTRIBUTION' },
+    ]
+    render(<EquipmentPage />); inspect()
+    fireEvent.click(screen.getByRole('tab', { name: /^Histórico$/ }))
+    const equipmentHistory = screen.getByRole('list', { name: 'Histórico de equipamentos' })
+    expect(equipmentHistory).not.toHaveTextContent('Sincronizado pelo jogo')
+    expect(equipmentHistory).toHaveTextContent('Corrigido pela administração')
+    expect(equipmentHistory).toHaveTextContent('Entrega manual')
+  })
   it('filters weapons by a numeric level, supports hover wheel and keeps the bounds', () => {
     render(<EquipmentPage />); openEditor()
     const input=screen.getByRole('spinbutton', { name: 'Nível da arma' })
