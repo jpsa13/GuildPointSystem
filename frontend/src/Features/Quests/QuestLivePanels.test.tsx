@@ -53,6 +53,25 @@ describe('live character and curated checklist', () => {
     expect(screen.getByRole('progressbar', { name: 'Progresso da checklist' })).toHaveAttribute('value', '1')
     expect(screen.getByRole('checkbox', { name: '[24h] Easy Cartella Quest Reward 1' })).toBeChecked()
   })
+  it('counts only 2 of the 3 Easy+ per day and marks the third as capped', () => {
+    const data = fixture()
+    const base = data.expected[0]
+    const easyPlus = (n: number, signals: number) => ({ ...base, completionSignals: signals,
+      definition: { ...base.definition, quest: { code: `Q07140${n}`, title: `[24h] Easy+ Cartella Quest Reward ${n}`, definitionHash: `ep${n}` } } })
+    data.expected = [easyPlus(1, 0), easyPlus(2, 0), easyPlus(3, 0)]
+    const view = render(<QuestDailyList data={data} />)
+    const bar = () => screen.getByRole('progressbar', { name: 'Progresso da checklist' })
+    expect(bar()).toHaveAttribute('max', '2')
+    expect(bar()).toHaveAttribute('value', '0')
+    expect(screen.getByText('0/2')).toBeInTheDocument()
+
+    data.expected = [easyPlus(1, 1), easyPlus(2, 0), easyPlus(3, 1)]
+    view.rerender(<QuestDailyList data={{ ...data }} />)
+    expect(bar()).toHaveAttribute('value', '2')
+    expect(screen.getByText('2/2')).toBeInTheDocument()
+    expect(screen.getByText('Limite do dia atingido (2 de 2)')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '[24h] Easy+ Cartella Quest Reward 2' })).not.toBeChecked()
+  })
   it('includes Medium+ and the two explicit extra quests', () => {
     const data = fixture()
     const base = data.expected[0]

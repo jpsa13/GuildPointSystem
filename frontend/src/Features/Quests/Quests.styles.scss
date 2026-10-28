@@ -47,6 +47,9 @@
   &__quest-detail > summary { list-style: none; display: flex; gap: 6px; padding: 7px 0; align-items: center; min-height: 44px; }
   &__quest-detail > summary::-webkit-details-marker { display: none; }
   &__quest-detail > summary:hover, .is-complete > &__quest-detail > summary { background: rgba($color-primary, .04); }
+  // Grupo com limite diário já cumprido: a que sobrou não conta como pendente.
+  .is-capped > &__quest-detail > summary { opacity: .55; }
+  .is-capped > &__quest-detail > summary &__quest-name strong { text-decoration: line-through; }
   &__reward-slot { @include slot; color: $color-text-muted; width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; }
   &__reward-slot img { display: block; object-fit: contain; image-rendering: pixelated; }
   &__quest-name { display: grid; gap: 2px; min-width: 0; flex: 1; }
