@@ -50,13 +50,19 @@ public class QuestStatusService {
 
     @Transactional
     public void ingest(QuestStatusIngestRequest request) {
-        Member member = memberRepository.findByNicknameIgnoreCase(request.character())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Nenhum membro com esse nome de personagem"));
-
+        // Todas as contas com esse nick recebem o envio (personagem compartilhado).
+        List<Member> members = memberRepository.findByGameCharacter(request.character());
+        if (members.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhum membro com esse nome de personagem");
+        }
         Set<String> active = toCodes(request.active());
-        Set<String> done = new LinkedHashSet<>(toCodes(request.done()));
+        Set<String> sent = toCodes(request.done());
         LocalDate today = currentQuestDay();
+        for (Member member : members) save(member, active, sent, today);
+    }
+
+    private void save(Member member, Set<String> active, Set<String> sent, LocalDate today) {
+        Set<String> done = new LinkedHashSet<>(sent);
 
         QuestStatus status = repository.findById(member.getId()).orElseGet(() -> {
             QuestStatus created = new QuestStatus();

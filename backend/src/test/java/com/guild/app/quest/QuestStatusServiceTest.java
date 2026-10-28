@@ -53,4 +53,12 @@ class QuestStatusServiceTest {
         send(List.of(), List.of(B));
         assertEquals(Set.of("Q082000"), done());
     }
+    @Test void sharedCharacterUpdatesEveryAccountWithThatNick() {
+        long sharedId = jdbc.queryForObject("INSERT INTO member(nickname,role,status,profile_complete) VALUES(?,'MEMBRO','APROVADO',true) RETURNING id",
+            Long.class, nick.toLowerCase());
+        jdbc.update("INSERT INTO member(nickname,role,status,profile_complete) VALUES(?,'MEMBRO','EXCLUIDO',true)", nick);
+        send(List.of(), List.of(A));
+        assertEquals(Set.of("Q071356"), done());
+        assertEquals(Set.of("Q071356"), service.doneCodesForDay(sharedId, QuestStatusService.currentQuestDay()));
+    }
 }

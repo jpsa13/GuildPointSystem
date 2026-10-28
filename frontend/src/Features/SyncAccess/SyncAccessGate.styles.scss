@@ -1,0 +1,118 @@
+.sync-gate {
+  // .modal-card limita a 560px; aqui cabe o texto e o print do launcher lado a lado.
+  &.modal-card { max-width: 920px; }
+
+  .auth-window-bar::before { background: theme.$color-warning; }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-md;
+  }
+
+  // Texto à esquerda, print do launcher à direita; empilha em telas estreitas.
+  &__columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: theme.$spacing-lg;
+    align-items: start;
+
+    @media (max-width: 820px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-md;
+    min-width: 0;
+  }
+
+  &__lead {
+    margin: 0;
+    font-size: theme.$font-size-base;
+    line-height: 1.5;
+    color: theme.$color-text;
+
+    strong { color: theme.$color-amber; }
+  }
+
+  &__countdown {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: theme.$spacing-sm;
+  }
+
+  &__countdown-cell {
+    @include theme.readout;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: theme.$spacing-sm;
+  }
+
+  &__countdown-value {
+    font-family: theme.$font-mono;
+    font-size: theme.$font-size-display;
+    line-height: 1;
+    color: theme.$color-amber;
+  }
+
+  &__countdown-label {
+    margin-top: theme.$spacing-xs;
+    font-size: theme.$font-size-ui;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: theme.$color-text-muted;
+  }
+
+  &__steps {
+    margin: 0;
+    padding-left: theme.$spacing-lg;
+    display: flex;
+    flex-direction: column;
+    gap: theme.$spacing-xs;
+    font-size: theme.$font-size-base;
+    line-height: 1.5;
+    color: theme.$color-text;
+
+    strong { color: theme.$color-cyan; }
+    a { color: theme.$color-cyan; }
+  }
+
+  &__tutorial {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    justify-self: center;
+    border: 1px solid theme.$color-border-strong;
+
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+  }
+
+  &__status {
+    margin: 0;
+    padding: theme.$spacing-sm theme.$spacing-md;
+    font-size: theme.$font-size-base;
+    color: theme.$color-text-muted;
+    border-left: 2px solid theme.$color-border-strong;
+    background: rgba(255, 255, 255, 0.02);
+
+    strong { color: theme.$color-text; }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: theme.$spacing-sm;
+  }
+
+  &__download {
+    text-decoration: none;
+  }
+}

@@ -1,5 +1,6 @@
 package com.guild.app.member.repository;
 
+import com.guild.app.common.enums.MemberStatus;
 import com.guild.app.common.enums.Role;
 import com.guild.app.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,8 +16,16 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByEmail(String email);
 
-    /** Casamento do personagem (nome unico no jogo) com o membro, sem diferenciar caixa. */
-    Optional<Member> findByNicknameIgnoreCase(String nickname);
+    List<Member> findByNicknameIgnoreCaseAndStatusNotOrderById(String nickname, MemberStatus status);
+
+    /**
+     * Contas que usam este personagem do jogo (nickname sem diferenciar caixa). O nick nao e unico no
+     * site: quem compartilha o personagem tem uma conta cada, e todas recebem o que a DLL envia.
+     * Contas excluidas mantem o nick e ficam de fora.
+     */
+    default List<Member> findByGameCharacter(String character) {
+        return findByNicknameIgnoreCaseAndStatusNotOrderById(character, MemberStatus.EXCLUIDO);
+    }
 
     Optional<Member> findByDiscordId(String discordId);
 

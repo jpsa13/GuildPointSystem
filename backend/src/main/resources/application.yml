@@ -60,6 +60,13 @@ guild:
       party-channel-id: ${DISCORD_PARTY_CHANNEL_ID:}
       # Role names shown in the list, in display order.
       roles: ${DISCORD_MEMBER_ROLES:Leader,Cerberus}
+  sync:
+    # Depois deste instante, so acessa o site quem sincronizou a DLL nos ultimos `window`.
+    # Prazo: fim de 31/10/2026 (horario de Brasilia).
+    enforce-from: 2026-11-01T00:00:00-03:00
+    window: 3d
+    # Contas criadas depois do prazo geral tem este tempo, a partir do cadastro, para sincronizar.
+    new-account-grace: 1d
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173}
 

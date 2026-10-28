@@ -3,7 +3,10 @@ package com.guild.app.characterstatus.repository;
 import com.guild.app.characterstatus.entity.CharacterStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +16,10 @@ public interface CharacterStatusRepository extends JpaRepository<CharacterStatus
 
     /** Personagem que enviou por ultimo (o que esta sendo jogado) para level/EXP no party e em Quests. */
     Optional<CharacterStatus> findFirstByMemberIdOrderByUpdatedAtDesc(Long memberId);
+
+    /** Ultima sincronizacao da DLL de qualquer personagem do membro (vazio = nunca sincronizou). */
+    @Query("select max(s.updatedAt) from CharacterStatus s where s.member.id = :memberId")
+    Optional<Instant> findLastSyncAt(@Param("memberId") Long memberId);
 
     @EntityGraph(attributePaths = {"member"})
     List<CharacterStatus> findByMemberIdOrderByLevelDescExpPercentDesc(Long memberId);

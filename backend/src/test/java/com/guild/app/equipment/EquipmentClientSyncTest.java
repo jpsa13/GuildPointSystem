@@ -175,4 +175,14 @@ class EquipmentClientSyncTest {
         assertEquals(Origin.GAME_CLIENT,corrected.origin());
         assertEquals("CORRECTED",repository.assignment(synced.assignment().id()).status());
     }
+    @Test void sharedCharacterSyncsEveryAccountWithThatNick() {
+        long sharedId=member(Role.MEMBRO,nickname.toUpperCase());
+        long deletedId=jdbc.queryForObject("INSERT INTO member(nickname,role,status,profile_complete) VALUES(?,'MEMBRO','EXCLUIDO',true) RETURNING id",
+            Long.class,nickname);
+        var result=service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
+        assertEquals(List.of("Upper"),result.get("changed"));
+        assertEquals(upperA,slot(Slot.Upper).assignment().gameCode());
+        assertEquals(upperA,repository.slot(sharedId,Slot.Upper).assignment().gameCode());
+        assertNull(repository.slot(deletedId,Slot.Upper).assignment());
+    }
 }
