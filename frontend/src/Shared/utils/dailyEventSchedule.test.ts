@@ -9,21 +9,19 @@ import {
 
 describe('dailyEventSchedule', () => {
   it('getNextDailyOccurrence returns later today when time not passed', () => {
-    const now = new Date(2026, 2, 26, 5, 30, 0)
+    const now = new Date('2026-03-26T05:30:00-03:00')
     const next = getNextDailyOccurrence(6, 0, now)
-    expect(next.getHours()).toBe(6)
-    expect(next.getDate()).toBe(26)
+    expect(next.toISOString()).toBe('2026-03-26T09:00:00.000Z')
   })
 
   it('getNextDailyOccurrence rolls to tomorrow after event time', () => {
-    const now = new Date(2026, 2, 26, 6, 0, 0)
+    const now = new Date('2026-03-26T06:00:00-03:00')
     const next = getNextDailyOccurrence(6, 0, now)
-    expect(next.getDate()).toBe(27)
-    expect(next.getHours()).toBe(6)
+    expect(next.toISOString()).toBe('2026-03-27T09:00:00.000Z')
   })
 
   it('getMsUntilNextDailyEvent is ~24h right at start', () => {
-    const now = new Date(2026, 2, 26, 6, 0, 0)
+    const now = new Date('2026-03-26T06:00:00-03:00')
     const ms = getMsUntilNextDailyEvent(6, 0, now)
     expect(ms).toBe(24 * 60 * 60 * 1000)
   })
@@ -36,10 +34,10 @@ describe('dailyEventSchedule', () => {
     expect(formatHmsCountdown((2 * 86400 + 3 * 3600) * 1000)).toBe('2d 03:00:00')
   })
 
-  const majorAnchor = new Date(2026, 8, 27, 19, 0, 0, 0)
+  const majorAnchor = new Date('2026-09-27T19:00:00-03:00')
 
   it('interval: before anchor counts to anchor', () => {
-    const now = new Date(2026, 8, 26, 20, 0, 0, 0)
+    const now = new Date('2026-09-26T20:00:00-03:00')
     const next = getNextIntervalOccurrence(majorAnchor, 4, now)
     expect(next.getTime()).toBe(majorAnchor.getTime())
   })
@@ -47,16 +45,13 @@ describe('dailyEventSchedule', () => {
   it('interval: at anchor start, next is +4 days', () => {
     const now = new Date(majorAnchor)
     const next = getNextIntervalOccurrence(majorAnchor, 4, now)
-    expect(next.getDate()).toBe(1)
-    expect(next.getMonth()).toBe(9)
-    expect(next.getHours()).toBe(19)
+    expect(next.toISOString()).toBe('2026-10-01T22:00:00.000Z')
   })
 
   it('interval: ms until next after anchor', () => {
-    const now = new Date(2026, 8, 28, 12, 0, 0, 0)
+    const now = new Date('2026-09-28T12:00:00-03:00')
     const ms = getMsUntilNextIntervalEvent(majorAnchor, 4, now)
     const next = new Date(now.getTime() + ms)
-    expect(next.getDate()).toBe(1)
-    expect(next.getMonth()).toBe(9)
+    expect(next.toISOString()).toBe('2026-10-01T22:00:00.000Z')
   })
 })

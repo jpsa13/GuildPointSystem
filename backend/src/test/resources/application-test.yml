@@ -3,6 +3,10 @@ spring:
     url: jdbc:postgresql://localhost:5432/guild_points_test
     username: guild
     password: guild
+    # Vários contextos Spring ficam em cache durante a suíte completa.
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 0
   jpa:
     hibernate:
       ddl-auto: validate
