@@ -568,18 +568,22 @@ describe('Equipamentos', () => {
       { ...record, id: 2, deliveryOnly: true, level: 45, grade: 1, status: 'TRANSFERRED' },
       { ...record, id: 3, deliveryOnly: true, level: 45, grade: 1, status: 'CANCELLED' },
       { ...record, id: 4, name: 'Distribuição equipada' },
+      { ...record, id: 5, name: 'Equipamento inicial', origin: 'INITIAL' },
     ]
     render(<EquipmentPage />); inspect()
     fireEvent.click(screen.getByRole('tab', { name: 'Itens entregues' }))
     const totals = screen.getByRole('region', { name: 'Totais recebidos' })
     expect(totals).toHaveTextContent('Arma · Lv. 45 · B · Intense')
-    expect(within(totals).getByRole('listitem')).toHaveTextContent('2')
+    expect(within(totals).getAllByRole('listitem')).toHaveLength(2)
+    expect(totals).toHaveTextContent('Arma · Lv. 45 · B · Intense2')
+    // Item equipado no slot como "Entrega da guild" também é entrega; equipamento inicial não.
     expect(screen.getByRole('list', { name: 'Itens entregues' })).toHaveTextContent('Cancelado')
-    expect(screen.getByRole('list', { name: 'Itens entregues' })).not.toHaveTextContent('Distribuição equipada')
+    expect(screen.getByRole('list', { name: 'Itens entregues' })).toHaveTextContent('Distribuição equipada')
+    expect(screen.getByRole('list', { name: 'Itens entregues' })).not.toHaveTextContent('Equipamento inicial')
     fireEvent.click(screen.getByRole('tab', { name: /^Histórico$/ }))
     const equipmentHistory = screen.getByRole('list', { name: 'Histórico de equipamentos' })
     expect(equipmentHistory).toHaveTextContent('Distribuição equipada')
-    expect(within(equipmentHistory).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(equipmentHistory).getAllByRole('listitem')).toHaveLength(2)
   })
   it('hides game client syncs from the history but keeps admin corrections', () => {
     state.history = [

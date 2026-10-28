@@ -4,7 +4,7 @@ import { useAuthContext } from '@/Features/Auth/contexts/AuthContext'
 import { useEquipment, useEquipmentHistory, useEquipmentCatalog, useEquipmentOperation, useEquipmentSlotEdit, useEquipmentImportStatus, useEquipmentReviews, useEquipmentReviewAction } from '@/Domain/Equipment/hooks/useEquipment'
 import { EQUIPMENT_GROUPS, SLOT_CATEGORY, type CatalogFilters, type CurrentSlot, type EquipmentAssignment, type EquipmentEffect, type EquipmentItem, type EquipmentOperation, type EquipmentSlot, type EquipmentSlotEdit, type EquipmentSlotEditResult, type MemberEquipment } from '@/Domain/Equipment/types'
 import { useMember } from '@/Domain/Member/hooks/useMembers'
-import { summarizeDeliveries } from '@/Domain/Equipment/utils/equipmentDeliveries'
+import { isGuildDelivery, summarizeDeliveries } from '@/Domain/Equipment/utils/equipmentDeliveries'
 import { armorClassForCharacter, weaponClassForCharacter } from '@/Domain/Equipment/utils/equipmentClass'
 import { gradeLabel as catalogGradeLabel, gradeColor } from '@/Domain/Catalog/utils/catalogUtils'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
@@ -159,7 +159,7 @@ export function EquipmentPage() {
   const inspected = members.find(m => m.memberId === (managing ? historyId : user?.memberId))
   const deliveryTotals = summarizeDeliveries(admin ? history : [])
   // Histórico mostra só o que a administração registrou: a sincronização do jogo (feita pelo próprio membro) fica de fora.
-  const visibleHistory = history.filter(r => tab === 'deliveries' ? r.deliveryOnly : !r.deliveryOnly && !isGameClientSync(r))
+  const visibleHistory = history.filter(r => tab === 'deliveries' ? isGuildDelivery(r) : !r.deliveryOnly && !isGameClientSync(r))
   const inspectedReview = reviews.find(r => r.memberId === inspected?.memberId)
   const position = inspected?.slots.find(s => s.slot === selectedSlot)
   const item = position?.assignment
