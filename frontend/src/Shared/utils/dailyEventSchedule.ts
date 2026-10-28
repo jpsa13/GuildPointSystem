@@ -148,5 +148,12 @@ export const HEADER_SCHEDULED_EVENTS: ScheduledEvent[] = [
     minute: 0,
     timeZone: SCHEDULE_TIME_ZONE,
   },
-  { kind: 'daily', id: 'pb-middle', label: 'PB Middle', hour: 14, minute: 0, timeZone: SCHEDULE_TIME_ZONE },
+  {
+    kind: 'multiDaily',
+    id: 'pb-middle',
+    label: 'PB Middle',
+    hours: [2, 14],
+    minute: 0,
+    timeZone: SCHEDULE_TIME_ZONE,
+  },
 ]
