@@ -149,7 +149,7 @@ export function EquipmentPage() {
   const tooltipItem = tooltip ? members.find(m => m.memberId === tooltip.memberId)?.slots.find(s => s.slot === tooltip.slot)?.assignment : null
   const [search, setSearch] = useState('')
   const [filled, setFilled] = useState(false)
-  const [sort, setSort] = useState('name')
+  const [sort, setSort] = useState('gs-desc')
   const [playerClass, setPlayerClass] = useState('')
   const [historyId, setHistoryId] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>('Weapon')
