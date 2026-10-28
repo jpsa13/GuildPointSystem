@@ -40,5 +40,6 @@ public final class GameEventDefinitions {
             new DailyGameEvent("cw3", "CW3", 22, 0, SERVER_ZONE),
             // PBs in Brasília time.
             new MultiDailyGameEvent("pb-hq", "PB HQ", List.of(2, 6, 10, 14, 18, 22), 0, SCHEDULE_ZONE),
-            new MultiDailyGameEvent("pb-colonia", "PB Colônia", List.of(2, 10, 18), 0, SCHEDULE_ZONE));
+            new MultiDailyGameEvent("pb-colonia", "PB Colônia", List.of(2, 10, 18), 0, SCHEDULE_ZONE),
+            new DailyGameEvent("pb-middle", "PB Middle", 14, 0, SCHEDULE_ZONE));
 }
