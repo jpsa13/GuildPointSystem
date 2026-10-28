@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,7 +29,8 @@ import java.util.stream.Collectors;
 
 /**
  * Ingestao name-based (sem token) do status de quests do cliente, e sobreposicao
- * na checklist. Display-only: "done" marca a quest como concluida na checklist,
+ * na checklist. As concluidas se acumulam no dia de quest (reset 03:00), mesmo que
+ * o jogo seja reaberto. Display-only: "done" marca a quest como concluida na checklist,
  * com a imprecisao de que um sumico do journal pode nao ser conclusao real.
  */
 @Service
@@ -52,17 +54,25 @@ public class QuestStatusService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Nenhum membro com esse nome de personagem"));
 
-        String active = toCodes(request.active());
-        String done = toCodes(request.done());
+        Set<String> active = toCodes(request.active());
+        Set<String> done = new LinkedHashSet<>(toCodes(request.done()));
+        LocalDate today = currentQuestDay();
 
         QuestStatus status = repository.findById(member.getId()).orElseGet(() -> {
             QuestStatus created = new QuestStatus();
             created.setMemberId(member.getId());
             return created;
         });
-        status.setQuestDay(currentQuestDay());
-        status.setActiveCodes(active);
-        status.setDoneCodes(done);
+        // A DLL guarda as concluidas do dia so na memoria: ao reabrir o jogo ela volta a
+        // mandar done vazio. No mesmo dia de quest, soma ao que ja estava concluido; uma
+        // quest de novo ativa no journal (reaceita) deixa de contar, como faz a DLL.
+        if (today.equals(status.getQuestDay())) {
+            for (String code : parse(status.getDoneCodes())) done.add(code);
+        }
+        done.removeAll(active);
+        status.setQuestDay(today);
+        status.setActiveCodes(String.join(",", active));
+        status.setDoneCodes(String.join(",", done));
         status.setUpdatedAt(Instant.now());
         repository.save(status);
     }
@@ -94,11 +104,10 @@ public class QuestStatusService {
         return Optional.of(new PlayerStatus(null, sample, qs.getUpdatedAt(), false));
     }
 
-    private static String toCodes(java.util.List<Integer> values) {
+    private static Set<String> toCodes(java.util.List<Integer> values) {
         return values.stream()
                 .map(v -> String.format("Q%06X", v & 0xFFFFFF))
-                .distinct()
-                .collect(Collectors.joining(","));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private static Set<String> parse(String codes) {
