@@ -281,3 +281,30 @@ export function usePartyMemberNotices(
     })
   }, [memberId, onNotice])
 }
+
+export function usePartyQueuePriority() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ memberId, delta }: { memberId: number; delta: 1 | -1 }) =>
+      apiClient<PartyBoard>(`/parties/lfg/${memberId}/priority`, { method: 'POST', body: { delta } }),
+    onSuccess: (data) => setBoard(queryClient, data),
+  })
+}
+
+export function usePartyQueueUnanswered() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (memberId: number) => apiClient<PartyBoard>(`/parties/lfg/${memberId}/unanswered`, { method: 'POST' }),
+    onSuccess: (data) => setBoard(queryClient, data),
+  })
+}
+
+export function usePartyAfk() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ memberId, active }: { memberId: number; active: boolean }) =>
+      apiClient<PartyBoard>(`/parties/members/${memberId}/afk`, { method: 'PUT', body: { active } }),
+    onSuccess: (data) => setBoard(queryClient, data),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: partyKeys.board, exact: true }),
+  })
+}

@@ -12,6 +12,9 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, PartyM
 
     Optional<PartyMember> findByMemberId(Long memberId);
 
+    @Query("SELECT pm FROM PartyMember pm WHERE pm.afkUntil<=:now ORDER BY pm.partyId,pm.memberId")
+    List<PartyMember> findAfkDue(java.time.Instant now);
+
     long countByPartyId(Long partyId);
 
     List<PartyMember> findByPartyIdOrderByJoinedAtAsc(Long partyId);

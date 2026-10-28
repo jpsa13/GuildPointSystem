@@ -34,6 +34,7 @@ public enum AuditLogType {
     QUEST_CATALOG_UPDATED,
     PARTY_DISCORD_CALLED,
     ROTATION_UPDATED,
+    PARTY_QUEUE_UPDATED,
     PARTY_GAME_INVITE;
 
     public boolean isEquipmentPrivate() {

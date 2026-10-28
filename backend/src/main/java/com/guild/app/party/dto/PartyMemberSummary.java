@@ -7,5 +7,6 @@ public record PartyMemberSummary(
         String classImageUrl,
         int level,
         Float expPercent,
-        boolean leader
+        boolean leader,
+        java.time.Instant afkUntil
 ) {}

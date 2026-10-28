@@ -31,6 +31,8 @@ import { useAppToast } from '@/Shared/ui/components/AppToast/AppToast'
 import { playScheduleAlertSound } from '@/Shared/utils/notificationSound'
 import { PartyCreateModal, type PartyCreateMode } from '@/Features/Party/components/PartyCreateModal'
 import { PartyLfgList, WaitingTime } from '@/Features/Party/components/PartyLfgList'
+import { PartyAfkControl } from '@/Features/Party/components/PartyAfkControl'
+import { PartyQueueControls } from '@/Features/Party/components/PartyQueueControls'
 import { PartyLfgAddModal } from '@/Features/Party/components/PartyLfgAddModal'
 import { sortByWaiting } from '@/Features/Party/utils/partyWait'
 import { ConfirmDialog } from '@/Shared/ui/components/ConfirmDialog/ConfirmDialog'
@@ -245,6 +247,9 @@ function PartyRoster({
                 Lv {member.level}
                 {member.expPercent != null ? ` · ${member.expPercent.toFixed(2)}%` : ''}
               </span>
+              {(canManage || member.id === viewerId || member.afkUntil) && <PartyAfkControl
+                memberId={member.id} nickname={member.nickname} until={member.afkUntil}
+                canControl={canManage || member.id === viewerId} />}
               {canManage && !member.leader && member.id !== viewerId && (
                 <div
                   className="party-card__roster-actions"
@@ -722,6 +727,8 @@ export function PartyPage() {
                 search={lfgSearch}
                 viewerId={user?.memberId}
                 canDrag={canDragFromLfg}
+                canManageAfk={my.canOrganizeParties}
+                queueActions={my.canOrganizeParties ? (entry) => <PartyQueueControls entry={entry} /> : undefined}
                 actions={
                   my.canOrganizeParties
                     ? (entry) => (
@@ -743,6 +750,7 @@ export function PartyPage() {
                 }
               />
             )}
+            <p className="party-afk-policy">O limite de tempo pra ficar AFK <strong>SEM QUE TENHA SIDO AVISADO É DE 15 MINUTOS</strong>. Em caso de precisar ficar AFK, cair internet, luz, ou algo do tipo, tente avisar no discord.</p>
           </Panel>
         </div>
       )}

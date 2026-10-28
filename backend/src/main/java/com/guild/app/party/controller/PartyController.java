@@ -117,6 +117,21 @@ public class PartyController {
         return partyService.leaveLfg(SecurityUtils.currentMember());
     }
 
+    @PutMapping("/members/{memberId}/afk")
+    public PartyBoardResponse setAfk(@PathVariable Long memberId,@Valid @RequestBody PartyAfkRequest request) {
+        return partyService.setAfk(memberId,request,SecurityUtils.currentMember());
+    }
+
+    @PostMapping("/lfg/{memberId}/priority")
+    public PartyBoardResponse adjustPriority(@PathVariable Long memberId,@Valid @RequestBody AdjustPartyPriorityRequest request) {
+        return partyService.adjustQueuePriority(memberId,request,SecurityUtils.currentMember());
+    }
+
+    @PostMapping("/lfg/{memberId}/unanswered")
+    public PartyBoardResponse markUnanswered(@PathVariable Long memberId) {
+        return partyService.markQueueUnanswered(memberId,SecurityUtils.currentMember());
+    }
+
     @DeleteMapping("/lfg/{memberId}")
     public PartyBoardResponse removeFromLfg(@PathVariable Long memberId) {
         return partyService.removeFromLfg(memberId, SecurityUtils.currentMember());

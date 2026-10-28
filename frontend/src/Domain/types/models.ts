@@ -12,6 +12,7 @@ export type DonationStatus = 'PENDENTE' | 'ACEITA' | 'RECUSADA'
 export type AuditLogType =
   | 'PARTY_DISCORD_CALLED'
   | 'PARTY_GAME_INVITE'
+  | 'PARTY_QUEUE_UPDATED'
   | 'ROTATION_UPDATED'
   | 'QUEST_CATALOG_UPDATED'
   | 'EQUIPMENT_CHANGED'

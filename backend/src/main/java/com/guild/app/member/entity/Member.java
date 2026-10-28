@@ -54,6 +54,9 @@ public class Member {
     @Column(nullable = false)
     private Long points = 0L;
 
+    @Column(name = "party_priority_points", nullable = false)
+    private int partyPriorityPoints;
+
     @Column(name = "level", nullable = false)
     private Integer level = 1;
 

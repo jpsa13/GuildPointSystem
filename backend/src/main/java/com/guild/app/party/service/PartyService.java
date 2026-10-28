@@ -2,6 +2,8 @@ package com.guild.app.party.service;
 
 import com.guild.app.auth.security.MemberPrincipal;
 import com.guild.app.common.enums.MemberStatus;
+import com.guild.app.common.enums.AuditLogType;
+import com.guild.app.log.service.AuditLogService;
 import com.guild.app.common.enums.PartyMap;
 import com.guild.app.common.enums.Role;
 import com.guild.app.common.enums.PartyPendingKind;
@@ -37,6 +39,8 @@ public class PartyService {
     private final CharacterStatusRepository characterStatusRepository;
     private final WebSocketPublisher webSocketPublisher;
     private final PartyBoardBroadcaster partyBoardBroadcaster;
+    private final AuditLogService audit;
+    private final jakarta.persistence.EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public PartyBoardResponse getBoard(MemberPrincipal actor) {
@@ -78,7 +82,7 @@ public class PartyService {
                     list.sort(Comparator.comparing(PartyMember::getJoinedAt)));
         }
 
-        var lfgRows = partyLfgRepository.findAllByOrderByCreatedAtAsc();
+        var lfgRows = partyLfgRepository.findAllInQueueOrder();
         lfgRows.forEach(l -> memberIds.add(l.getMemberId()));
 
         final Map<Long, Member> memberLookup = memberIds.isEmpty()
@@ -111,7 +115,7 @@ public class PartyService {
         party.setLeader(member);
         party = partyRepository.save(party);
 
-        addMemberRow(party.getId(), member.getId());
+        addMemberRow(party.getId(), member.getId(), actor);
         partyLfgRepository.findByMemberId(member.getId()).ifPresent(partyLfgRepository::delete);
 
         publishBoard();
@@ -139,7 +143,7 @@ public class PartyService {
         party.setLeader(leader);
         party = partyRepository.save(party);
 
-        addMemberRow(party.getId(), leader.getId());
+        addMemberRow(party.getId(), leader.getId(), actor);
         partyLfgRepository.findByMemberId(leader.getId()).ifPresent(partyLfgRepository::delete);
 
         publishBoard();
@@ -188,6 +192,7 @@ public class PartyService {
         }
 
         Long fromPartyId = request.fromPartyId();
+        Instant afkUntil = null;
         if (fromPartyId != null) {
             if (fromPartyId.equals(toPartyId)) {
                 throw new AppException("Membro já está nesta PT", HttpStatus.BAD_REQUEST);
@@ -200,12 +205,10 @@ public class PartyService {
             if (!canOrganizeParties(actorMember) && !canManageParty(fromParty, actorMember)) {
                 throw new AppException("Sem permissão para mover desta PT", HttpStatus.FORBIDDEN);
             }
-            boolean inFrom = partyMemberRepository.findByMemberId(target.getId())
-                    .map(pm -> pm.getPartyId().equals(fromPartyId))
-                    .orElse(false);
-            if (!inFrom) {
-                throw new AppException("Membro não está na PT de origem", HttpStatus.BAD_REQUEST);
-            }
+            var sourceMember = partyMemberRepository.findByMemberId(target.getId())
+                    .filter(pm -> pm.getPartyId().equals(fromPartyId))
+                    .orElseThrow(() -> new AppException("Membro não está na PT de origem", HttpStatus.BAD_REQUEST));
+            afkUntil = sourceMember.getAfkUntil();
             removeMemberFromParty(fromParty, target.getId(), false);
         } else {
             if (partyMemberRepository.findByMemberId(target.getId()).isPresent()) {
@@ -216,7 +219,12 @@ public class PartyService {
             }
         }
 
-        addMemberLocked(toParty, target);
+        addMemberLocked(toParty, target, actor);
+        if (afkUntil != null) {
+            var moved = partyMemberRepository.findByMemberId(target.getId()).orElseThrow();
+            moved.setAfkUntil(afkUntil);
+            partyMemberRepository.save(moved);
+        }
         cancelOtherPendingForMember(target.getId());
         rejectRemainingJoinRequestsIfFull(toParty.getId());
         publishBoard();
@@ -243,6 +251,8 @@ public class PartyService {
             throw new AppException("Membros duplicados na seleção", HttpStatus.BAD_REQUEST);
         }
 
+        // Bloquear sempre na mesma ordem evita deadlock entre montagens simultâneas.
+        uniqueIds.stream().sorted().forEach(memberRepository::findByIdForUpdate);
         List<Member> members = new ArrayList<>();
         for (Long memberId : request.memberIds()) {
             var member = memberRepository.findById(memberId)
@@ -265,7 +275,7 @@ public class PartyService {
         party = partyRepository.save(party);
 
         for (Member member : members) {
-            addMemberRow(party.getId(), member.getId());
+            addMemberRow(party.getId(), member.getId(), actor);
             partyLfgRepository.findByMemberId(member.getId()).ifPresent(partyLfgRepository::delete);
         }
 
@@ -414,7 +424,7 @@ public class PartyService {
             throw new AppException("Membro não disponível", HttpStatus.BAD_REQUEST);
         }
 
-        addMemberLocked(party, target);
+        addMemberLocked(party, target, actor);
         cancelOtherPendingForMember(target.getId());
         rejectRemainingJoinRequestsIfFull(party.getId());
 
@@ -514,13 +524,13 @@ public class PartyService {
             if (!canManageParty(party, member)) {
                 throw new AppException("Sem permissão para aceitar pedidos nesta PT", HttpStatus.FORBIDDEN);
             }
-            addMemberLocked(party, pending.getInitiator());
+            addMemberLocked(party, pending.getInitiator(), actor);
             pending.setStatus(PartyPendingStatus.ACCEPTED);
         } else {
             if (!pending.getTarget().getId().equals(member.getId())) {
                 throw new AppException("Apenas o convidado pode aceitar o convite", HttpStatus.FORBIDDEN);
             }
-            addMemberLocked(party, member);
+            addMemberLocked(party, member, actor);
             pending.setStatus(PartyPendingStatus.ACCEPTED);
         }
         savePending(pending);
@@ -588,6 +598,7 @@ public class PartyService {
             entry = new PartyLfg();
             entry.setMemberId(member.getId());
             entry.setCreatedAt(Instant.now());
+            entry.setQueueOrder(partyLfgRepository.nextQueueOrder());
         }
         entry.setNote(request.note() != null && !request.note().isBlank() ? request.note().trim() : null);
         partyLfgRepository.save(entry);
@@ -624,6 +635,123 @@ public class PartyService {
         return getBoard(actor);
     }
 
+    @Transactional
+    public PartyBoardResponse setAfk(Long memberId,PartyAfkRequest request,MemberPrincipal actor) {
+        var acting=requireApproved(actor);
+        var membership=partyMemberRepository.findByMemberId(memberId).orElse(null);
+        if(membership==null) {
+            if(!acting.getId().equals(memberId) && !canOrganizeParties(acting))
+                throw new AppException("Sem permissão para alterar o AFK deste membro.",HttpStatus.FORBIDDEN);
+            if(Boolean.TRUE.equals(request.active()))
+                throw new AppException("O membro não está em uma PT.",HttpStatus.BAD_REQUEST);
+            var member=memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(()->new AppException("Membro não encontrado",HttpStatus.NOT_FOUND));
+            var entry=requireWaiting(memberId);
+            if(entry.getAfkSince()!=null) {
+                entry.setAfkSince(null);
+                partyLfgRepository.save(entry);
+                audit.log(AuditLogType.PARTY_QUEUE_UPDATED,acting,member,Map.of("action","AFK_RETURNED"));
+                publishBoard();
+            }
+            return getBoard(actor);
+        }
+        var party=partyRepository.findByIdForUpdate(membership.getPartyId())
+            .orElseThrow(()->new AppException("PT não encontrada",HttpStatus.NOT_FOUND));
+        if(!acting.getId().equals(memberId) && !canManageParty(party,acting))
+            throw new AppException("Sem permissão para alterar o AFK deste membro.",HttpStatus.FORBIDDEN);
+        var current=partyMemberRepository.findByMemberId(memberId)
+            .filter(pm->pm.getPartyId().equals(party.getId()))
+            .orElseThrow(()->new AppException("O membro mudou de PT. Recarregue a lista.",HttpStatus.CONFLICT));
+        entityManager.refresh(current);
+        Instant now=Instant.now();
+        if(current.getAfkUntil()!=null && !current.getAfkUntil().isAfter(now))
+            throw new AppException("O prazo de AFK encerrou. Aguarde a atualização da fila.",HttpStatus.CONFLICT);
+        if(request.active() && current.getAfkUntil()==null) {
+            current.setAfkUntil(now.plusSeconds(15*60).truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+            audit.log(AuditLogType.PARTY_QUEUE_UPDATED,acting,memberRepository.getReferenceById(memberId),
+                Map.of("action","AFK_STARTED","until",current.getAfkUntil().toString()));
+        } else if(!request.active() && current.getAfkUntil()!=null) {
+            current.setAfkUntil(null);
+            audit.log(AuditLogType.PARTY_QUEUE_UPDATED,acting,memberRepository.getReferenceById(memberId),Map.of("action","AFK_CANCELLED"));
+        }
+        partyMemberRepository.save(current);
+        publishBoard();
+        return getBoard(actor);
+    }
+
+    @Transactional
+    public void expireAfk(Instant now) {
+        boolean changed=false;
+        for(var due:partyMemberRepository.findAfkDue(now)) {
+            var party=partyRepository.findByIdForUpdate(due.getPartyId()).orElse(null);
+            if(party==null) continue;
+            var current=partyMemberRepository.findByMemberId(due.getMemberId()).orElse(null);
+            if(current==null || !current.getPartyId().equals(party.getId())) continue;
+            entityManager.refresh(current);
+            if(current.getAfkUntil()==null || current.getAfkUntil().isAfter(now)) continue;
+            var member=memberRepository.findById(current.getMemberId()).orElseThrow();
+            Instant expiredAt=current.getAfkUntil();
+            removeMemberFromParty(party,member.getId(),false);
+            upsertLfgForMember(member.getId(),null);
+            var entry=requireWaiting(member.getId());
+            entry.setAfkSince(expiredAt);
+            partyLfgRepository.save(entry);
+            audit.log(AuditLogType.PARTY_QUEUE_UPDATED,(Member)null,member,
+                Map.of("action","AFK_EXPIRED","partyId",party.getId()));
+            publishReturnedToLfgNotice(member.getId(),"Você completou 15 minutos de AFK e foi para o final da fila.",party.getId(),party.getMap());
+            changed=true;
+        }
+        if(changed) publishBoard();
+    }
+
+    @Transactional
+    public PartyBoardResponse adjustQueuePriority(Long memberId,AdjustPartyPriorityRequest request,MemberPrincipal actor) {
+        var organizer=queueOrganizer(actor);
+        if(request.delta()==null || Math.abs(request.delta())!=1)
+            throw new AppException("Escolha +1 ou -1 ponto.",HttpStatus.BAD_REQUEST);
+        var member=memberRepository.findByIdForUpdate(memberId)
+            .orElseThrow(()->new AppException("Membro não encontrado",HttpStatus.NOT_FOUND));
+        entityManager.refresh(member);
+        requireWaiting(memberId);
+        int previous=member.getPartyPriorityPoints();
+        if((previous==0 && request.delta()<0) || (previous==Integer.MAX_VALUE && request.delta()>0))
+            throw new AppException("Pontuação fora do limite permitido.",HttpStatus.BAD_REQUEST);
+        member.setPartyPriorityPoints(previous+request.delta());
+        memberRepository.save(member);
+        audit.log(AuditLogType.PARTY_QUEUE_UPDATED,organizer,member,
+            Map.of("action","POINTS","oldPoints",previous,"newPoints",member.getPartyPriorityPoints()));
+        publishBoard();
+        return getBoard(actor);
+    }
+
+    @Transactional
+    public PartyBoardResponse markQueueUnanswered(Long memberId,MemberPrincipal actor) {
+        var organizer=queueOrganizer(actor);
+        var member=memberRepository.findByIdForUpdate(memberId)
+            .orElseThrow(()->new AppException("Membro não encontrado",HttpStatus.NOT_FOUND));
+        entityManager.refresh(member);
+        var entry=requireWaiting(memberId);
+        entry.setQueueOrder(partyLfgRepository.nextQueueOrder());
+        entry.setLastUnansweredAt(Instant.now());
+        partyLfgRepository.save(entry);
+        audit.log(AuditLogType.PARTY_QUEUE_UPDATED,organizer,member,
+            Map.of("action","UNANSWERED","priorityPoints",member.getPartyPriorityPoints()));
+        publishBoard();
+        return getBoard(actor);
+    }
+
+    private Member queueOrganizer(MemberPrincipal actor) {
+        var organizer=requireApproved(actor);
+        if(!canOrganizeParties(organizer))
+            throw new AppException("Apenas administradores podem organizar a fila.",HttpStatus.FORBIDDEN);
+        return organizer;
+    }
+
+    private PartyLfg requireWaiting(Long memberId) {
+        return partyLfgRepository.findByMemberId(memberId)
+            .orElseThrow(()->new AppException("Membro não está na lista de espera",HttpStatus.BAD_REQUEST));
+    }
+
     /** Admin: puts another approved member on the waiting list (the queue clock starts now). */
     @Transactional
     public PartyBoardResponse addMemberToLfg(Long memberId, MemberPrincipal actor) {
@@ -648,12 +776,13 @@ public class PartyService {
         var entry = new PartyLfg();
         entry.setMemberId(memberId);
         entry.setCreatedAt(Instant.now());
+        entry.setQueueOrder(partyLfgRepository.nextQueueOrder());
         partyLfgRepository.save(entry);
         publishBoard();
         return getBoard(actor);
     }
 
-    private void addMemberLocked(Party party, Member newMember) {
+    private void addMemberLocked(Party party, Member newMember, MemberPrincipal actor) {
         if (partyMemberRepository.findByMemberId(newMember.getId()).isPresent()) {
             throw new AppException("Membro já está em uma PT", HttpStatus.BAD_REQUEST);
         }
@@ -661,7 +790,7 @@ public class PartyService {
             throw new AppException("PT cheia", HttpStatus.BAD_REQUEST);
         }
         long countBefore = partyMemberRepository.countByPartyId(party.getId());
-        addMemberRow(party.getId(), newMember.getId());
+        addMemberRow(party.getId(), newMember.getId(), actor);
         partyLfgRepository.findByMemberId(newMember.getId()).ifPresent(partyLfgRepository::delete);
         if (countBefore == 0 || party.getLeader() == null) {
             party.setLeader(newMember);
@@ -669,7 +798,17 @@ public class PartyService {
         }
     }
 
-    private void addMemberRow(Long partyId, Long memberId) {
+    private void addMemberRow(Long partyId, Long memberId, MemberPrincipal actor) {
+        var member=memberRepository.findByIdForUpdate(memberId).orElseThrow();
+        entityManager.refresh(member);
+        int previous=member.getPartyPriorityPoints();
+        if(previous!=0) {
+            member.setPartyPriorityPoints(0);
+            memberRepository.save(member);
+            audit.log(AuditLogType.PARTY_QUEUE_UPDATED,
+                requireApproved(actor),member,
+                Map.of("action","RESET","oldPoints",previous,"newPoints",0,"partyId",partyId));
+        }
         var row = new PartyMember();
         row.setPartyId(partyId);
         row.setMemberId(memberId);
@@ -760,6 +899,7 @@ public class PartyService {
             entry = new PartyLfg();
             entry.setMemberId(memberId);
             entry.setCreatedAt(Instant.now());
+            entry.setQueueOrder(partyLfgRepository.nextQueueOrder());
         }
         if (note != null) {
             entry.setNote(note.isBlank() ? null : note.trim());
@@ -868,7 +1008,7 @@ public class PartyService {
                     if (m == null) {
                         throw new AppException("Membro da PT não encontrado", HttpStatus.INTERNAL_SERVER_ERROR);
                     }
-                    return toMemberSummary(m, leaderId != null && pm.getMemberId().equals(leaderId));
+                    return toMemberSummary(m, leaderId != null && pm.getMemberId().equals(leaderId),pm.getAfkUntil());
                 })
                 .toList();
         return new PartySummary(
@@ -882,6 +1022,10 @@ public class PartyService {
     }
 
     private PartyMemberSummary toMemberSummary(Member m, boolean leader) {
+        return toMemberSummary(m,leader,null);
+    }
+
+    private PartyMemberSummary toMemberSummary(Member m, boolean leader, Instant afkUntil) {
         var cls = m.getCharacterClass();
         var gs = characterStatusRepository
                 .findFirstByMemberIdOrderByUpdatedAtDesc(m.getId()).orElse(null);
@@ -892,7 +1036,8 @@ public class PartyService {
                 cls != null ? cls.getImageUrl() : null,
                 gameLevel(m, gs),
                 gs != null ? gs.getExpPercent() : null,
-                leader
+                leader,
+                afkUntil
         );
     }
 
@@ -923,7 +1068,11 @@ public class PartyService {
                 gameLevel(m, gs),
                 gs != null ? gs.getExpPercent() : null,
                 lfg.getNote(),
-                lfg.getCreatedAt()
+                lfg.getCreatedAt(),
+                m.getPartyPriorityPoints(),
+                lfg.getQueueOrder(),
+                lfg.getLastUnansweredAt(),
+                lfg.getAfkSince()
         );
     }
 

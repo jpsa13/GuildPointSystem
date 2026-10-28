@@ -31,6 +31,15 @@ describe('formatWaiting', () => {
 })
 
 describe('sortByWaiting', () => {
+  it('orders by points first and uses demotion order without changing waiting time', () => {
+    const oldest = { ...entry(1, '2026-10-10T18:00:00Z'), priorityPoints: 1, queueOrder: 4 }
+    const newer = { ...entry(2, '2026-10-10T19:00:00Z'), priorityPoints: 1, queueOrder: 2 }
+    const low = { ...entry(3, '2026-10-10T17:00:00Z'), priorityPoints: 0, queueOrder: 1 }
+    const original = [oldest, newer, low]
+    expect(sortByWaiting(original).map(e => e.memberId)).toEqual([2, 1, 3])
+    expect(original.map(e => e.memberId)).toEqual([1, 2, 3])
+    expect(oldest.createdAt).toBe('2026-10-10T18:00:00Z')
+  })
   it('puts whoever has waited longest first', () => {
     const sorted = sortByWaiting([
       entry(1, '2026-10-10T20:05:00Z'),
