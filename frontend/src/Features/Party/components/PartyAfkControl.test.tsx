@@ -11,6 +11,7 @@ afterEach(cleanup)
 
 it('starts a 15 minute notice, counts down on server time and lets the player return', () => {
   const view = render(<PartyAfkControl memberId={1} nickname="Player" canControl />)
+  expect(screen.getByRole('button', { name: 'Iniciar AFK de 15 minutos para Player' })).toHaveTextContent(/^AFK$/)
   fireEvent.click(screen.getByRole('button', { name: 'Iniciar AFK de 15 minutos para Player' }))
   expect(state.mutate.mock.calls[0][0]).toEqual({ memberId: 1, active: true })
   view.rerender(<PartyAfkControl memberId={1} nickname="Player" until="2026-10-28T12:15:00Z" canControl />)

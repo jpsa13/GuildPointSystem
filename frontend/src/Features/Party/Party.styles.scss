@@ -276,8 +276,8 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: theme.$spacing-xs;
-  padding: theme.$spacing-sm;
+  gap: theme.$spacing-sm;
+  padding: 10px;
   min-width: 0;
   transition:
     background 0.15s ease,
@@ -312,7 +312,7 @@
   &__main {
     display: flex;
     align-items: center;
-    gap: theme.$spacing-sm;
+    gap: 6px;
     min-width: 0;
   }
 }
@@ -329,8 +329,8 @@
 
 .party-lfg-item__meta {
   display: flex;
-  align-items: baseline;
-  gap: 0.5ch;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   font-family: theme.$font-mono;
   font-size: 14px;
@@ -345,8 +345,12 @@
 }
 
 .party-lfg-item__level {
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.party-lfg-item__meta > div { flex-shrink: 0; }
 
 .party-lfg-item__actions {
   flex-shrink: 0;
@@ -465,7 +469,7 @@
   }
 }
 
-// Waiting list: queue position + live waiting time (longest wait first)
+// Position and priority do not change the original waiting timer.
 .party-lfg-item__rank {
   flex-shrink: 0;
   min-width: 22px;
@@ -503,13 +507,17 @@
   color: theme.$color-text-muted;
 }
 
-.party-lfg-item__priority { display: flex; align-items: center; justify-content: space-between; gap: theme.$spacing-xs; flex-wrap: wrap;
-  > span { color: theme.$color-primary; font-family: theme.$font-mono; }
+.party-lfg-item__points { flex-shrink: 0; color: theme.$color-text-muted; font: 14px theme.$font-mono;
+  &.is-positive { color: theme.$color-primary; }
 }
-.party-queue-controls { display: flex; flex-wrap: wrap; gap: theme.$spacing-xs; }
-.party-lfg-item__unanswered { color: theme.$color-warning; font-size: theme.$font-size-base; }
+.party-queue-controls { display: flex; gap: 4px;
+  .btn { width: 28px; height: 28px; padding: 0; font: 16px theme.$font-mono; letter-spacing: 0; }
+  @media (pointer: coarse) { .btn { width: 34px; height: 34px; } }
+}
+.party-lfg-item__unanswered { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; background: theme.$color-warning; }
 
 .party-afk { display: inline-flex; align-items: center; flex-wrap: wrap; gap: theme.$spacing-xs; }
+.party-afk__button.btn { min-width: 42px; padding: 6px 10px; letter-spacing: .5px; }
 .party-afk__timer { color: theme.$color-warning; font-family: theme.$font-mono; white-space: nowrap; }
 .party-afk__tag { color: theme.$color-danger; border: 1px solid theme.$color-danger; padding: 0 theme.$spacing-xs; }
 .party-afk-policy { margin: theme.$spacing-md 0 0; padding: theme.$spacing-md; border: 1px solid rgba(theme.$color-danger, .45);

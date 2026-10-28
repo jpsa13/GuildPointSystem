@@ -38,7 +38,7 @@ it('prevents negative points and repeated actions while saving', () => {
 it('shows points and unanswered marking publicly while retaining the original wait and no editing controls', () => {
   render(<PartyLfgList entries={[entry]} canDrag={false} />)
   expect(screen.getByText('2 pts')).toBeInTheDocument()
-  expect(screen.getByText('Chamado, não respondeu')).toBeInTheDocument()
+  expect(screen.getByLabelText('Chamado, não respondeu')).toHaveAttribute('title', expect.stringContaining('Chamado, não respondeu'))
   expect(screen.getByText('2h 00m')).toBeInTheDocument()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
 })
