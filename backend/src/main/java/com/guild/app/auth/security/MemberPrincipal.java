@@ -7,6 +7,7 @@ import lombok.Getter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -21,6 +22,8 @@ public class MemberPrincipal implements UserDetails {
     private final Role role;
     private final MemberStatus status;
     private final boolean profileComplete;
+    /** Contas novas tem um prazo proprio para sincronizar a DLL (SyncAccessService). */
+    private final Instant createdAt;
 
     public MemberPrincipal(Member member) {
         this.id = member.getId();
@@ -30,6 +33,7 @@ public class MemberPrincipal implements UserDetails {
         this.role = member.getRole();
         this.status = member.getStatus();
         this.profileComplete = member.isProfileComplete();
+        this.createdAt = member.getCreatedAt();
     }
 
     @Override

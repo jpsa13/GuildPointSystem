@@ -23,8 +23,10 @@ public class CharacterStatusService {
     private final CharacterStatusRepository statusRepository;
     private final MemberRepository memberRepository;
     private final WebSocketPublisher webSocketPublisher;
+    private final SyncAccessService syncAccessService;
 
     // ---- Ingestao (sem autenticacao; associada pelo nome do personagem) ----
+    // Todas as contas com esse nick recebem o envio (personagem compartilhado).
     // NAO autenticado por decisao de projeto: o nome do personagem (unico no jogo)
     // casa com o nickname do membro. Isso identifica o membro, mas nao prova origem:
     // qualquer requisicao HTTP com um nickname valido e aceita. Aceito conscientemente
@@ -32,9 +34,10 @@ public class CharacterStatusService {
 
     @Transactional
     public void ingest(CharacterStatusIngestRequest request) {
-        Member member = memberRepository.findByNicknameIgnoreCase(request.character())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Nenhum membro com esse nome de personagem"));
+        List<Member> members = memberRepository.findByGameCharacter(request.character());
+        if (members.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhum membro com esse nome de personagem");
+        }
 
         // Coerencia extra alem das validacoes do DTO: dado do cliente nao e confiavel.
         if (request.hp() > request.hpMax() || request.fp() > request.fpMax() || request.sp() > request.spMax()) {
@@ -42,6 +45,10 @@ public class CharacterStatusService {
         }
 
         Instant now = Instant.now();
+        for (Member member : members) save(member, request, now);
+    }
+
+    private void save(Member member, CharacterStatusIngestRequest request, Instant now) {
         CharacterStatus status = statusRepository
                 .findByMemberIdAndGid(member.getId(), request.gid())
                 .orElseGet(() -> {
@@ -63,6 +70,7 @@ public class CharacterStatusService {
         status.setObservedAt(now);
         status.setUpdatedAt(now);
         statusRepository.save(status);
+        syncAccessService.recordSync(member.getId(), now);
 
         // Avisa a dashboard (apos o commit) para atualizar sem recarregar a pagina.
         webSocketPublisher.publishCharacterStatus(toView(status));

@@ -1,5 +1,7 @@
 package com.guild.app.auth.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.guild.app.characterstatus.service.SyncAccessService;
 import com.guild.app.common.enums.Role;
 import com.guild.app.common.logging.RequestLogContext;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,16 +36,20 @@ public class SecurityConfig {
     private final RestSecurityHandlers restSecurityHandlers;
     private final String allowedOrigins;
     private final String metricsScrapeToken;
+    private final SyncRequiredFilter syncRequiredFilter;
 
     public SecurityConfig(
             JwtAuthFilter jwtAuthFilter,
             RestSecurityHandlers restSecurityHandlers,
+            SyncAccessService syncAccessService,
+            ObjectMapper objectMapper,
             @Value("${guild.cors.allowed-origins}") String allowedOrigins,
             @Value("${guild.metrics.scrape-token:}") String metricsScrapeToken) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.restSecurityHandlers = restSecurityHandlers;
         this.allowedOrigins = allowedOrigins;
         this.metricsScrapeToken = metricsScrapeToken;
+        this.syncRequiredFilter = new SyncRequiredFilter(syncAccessService, objectMapper);
     }
 
     @Bean
@@ -84,7 +90,9 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(restSecurityHandlers)
                         .accessDeniedHandler(restSecurityHandlers))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Depois do JWT (precisa do membro), antes da autorizacao das rotas.
+                .addFilterAfter(syncRequiredFilter, JwtAuthFilter.class);
         return http.build();
     }
 

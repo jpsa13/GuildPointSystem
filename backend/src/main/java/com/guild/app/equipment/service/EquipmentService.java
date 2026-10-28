@@ -338,18 +338,25 @@ public class EquipmentService {
      * manuais. Só itens novos para o membro entram no log (um único CLIENT_SYNC por envio):
      * voltar para um item que ele já tinha (ex.: alternar arma de correr e de bater) ou
      * esvaziar a posição não gera log. Posições não enviadas ficam como estão.
+     * Personagem compartilhado (mesmo nick em mais de uma conta): todas as contas aptas recebem o envio.
      */
     @Transactional
     public Map<String,Object> syncFromClient(ClientEquipment request) {
-        var found=members.findByNicknameIgnoreCase(request.character())
-            .orElseThrow(()->error("Nenhum membro com esse nome de personagem.",HttpStatus.NOT_FOUND));
-        var member=members.findByIdForUpdate(found.getId()).orElseThrow();
-        require(member.getStatus()==MemberStatus.APROVADO && member.isProfileComplete(),"O membro deve estar aprovado e com perfil completo.");
+        var owners=members.findByGameCharacter(request.character());
+        if(owners.isEmpty()) throw error("Nenhum membro com esse nome de personagem.",HttpStatus.NOT_FOUND);
         var seen=new HashSet<Slot>();
         for(var input:request.slots()) require(input.slot()!=Slot.Weapon2 && seen.add(input.slot()),"Posição repetida ou não suportada.");
+        var eligible=owners.stream().map(o->members.findByIdForUpdate(o.getId()).orElseThrow())
+            .filter(m->m.getStatus()==MemberStatus.APROVADO && m.isProfileComplete()).toList();
+        require(!eligible.isEmpty(),"O membro deve estar aprovado e com perfil completo.");
         var today=LocalDate.now(ZoneId.of("America/Sao_Paulo"));
-        var changed=new ArrayList<String>();
-        var unknown=new ArrayList<String>();
+        var changed=new LinkedHashSet<String>();
+        var unknown=new LinkedHashSet<String>();
+        for(var member:eligible) syncMemberFromClient(member,request,today,changed,unknown);
+        return Map.of("changed",List.copyOf(changed),"unknown",List.copyOf(unknown));
+    }
+    private void syncMemberFromClient(Member member,ClientEquipment request,LocalDate today,Set<String> changed,Set<String> unknown) {
+        var slotsChanged=new ArrayList<String>();
         var changes=new ArrayList<Map<String,Object>>();
         for(var input:request.slots()) {
             var current=repository.slot(member.getId(),input.slot());
@@ -371,7 +378,7 @@ public class EquipmentService {
                 }
             }
             repository.setSlot(member.getId(),input.slot(),target);
-            changed.add(input.slot().name());
+            slotsChanged.add(input.slot().name());
             if(!created) continue;
             var change=new LinkedHashMap<String,Object>();
             change.put("slot",input.slot()); change.put("before",before);
@@ -383,8 +390,8 @@ public class EquipmentService {
             payload.put("action","CLIENT_SYNC"); payload.put("changes",changes);
             payload.put("slots",changes.stream().map(c->((Slot)c.get("slot")).name()).toList());
             audit.log(AuditLogType.EQUIPMENT_CHANGED,member,member,payload);
-        } else if(!changed.isEmpty()) ws.publishEquipmentChanged(); // sem log, o quadro ainda precisa atualizar
-        return Map.of("changed",changed,"unknown",unknown);
+        } else if(!slotsChanged.isEmpty()) ws.publishEquipmentChanged(); // sem log, o quadro ainda precisa atualizar
+        changed.addAll(slotsChanged);
     }
     @Transactional
     public Map<String,Object> importCatalog(ImportRequest request) {

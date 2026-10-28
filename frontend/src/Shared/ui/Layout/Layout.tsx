@@ -20,6 +20,7 @@ import { ApprovalsListener } from '@/Features/Admin/Approvals/ApprovalsListener'
 import { ApprovalsNavBadge } from '@/Features/Admin/Approvals/components/ApprovalsNavBadge/ApprovalsNavBadge'
 import type { Role } from '@/Domain/types/models'
 import { useEquipmentSubscription } from '@/Domain/Equipment/hooks/useEquipment'
+import { SyncAccessGate } from '@/Features/SyncAccess/SyncAccessGate'
 import './Layout.styles.scss'
 
 const NAV_ITEMS = [
@@ -70,7 +71,9 @@ export function Layout() {
   return (
     <AppToastProvider>
       <EventToastProvider>
-        <LayoutShell />
+        <SyncAccessGate>
+          <LayoutShell />
+        </SyncAccessGate>
       </EventToastProvider>
     </AppToastProvider>
   )

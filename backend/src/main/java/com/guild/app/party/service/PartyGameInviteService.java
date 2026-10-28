@@ -107,20 +107,25 @@ public class PartyGameInviteService {
         return view(partyId);
     }
 
-    /** Busca da DLL: entrega o pedido válido do líder uma única vez. */
+    /**
+     * Busca da DLL: entrega o pedido válido do líder uma única vez. Personagem compartilhado
+     * (mesmo nick em mais de uma conta): vale o pedido de qualquer uma delas.
+     */
     @Transactional
     public Optional<PendingInvite> pending(String character) {
-        var leader = members.findByNicknameIgnoreCase(character).filter(PartyGameInviteService::eligible);
-        if (leader.isEmpty()) return Optional.empty();
         Instant now = clock.instant();
-        var rows = jdbc.queryForList("""
-            SELECT party_id,id,nicks FROM party_game_invite
-            WHERE leader_id=? AND delivered_at IS NULL AND expires_at>? ORDER BY created_at LIMIT 1 FOR UPDATE
-            """, leader.get().getId(), Timestamp.from(now));
-        if (rows.isEmpty()) return Optional.empty();
-        var row = rows.getFirst();
-        jdbc.update("UPDATE party_game_invite SET delivered_at=? WHERE party_id=?", Timestamp.from(now), row.get("party_id"));
-        return Optional.of(new PendingInvite((UUID) row.get("id"), decode(row.get("nicks").toString())));
+        for (Member leader : members.findByGameCharacter(character)) {
+            if (!eligible(leader)) continue;
+            var rows = jdbc.queryForList("""
+                SELECT party_id,id,nicks FROM party_game_invite
+                WHERE leader_id=? AND delivered_at IS NULL AND expires_at>? ORDER BY created_at LIMIT 1 FOR UPDATE
+                """, leader.getId(), Timestamp.from(now));
+            if (rows.isEmpty()) continue;
+            var row = rows.getFirst();
+            jdbc.update("UPDATE party_game_invite SET delivered_at=? WHERE party_id=?", Timestamp.from(now), row.get("party_id"));
+            return Optional.of(new PendingInvite((UUID) row.get("id"), decode(row.get("nicks").toString())));
+        }
+        return Optional.empty();
     }
 
     /**
@@ -129,19 +134,20 @@ public class PartyGameInviteService {
      */
     @Transactional
     public boolean done(UUID id, String character) {
-        var leader = members.findByNicknameIgnoreCase(character);
-        if (leader.isEmpty()) return false;
-        var rows = jdbc.queryForList("""
-            UPDATE party_game_invite SET completed_at=? WHERE id=? AND leader_id=? AND delivered_at IS NOT NULL AND completed_at IS NULL
-            RETURNING party_id,nicks
-            """, Timestamp.from(clock.instant()), id, leader.get().getId());
-        if (rows.isEmpty()) return false;
-        Long partyId = ((Number) rows.getFirst().get("party_id")).longValue();
-        String message = leader.get().getNickname() + " te convidou para a PT no jogo.";
-        for (String nick : decode(rows.getFirst().get("nicks").toString()))
-            members.findByNicknameIgnoreCase(nick).ifPresent(m -> ws.publishPartyMemberNotice(m.getId(),
-                new InviteNotice("PARTY_GAME_INVITE", message, partyId, id)));
-        return true;
+        for (Member leader : members.findByGameCharacter(character)) {
+            var rows = jdbc.queryForList("""
+                UPDATE party_game_invite SET completed_at=? WHERE id=? AND leader_id=? AND delivered_at IS NOT NULL AND completed_at IS NULL
+                RETURNING party_id,nicks
+                """, Timestamp.from(clock.instant()), id, leader.getId());
+            if (rows.isEmpty()) continue;
+            Long partyId = ((Number) rows.getFirst().get("party_id")).longValue();
+            String message = leader.getNickname() + " te convidou para a PT no jogo.";
+            for (String nick : decode(rows.getFirst().get("nicks").toString()))
+                for (Member invited : members.findByGameCharacter(nick))
+                    ws.publishPartyMemberNotice(invited.getId(), new InviteNotice("PARTY_GAME_INVITE", message, partyId, id));
+            return true;
+        }
+        return false;
     }
 
     private InviteView view(Long partyId) {
