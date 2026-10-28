@@ -72,6 +72,8 @@ describe('Equipamentos', () => {
     expect(within(roster).getByText('1.000 GS')).toBeInTheDocument()
     expect(within(roster).getByLabelText('Warrior').querySelector('img')).toHaveAttribute('src', '/classes/warrior.png')
     expect(within(roster).getByText(/EXP não informada/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Ordenar jogadores')).toHaveValue('gs-desc')
+    expect(names()).toEqual(['Destinatário local', 'Player local', 'Outro player'])
     fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'level-desc' } })
     expect(names()).toEqual(['Outro player', 'Player local', 'Destinatário local'])
     fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'level-asc' } })
@@ -255,6 +257,7 @@ describe('Equipamentos', () => {
   it('orders by name or profile level with alphabetical ties and keeps the selected filter', () => {
     state.transferTarget = true; state.extraMember = true
     render(<EquipmentPage />)
+    fireEvent.change(screen.getByLabelText('Ordenar jogadores'), { target: { value: 'name' } })
     const names = () => within(screen.getByRole('list', { name: 'Equipamentos dos personagens' })).getAllByRole('listitem').map(row => within(row).getAllByRole('button')[0].textContent)
     expect(names()).toEqual(['Destinatário local', 'Outro player', 'Player local'])
     expect(screen.getByLabelText('Selecionar Player local').closest('li')).toHaveTextContent('Lv. 50')

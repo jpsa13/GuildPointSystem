@@ -10,5 +10,9 @@ public record PartyLfgEntry(
         int level,
         Float expPercent,
         String note,
-        Instant createdAt
+        Instant createdAt,
+        int priorityPoints,
+        long queueOrder,
+        Instant lastUnansweredAt,
+        Instant afkSince
 ) {}

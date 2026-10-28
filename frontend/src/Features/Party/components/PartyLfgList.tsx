@@ -3,6 +3,7 @@ import type { PartyLfgEntry } from '@/Features/Party/Party.types'
 import { formatWaiting, sortByWaiting } from '@/Features/Party/utils/partyWait'
 import { setPartyDragData } from '@/Features/Party/utils/partyDrag'
 import { MemberClassIcon } from '@/Shared/ui/components/MemberClassIcon/MemberClassIcon'
+import { PartyAfkControl } from './PartyAfkControl'
 import { useServerNow } from '@/Shared/utils/useServerNow'
 
 // Timers tick here (server clock, once a second) so only the waiting list re-renders, not the page.
@@ -17,6 +18,8 @@ export function PartyLfgList({
   viewerId,
   canDrag,
   actions,
+  queueActions,
+  canManageAfk = false,
   search = '',
 }: {
   entries: PartyLfgEntry[]
@@ -24,6 +27,8 @@ export function PartyLfgList({
   canDrag: boolean
   /** Extra buttons at the end of a card (e.g. admin "remove from the list"). */
   actions?: (entry: PartyLfgEntry) => ReactNode
+  queueActions?: (entry: PartyLfgEntry) => ReactNode
+  canManageAfk?: boolean
   /** Shows only nicknames containing this text; each card keeps its real place in the queue. */
   search?: string
 }) {
@@ -59,7 +64,7 @@ export function PartyLfgList({
             }}
           >
             <div className="party-lfg-item__main">
-              <span className="party-lfg-item__rank" title="Posição na fila (maior tempo de espera primeiro)">
+              <span className="party-lfg-item__rank" title="Posição na fila: mais pontos primeiro, depois a ordem de espera">
                 {place}
               </span>
               {entry.classImageUrl ? (
@@ -90,6 +95,16 @@ export function PartyLfgList({
                 {formatWaiting(now - new Date(entry.createdAt).getTime())}
               </span>
             </div>
+            <div className="party-lfg-item__priority">
+              <span title="Prioridade da fila. Zera ao entrar em uma PT.">{entry.priorityPoints ?? 0} pts</span>
+              {queueActions?.(entry)}
+            </div>
+            {entry.afkSince && <PartyAfkControl memberId={entry.memberId} nickname={entry.nickname} queued
+              canControl={canManageAfk || entry.memberId === viewerId} />}
+            {entry.lastUnansweredAt && <span className="party-lfg-item__unanswered"
+              title={`Última chamada sem resposta: ${new Date(entry.lastUnansweredAt).toLocaleString('pt-BR')}`}>
+              Chamado, não respondeu
+            </span>}
           </li>
         )
       })}

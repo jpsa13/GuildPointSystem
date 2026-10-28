@@ -62,6 +62,8 @@ export interface PartyMemberSummary {
 
   leader: boolean
 
+  afkUntil?: string | null
+
 }
 
 
@@ -101,6 +103,12 @@ export interface PartyLfgEntry {
   expPercent: number | null
 
   note: string | null
+
+  /** Party-only priority; reset when joining a PT. Optional for cached boards before deployment. */
+  priorityPoints?: number
+  queueOrder?: number
+  lastUnansweredAt?: string | null
+  afkSince?: string | null
 
   /** When the member joined the waiting list. */
   createdAt: string

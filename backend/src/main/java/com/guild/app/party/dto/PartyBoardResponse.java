@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * {@code lfg} is ordered by waiting time (longest first). {@code serverTime} lets clients run the
+ * {@code lfg} is ordered by priority points, then queue position. {@code serverTime} lets clients run the
  * waiting timers on the server clock and discard a board snapshot older than the one they hold.
  */
 public record PartyBoardResponse(

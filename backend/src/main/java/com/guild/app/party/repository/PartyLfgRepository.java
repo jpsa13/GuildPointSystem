@@ -9,7 +9,11 @@ import java.util.Optional;
 
 public interface PartyLfgRepository extends JpaRepository<PartyLfg, Long> {
 
-    List<PartyLfg> findAllByOrderByCreatedAtAsc();
+    @Query("SELECT l FROM PartyLfg l JOIN l.member m ORDER BY m.partyPriorityPoints DESC,l.queueOrder,l.memberId")
+    List<PartyLfg> findAllInQueueOrder();
+
+    @Query(value="SELECT nextval('party_lfg_order_seq')",nativeQuery=true)
+    long nextQueueOrder();
 
     Optional<PartyLfg> findByMemberId(Long memberId);
 
@@ -17,7 +21,7 @@ public interface PartyLfgRepository extends JpaRepository<PartyLfg, Long> {
             SELECT l FROM PartyLfg l
             JOIN FETCH l.member m
             LEFT JOIN FETCH m.characterClass
-            ORDER BY l.createdAt ASC
+            ORDER BY m.partyPriorityPoints DESC,l.queueOrder,l.memberId
             """)
     List<PartyLfg> findAllWithMemberOrderByCreatedAtAsc();
 }

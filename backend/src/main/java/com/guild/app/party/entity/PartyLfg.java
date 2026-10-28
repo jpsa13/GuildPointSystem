@@ -26,4 +26,13 @@ public class PartyLfg {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    @Column(name = "queue_order", nullable = false)
+    private Long queueOrder;
+
+    @Column(name = "last_unanswered_at")
+    private Instant lastUnansweredAt;
+
+    @Column(name = "afk_since")
+    private Instant afkSince;
 }

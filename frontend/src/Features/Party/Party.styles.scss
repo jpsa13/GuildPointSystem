@@ -502,3 +502,17 @@
   font-size: theme.$font-size-base;
   color: theme.$color-text-muted;
 }
+
+.party-lfg-item__priority { display: flex; align-items: center; justify-content: space-between; gap: theme.$spacing-xs; flex-wrap: wrap;
+  > span { color: theme.$color-primary; font-family: theme.$font-mono; }
+}
+.party-queue-controls { display: flex; flex-wrap: wrap; gap: theme.$spacing-xs; }
+.party-lfg-item__unanswered { color: theme.$color-warning; font-size: theme.$font-size-base; }
+
+.party-afk { display: inline-flex; align-items: center; flex-wrap: wrap; gap: theme.$spacing-xs; }
+.party-afk__timer { color: theme.$color-warning; font-family: theme.$font-mono; white-space: nowrap; }
+.party-afk__tag { color: theme.$color-danger; border: 1px solid theme.$color-danger; padding: 0 theme.$spacing-xs; }
+.party-afk-policy { margin: theme.$spacing-md 0 0; padding: theme.$spacing-md; border: 1px solid rgba(theme.$color-danger, .45);
+  background: rgba(theme.$color-danger, .06); font-size: theme.$font-size-base; line-height: 1.5;
+  strong { color: theme.$color-danger; }
+}

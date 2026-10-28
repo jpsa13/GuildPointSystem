@@ -32,4 +32,7 @@ public class PartyMember {
 
     @Column(name = "joined_at", nullable = false)
     private Instant joinedAt = Instant.now();
+
+    @Column(name = "afk_until")
+    private Instant afkUntil;
 }

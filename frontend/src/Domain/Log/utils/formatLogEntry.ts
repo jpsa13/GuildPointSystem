@@ -3,6 +3,7 @@ import type { AuditLogEntry, AuditLogType } from '@/Domain/types/models'
 const LOG_TYPE_LABELS: Record<AuditLogType, string> = {
   PARTY_DISCORD_CALLED: 'PT chamada no Discord',
   PARTY_GAME_INVITE: 'PT chamada no jogo',
+  PARTY_QUEUE_UPDATED: 'Fila de PT atualizada',
   ROTATION_UPDATED: 'Rotação atualizada',
   QUEST_CATALOG_UPDATED: 'Lista de quests revisada',
   EQUIPMENT_CHANGED: 'Equipamento atualizado',
@@ -129,6 +130,14 @@ export function formatLogDetails(log: AuditLogEntry): string {
     }
     case 'AUCTION_DELETED':
       return `#${str(p.auctionId)} · ${str(p.items)}`
+    case 'PARTY_QUEUE_UPDATED':
+      if (p.action === 'AFK_STARTED') return 'AFK avisado · limite de 15 minutos'
+      if (p.action === 'AFK_CANCELLED') return 'AFK cancelado · voltou antes do prazo'
+      if (p.action === 'AFK_EXPIRED') return '15 minutos de AFK · enviado ao final da fila'
+      if (p.action === 'AFK_RETURNED') return 'Retornou do AFK · permanece na fila'
+      if (p.action === 'UNANSWERED') return 'Chamado, não respondeu · movido ao final entre os mesmos pontos'
+      if (p.action === 'RESET') return `Entrou em uma PT · prioridade ${str(p.oldPoints)} → 0`
+      return `Prioridade da fila: ${str(p.oldPoints)} → ${str(p.newPoints)}`
     case 'ROTATION_UPDATED':
       return `Versão ${str(p.version)} · ${str(p.slots)} horários`
     case 'PROFILE_UPDATED': {

@@ -10,9 +10,12 @@ export function formatWaiting(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-/** Longest wait first (earliest join); ties keep a stable order by member id. */
+/** Points first, then queue position; createdAt remains the unchanged waiting timer. */
 export function sortByWaiting(entries: PartyLfgEntry[]): PartyLfgEntry[] {
   return [...entries].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || a.memberId - b.memberId,
+    (a, b) => (b.priorityPoints ?? 0) - (a.priorityPoints ?? 0)
+      || (a.queueOrder != null && b.queueOrder != null ? a.queueOrder - b.queueOrder
+        : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      || a.memberId - b.memberId,
   )
 }
