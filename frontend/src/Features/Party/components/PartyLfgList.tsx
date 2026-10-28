@@ -67,6 +67,8 @@ export function PartyLfgList({
               <span className="party-lfg-item__rank" title="Posição na fila: mais pontos primeiro, depois a ordem de espera">
                 {place}
               </span>
+              <span className={`party-lfg-item__points${(entry.priorityPoints ?? 0) > 0 ? ' is-positive' : ''}`}
+                title="Prioridade da fila. Zera ao entrar em uma PT.">{entry.priorityPoints ?? 0} pts</span>
               {entry.classImageUrl ? (
                 <MemberClassIcon classImageUrl={entry.classImageUrl} classLabel={entry.className ?? ''} size="sm" />
               ) : (
@@ -76,15 +78,18 @@ export function PartyLfgList({
                 {entry.nickname}
                 {isMe ? ' (você)' : ''}
               </strong>
+              {entry.lastUnansweredAt && <span className="party-lfg-item__unanswered" role="img"
+                aria-label="Chamado, não respondeu"
+                title={`Chamado, não respondeu · ${new Date(entry.lastUnansweredAt).toLocaleString('pt-BR')}`} />}
               {actions && (
                 <div className="party-lfg-item__actions" draggable={false} onDragStart={(e) => e.stopPropagation()}>
                   {actions(entry)}
                 </div>
               )}
             </div>
-            {/* Second line: level and EXP on the left, waiting time on the right. */}
+            {/* Keep the original wait clock separate from queue priority and actions. */}
             <div className="party-lfg-item__meta">
-              <span className="party-lfg-item__level">
+              <span className="party-lfg-item__level" title={`Lv ${entry.level}${entry.expPercent != null ? ` · ${entry.expPercent.toFixed(2)}% XP` : ''}`}>
                 Lv {entry.level}
                 {entry.expPercent != null ? ` · ${entry.expPercent.toFixed(2)}%` : ''}
               </span>
@@ -94,17 +99,10 @@ export function PartyLfgList({
               >
                 {formatWaiting(now - new Date(entry.createdAt).getTime())}
               </span>
-            </div>
-            <div className="party-lfg-item__priority">
-              <span title="Prioridade da fila. Zera ao entrar em uma PT.">{entry.priorityPoints ?? 0} pts</span>
-              {queueActions?.(entry)}
+              {queueActions && <div draggable={false} onDragStart={e => e.stopPropagation()}>{queueActions(entry)}</div>}
             </div>
             {entry.afkSince && <PartyAfkControl memberId={entry.memberId} nickname={entry.nickname} queued
               canControl={canManageAfk || entry.memberId === viewerId} />}
-            {entry.lastUnansweredAt && <span className="party-lfg-item__unanswered"
-              title={`Última chamada sem resposta: ${new Date(entry.lastUnansweredAt).toLocaleString('pt-BR')}`}>
-              Chamado, não respondeu
-            </span>}
           </li>
         )
       })}

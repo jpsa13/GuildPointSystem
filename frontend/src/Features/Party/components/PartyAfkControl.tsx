@@ -18,11 +18,11 @@ export function PartyAfkControl({ memberId, nickname, until, queued = false, can
   return <span className="party-afk" draggable={false} onDragStart={e => e.stopPropagation()}>
     {until && <Countdown until={until} />}
     {queued && <strong className="party-afk__tag">AFK</strong>}
-    {canControl && <Button size="sm" variant="ghost" loading={change.isPending}
+    {canControl && <Button size="sm" variant="secondary" className="party-afk__button" loading={change.isPending}
       title={active ? 'Marcar que voltou. Retornar da fila não recoloca na PT.' : 'Avisar AFK e iniciar o limite de 15 minutos'}
       aria-label={active ? `Marcar retorno de ${nickname}` : `Iniciar AFK de 15 minutos para ${nickname}`}
       onClick={() => change.mutate({ memberId, active: !active }, {
         onError: error => showToast(error.message, 'error'),
-      })}>{active ? 'Voltei' : 'AFK · 15 min'}</Button>}
+      })}>{active ? 'Voltei' : 'AFK'}</Button>}
   </span>
 }
