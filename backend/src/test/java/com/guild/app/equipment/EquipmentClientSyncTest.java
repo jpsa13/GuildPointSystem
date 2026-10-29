@@ -112,7 +112,7 @@ class EquipmentClientSyncTest {
         authenticate(adminId);
         long upperCatalog=service.catalog("UPPER",upperA,0,10).items().getFirst().id();
         var delivery=service.operate(new Operation(UUID.randomUUID(),Action.CREATE,memberId,Slot.Upper,0L,null,upperCatalog,"15:0.08",
-            Origin.GUILD_DISTRIBUTION,LocalDate.now(),false,null,null,null,null,BigDecimal.ONE));
+            Origin.GUILD_DISTRIBUTION,LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")),false,null,null,null,null,BigDecimal.ONE));
         assertTrue(delivery.deliveryOnly());
         SecurityContextHolder.clearContext();
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
@@ -126,7 +126,7 @@ class EquipmentClientSyncTest {
     @Test void emptySlotClearsAndOmittedSlotsKeepManualRecords() {
         authenticate(adminId);
         var manual=service.operate(new Operation(UUID.randomUUID(),Action.CREATE,memberId,Slot.Weapon2,0L,null,
-            service.catalog("WEAPON",weapon,0,10).items().getFirst().id(),"15:0.08",Origin.GUILD_DISTRIBUTION,LocalDate.now(),true,null,null,null));
+            service.catalog("WEAPON",weapon,0,10).items().getFirst().id(),"15:0.08",Origin.GUILD_DISTRIBUTION,LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")),true,null,null,null));
         SecurityContextHolder.clearContext();
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,upperA)));
         service.syncFromClient(report(new ReportedSlot(Slot.Upper,null)));
@@ -168,10 +168,10 @@ class EquipmentClientSyncTest {
         authenticate(adminId);
         long catalogId=synced.assignment().catalogId();
         assertThrows(AppException.class,()->service.operate(new Operation(UUID.randomUUID(),Action.CREATE,memberId,Slot.Lower,0L,null,
-            catalogId,"15:0.08",Origin.GAME_CLIENT,LocalDate.now(),true,null,null,null)));
+            catalogId,"15:0.08",Origin.GAME_CLIENT,LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")),true,null,null,null)));
         // A administração audita: corrige o registro do jogo mantendo a origem.
         var corrected=service.operate(new Operation(UUID.randomUUID(),Action.CORRECT,memberId,Slot.Upper,synced.version(),
-            synced.assignment().id(),catalogId,"15:0.08",Origin.GAME_CLIENT,LocalDate.now(),true,null,null,"Conferido pela administração"));
+            synced.assignment().id(),catalogId,"15:0.08",Origin.GAME_CLIENT,LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")),true,null,null,"Conferido pela administração"));
         assertEquals(Origin.GAME_CLIENT,corrected.origin());
         assertEquals("CORRECTED",repository.assignment(synced.assignment().id()).status());
     }
