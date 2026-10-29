@@ -342,6 +342,68 @@ class EquipmentIntegrationTest {
             null,null,false,null,null,null,new Transfer(target,null,targetVersion,replace));
     }
 
+    Operation sendPrevious(Assignment source,long version,long target,long targetVersion,boolean replace) {
+        return new Operation(UUID.randomUUID(),Action.TRANSFER,memberId,source.slot(),version,source.id(),null,null,
+            null,null,false,null,null,null,new Transfer(target,null,targetVersion,replace));
+    }
+
+    @Test void previousTransferPreservesCurrentEquipmentAndCannotBeRepeatedWithAnotherOperation() {
+        var old=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        var upgraded=service.operate(create(Slot.Weapon,1,true,"15:0.08"));
+        long target=member(Role.MEMBRO,MemberStatus.APROVADO,true);
+        var operation=sendPrevious(old,2,target,0,false);
+        var sent=service.operate(operation);
+        assertEquals("TRANSFERRED",sent.status());
+        assertEquals(upgraded.id(),slot(Slot.Weapon).assignment().id());
+        assertEquals(2,slot(Slot.Weapon).version());
+        var received=repository.slot(target,Slot.Weapon).assignment();
+        assertEquals(old.name(),received.name());
+        assertEquals(old.effect(),received.effect());
+        assertEquals(old.sourceHash(),received.sourceHash());
+        assertEquals(sent,service.operate(operation));
+        assertEquals(1,repository.history(target).size());
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,2,target,1,true)));
+        assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE payload->>'operationId'=?",Integer.class,operation.operationId().toString()));
+        assertThrows(AppException.class,()->service.operate(change(Action.EQUIP,old,2,null,null)));
+    }
+
+    @Test void previousTransferSupportsRemovedItemsAndChecksRecipientBeforeChangingAnything() {
+        var old=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        var removal=service.editSlots(remove(Slot.Weapon));
+        long target=member(Role.MEMBRO,MemberStatus.APROVADO,true);
+        var existing=service.operate(new Operation(UUID.randomUUID(),Action.CREATE,target,Slot.Weapon,0L,null,catalogId,"15:0.08",
+            Origin.INITIAL,LocalDate.now(),true,null,null,null));
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,2,target,0,true)));
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,2,target,1,false)));
+        assertEquals("ACTIVE",repository.assignment(old.id()).status());
+        assertEquals(existing.id(),repository.slot(target,Slot.Weapon).assignment().id());
+        service.operate(sendPrevious(old,2,target,1,true));
+        assertNull(slot(Slot.Weapon).assignment());
+        assertEquals(2,slot(Slot.Weapon).version());
+        assertEquals("ACTIVE",repository.assignment(existing.id()).status());
+        assertFalse(repository.isEquipped(existing.id()));
+        assertThrows(AppException.class,()->service.editSlots(reverse(removal)));
+    }
+
+    @Test void previousTransferRejectsEquippedDeliveryCancelledForeignAndUnauthorizedRecords() {
+        var old=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        long target=member(Role.MEMBRO,MemberStatus.APROVADO,true);
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,1,target,0,false)));
+        service.operate(create(Slot.Weapon,1,true,"15:0.08"));
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,1,target,0,false)));
+        var delivery=service.operate(delivery(UUID.randomUUID(),1,2,false));
+        assertThrows(AppException.class,()->service.operate(sendPrevious(delivery,2,target,0,false)));
+        authenticate(memberId);
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,2,target,0,false)));
+        authenticate(actorId);
+        var foreign=service.operate(new Operation(UUID.randomUUID(),Action.CREATE,target,Slot.Weapon,0L,null,catalogId,"15:0.08",
+            Origin.INITIAL,LocalDate.now(),false,null,null,null));
+        assertThrows(AppException.class,()->service.operate(sendPrevious(foreign,2,target,0,false)));
+        service.operate(change(Action.CANCEL,old,2,null,null));
+        assertThrows(AppException.class,()->service.operate(sendPrevious(old,2,target,0,false)));
+        assertNull(repository.slot(target,Slot.Weapon).assignment());
+    }
+
     @Test void directTransferAcceptsEmptyDestinationWithoutCatalogSelectionAndIsIdempotent() {
         var old=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
         long target=member(Role.MEMBRO,MemberStatus.APROVADO,true);
@@ -900,6 +962,27 @@ class EquipmentIntegrationTest {
         service.importCatalog(new ImportRequest("c".repeat(64),List.of(new ImportItem("WEAPON",code+"x","Outro",40,1,List.of(),null,"","","11111",0)),
             List.of(new ExcludedItem("WEAPON",code,"Ambíguo"))));
         assertTrue(service.catalog("WEAPON",code,0,10).items().stream().noneMatch(i->i.id()==catalogId));
+    }
+    @Test
+    @Transactional(propagation=Propagation.NOT_SUPPORTED)
+    void concurrentPreviousTransfersOnlyDeliverOnce() throws Exception {
+        var old=service.operate(create(Slot.Weapon,0,true,"15:0.08"));
+        var upgraded=service.operate(create(Slot.Weapon,1,true,"15:0.08"));
+        long target=member(Role.MEMBRO,MemberStatus.APROVADO,true);
+        var authentication=authenticationFor(actorId);
+        var start=new CountDownLatch(1);
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            Callable<Boolean> task=()->{
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                try { start.await(); service.operate(sendPrevious(old,2,target,0,false)); return true; }
+                catch(AppException e) { return false; }
+                finally { SecurityContextHolder.clearContext(); }
+            };
+            var one=executor.submit(task); var two=executor.submit(task); start.countDown();
+            assertNotEquals(one.get(20,TimeUnit.SECONDS),two.get(20,TimeUnit.SECONDS));
+            assertEquals(1,repository.history(target).size());
+            assertEquals(upgraded.id(),slot(Slot.Weapon).assignment().id());
+        }
     }
     @Test
     @Transactional(propagation=Propagation.NOT_SUPPORTED)

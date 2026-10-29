@@ -241,8 +241,14 @@ public class EquipmentService {
             throw error("Esta posição mudou em outra sessão. Atualize e confirme novamente.",HttpStatus.CONFLICT);
         Member recipient=null;
         CurrentSlot destination=null;
+        Assignment transferSource=current.assignment();
         if(op.transfer()!=null) {
-            require(current.assignment()!=null && current.assignment().status().equals("ACTIVE"),"Não há equipamento atual válido para repassar.");
+            if(op.action()==Action.TRANSFER && op.assignmentId()!=null) {
+                transferSource=owned(op.assignmentId(),member.getId(),op.slot());
+                require(!Boolean.TRUE.equals(transferSource.deliveryOnly()) && !repository.isEquipped(transferSource.id()),
+                    "Este item não está disponível nos equipamentos anteriores. Atualize a lista.");
+            }
+            require(transferSource!=null && transferSource.status().equals("ACTIVE"),"Não há equipamento válido para repassar.");
             recipient=locked.get(op.transfer().memberId());
             require(recipient.getStatus()==MemberStatus.APROVADO && recipient.isProfileComplete(),"O destinatário deve estar aprovado e com perfil completo.");
             Slot target=op.transfer().slot()==null?op.slot():op.transfer().slot();
@@ -258,10 +264,10 @@ public class EquipmentService {
         switch(op.action()) {
             case TRANSFER -> {
                 require(op.transfer()!=null,"Escolha o destinatário do equipamento.");
-                require(op.assignmentId()==null && op.catalogId()==null && op.replacementId()==null && op.restoration()==null,
-                    "O envio direto utiliza somente o equipamento atual.");
-                result=current.assignment();
-                repository.setSlot(member.getId(),op.slot(),null);
+                require(op.catalogId()==null && op.replacementId()==null && op.restoration()==null,
+                    "O envio utiliza um registro de equipamento existente.");
+                result=transferSource;
+                if(op.assignmentId()==null) repository.setSlot(member.getId(),op.slot(),null);
             }
             case CREATE -> {
                 require(op.replacementId()==null && op.assignmentId()==null,"Dados de entrega inválidos.");
@@ -306,7 +312,7 @@ public class EquipmentService {
             default -> throw error("Operação inválida.",HttpStatus.BAD_REQUEST);
         }
         if(recipient!=null) {
-            var old=current.assignment();
+            var old=transferSource;
             var received=repository.transfer(old,recipient.getId(),destination.slot(),actor.getId(),
                 LocalDate.now(ZoneId.of("America/Sao_Paulo")),"Repasse de "+member.getNickname()+" · registro #"+old.id());
             repository.setSlot(recipient.getId(),destination.slot(),received.id());

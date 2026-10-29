@@ -433,11 +433,84 @@ describe('Equipamentos', () => {
   it('supports keyboard navigation between inspection and history', () => {
     render(<EquipmentPage />); inspect()
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Equipamento atual' }), { key: 'ArrowRight' })
+    expect(screen.getByRole('tab', { name: /^Itens anteriores/ })).toHaveFocus()
+    fireEvent.keyDown(screen.getByRole('tab', { name: /^Itens anteriores/ }), { key: 'ArrowRight' })
     expect(screen.getByRole('tab', { name: 'Histórico' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Histórico' })).toHaveFocus()
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Histórico' }), { key: 'Home' })
     expect(screen.getByRole('tab', { name: 'Equipamento atual' })).toHaveFocus()
     expect(screen.getByRole('group', { name: 'Inventário de Player local' })).toBeInTheDocument()
+  })
+  it('opens the inspection beside the roster and lists only available previous records', () => {
+    state.current = true
+    state.history = [record, { ...record, id: 21, name: 'Item anterior' }, { ...record, id: 22, status: 'TRANSFERRED' },
+      { ...record, id: 23, status: 'CANCELLED' }, { ...record, id: 24, status: 'CORRECTED' }, { ...record, id: 25, deliveryOnly: true }]
+    render(<EquipmentPage />); inspect()
+    const panel = screen.getByRole('region', { name: 'Equipamentos de Player local' })
+    expect(panel.parentElement).toHaveClass('equipment-workspace--split')
+    expect(panel.parentElement).toContainElement(screen.getByRole('list', { name: 'Equipamentos dos personagens' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Itens anteriores (1)' }))
+    expect(within(screen.getByRole('tabpanel')).getByRole('button', { name: 'Arrastar ou repassar Item anterior · registro 21' })).toHaveAttribute('draggable', 'true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar inspeção' }))
+    expect(screen.queryByRole('region', { name: 'Equipamentos de Player local' })).not.toBeInTheDocument()
+  })
+  it('drags an earlier item to an empty destination using its record and current source version', async () => {
+    state.current = true; state.transferTarget = true; state.targetEmpty = true
+    state.history = [{ ...record, id: 21, name: 'Item anterior' }]
+    render(<EquipmentPage />); inspect()
+    fireEvent.click(screen.getByRole('tab', { name: /^Itens anteriores/ }))
+    fireEvent.dragStart(screen.getByRole('button', { name: 'Arrastar ou repassar Item anterior · registro 21' }), { dataTransfer: { setData: vi.fn() } })
+    const target = screen.getByRole('button', { name: 'Destinatário local' }).closest('li')!
+    fireEvent.drop(target, { dataTransfer: { getData: vi.fn() } })
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ action: 'TRANSFER', assignmentId: 21, memberId: 1, expectedVersion: 1,
+      transfer: { memberId: 3, slot: 'Weapon', expectedVersion: 0, replaceCurrent: false } })
+    expect(state.slotEdit).not.toHaveBeenCalled()
+  })
+  it('offers keyboard repass and confirms replacing an occupied destination', async () => {
+    state.transferTarget = true
+    state.history = [{ ...record, id: 21, name: 'Item anterior' }]
+    render(<EquipmentPage />); inspect()
+    fireEvent.click(screen.getByRole('tab', { name: /^Itens anteriores/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Arrastar ou repassar Item anterior · registro 21' }))
+    fireEvent.change(screen.getByLabelText('Destinatário'), { target: { value: '3' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Enviar$/ }))
+    expect(state.mutate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar envio' }))
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ assignmentId: 21, transfer: { memberId: 3, expectedVersion: 2, replaceCurrent: true } })
+  })
+  it('hides previous equipment from ordinary players', () => {
+    state.admin = false; state.userId = 1; state.history = [record]
+    render(<EquipmentPage />)
+    expect(screen.queryByRole('tab', { name: /^Itens anteriores/ })).not.toBeInTheDocument()
+    expect(state.historyQuery).toHaveBeenLastCalledWith(1, false)
+  })
+  it('lets a previous ring choose either side for a keyboard transfer', async () => {
+    state.transferTarget = true; state.targetEmpty = true
+    state.history = [{ ...record, id: 21, slot: 'Ring1', category: 'RING', name: 'Anel anterior' }]
+    render(<EquipmentPage />); inspect()
+    fireEvent.click(screen.getByRole('tab', { name: /^Itens anteriores/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Arrastar ou repassar Anel anterior · registro 21' }))
+    fireEvent.change(screen.getByLabelText('Destinatário'), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText('Posição', { exact: true }), { target: { value: 'Ring2' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Enviar$/ }))
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ assignmentId: 21, slot: 'Ring1', transfer: { slot: 'Ring2' } })
+  })
+  it('discards a previous record through the audited cancellation without restoring the current slot', async () => {
+    state.current = true; state.history = [{ ...record, id: 21, name: 'Item anterior' }]
+    render(<EquipmentPage />); inspect()
+    fireEvent.click(screen.getByRole('tab', { name: /^Itens anteriores/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar Item anterior · registro 21' }))
+    expect(screen.queryByLabelText('Após cancelar, esta posição deve ficar')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Motivo'), { target: { value: 'Item vendido no jogo' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Revisar e confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar registro' }))
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1))
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ action: 'CANCEL', assignmentId: 21, expectedVersion: 1, useAsCurrent: false })
+    expect(state.mutate.mock.calls[0][0].restoration).toBeUndefined()
   })
   it('searches only the chosen category after typing and keeps grade criteria visible', async () => {
     render(<EquipmentPage />); openEditor('Helmet')

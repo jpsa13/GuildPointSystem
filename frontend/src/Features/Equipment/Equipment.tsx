@@ -153,10 +153,11 @@ export function EquipmentPage() {
   const [playerClass, setPlayerClass] = useState('')
   const [historyId, setHistoryId] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>('Weapon')
-  const [tab, setTab] = useState<'current' | 'history' | 'deliveries'>('current')
+  const [tab, setTab] = useState<'current' | 'previous' | 'history' | 'deliveries'>('current')
   const [editor, setEditor] = useState<Editor | null>(null)
   const { data: history = [], isLoading: historyLoading, error: historyError, refetch: refetchHistory } = useEquipmentHistory(managing ? historyId : user?.memberId ?? 0, admin)
   const inspected = members.find(m => m.memberId === (managing ? historyId : user?.memberId))
+  const previousItems = admin ? history.filter(r => r.status === 'ACTIVE' && !r.deliveryOnly && !inspected?.slots.some(s => s.assignment?.id === r.id)) : []
   const deliveryTotals = summarizeDeliveries(admin ? history : [])
   // Histórico mostra só o que a administração registrou: a sincronização do jogo (feita pelo próprio membro) fica de fora.
   const visibleHistory = history.filter(r => tab === 'deliveries' ? isGuildDelivery(r) : !r.deliveryOnly && !isGameClientSync(r))
@@ -166,7 +167,7 @@ export function EquipmentPage() {
   const inspectRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     if (historyId) {
-      inspectRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+      if (window.matchMedia?.('(max-width: 1400px)').matches) inspectRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
       inspectRef.current?.focus({ preventScroll: true })
     }
   }, [historyId])
@@ -183,8 +184,7 @@ export function EquipmentPage() {
     catch { setPendingTransfer(request) }
     finally { sendingTransfer.current = false }
   }
-  const dropOn = (member: MemberEquipment, slot?: EquipmentSlot) => {
-    const source = dragSource.current
+  const requestTransfer = (source: Editor, member: MemberEquipment, slot?: EquipmentSlot) => {
     if (sendingTransfer.current || !source || !acceptsDrop(member.memberId, slot, source)) return
     const targetSlot = slot ?? source.position.slot
     const destination = member.slots.find(s => s.slot === targetSlot)
@@ -192,18 +192,23 @@ export function EquipmentPage() {
     const request: DragTransfer = { source, recipient: member.nickname, destination, operation: {
       operationId: crypto.randomUUID(), action: 'TRANSFER', memberId: source.memberId,
       slot: source.position.slot, expectedVersion: source.position.version, useAsCurrent: false,
+      ...(source.original ? { assignmentId: source.original.id } : {}),
       transfer: { memberId: member.memberId, slot: targetSlot, expectedVersion: destination.version, replaceCurrent: !!destination.assignment },
     } }
     dragSource.current = null; setDragged(null)
     if (destination.assignment) setPendingTransfer(request)
     else void sendTransfer(request)
   }
+  const dropOn = (member: MemberEquipment, slot?: EquipmentSlot) => {
+    const source = dragSource.current
+    if (source) requestTransfer(source, member, slot)
+  }
   const inspect = (id: number, slot: EquipmentSlot = 'Weapon', edit = false) => {
     setHistoryId(id); setSelectedSlot(slot); setTab('current'); setEditor(null)
     const member = members.find(m => m.memberId === id)
     const target = member?.slots.find(s => s.slot === slot)
     if (edit && member && target && (admin || id === user?.memberId)) setEditor({ memberId: id, nickname: member.nickname, position: target, action: 'CREATE' })
-    if (id === historyId) { inspectRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); inspectRef.current?.focus({ preventScroll: true }) }
+    if (id === historyId) inspectRef.current?.focus({ preventScroll: true })
   }
   const openEditor = (slot: EquipmentSlot, action: Editor['action'], original?: EquipmentAssignment) => {
     if (!canEdit) return
@@ -249,7 +254,8 @@ export function EquipmentPage() {
       {error && <p role="alert">{error.message}</p>}
       {failedEdit && <div role="alert">{slotMutation.error?.message ?? 'Não foi possível concluir a alteração.'}<Button onClick={() => void editSlots(failedEdit.request, failedEdit.direction)}>Tentar novamente</Button><Button onClick={() => setFailedEdit(null)}>Fechar aviso</Button></div>}
     </div>}
-    {managing && <Panel title="Personagens" code={`${members.length} PERSONAGENS`}>
+    <div className={`equipment-workspace${managing && inspected ? ' equipment-workspace--split' : ''}`}>
+    {managing && <Panel className="equipment-workspace__roster" title="Personagens" code={`${members.length} PERSONAGENS`}>
       <div className="equipment-toolbar">
         <label>Pesquisar personagem<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nick do personagem" /></label>
         <div className="equipment-player-classes" role="group" aria-label="Classe do personagem"><span>Classe</span><div>{(['MELEE', 'RANGER', 'FORCE'] as const).map(value => <Button key={value} size="sm" variant="secondary" aria-pressed={playerClass === value} onClick={() => setPlayerClass(current => current === value ? '' : value)}>{value}</Button>)}</div></div>
@@ -317,22 +323,28 @@ export function EquipmentPage() {
         <p>{slotDescription(pendingTransfer.destination.slot)}: {pendingTransfer.destination.assignment ? `${itemLabel(pendingTransfer.destination.assignment)} será preservado no histórico.` : 'posição vazia'}</p>
         {transferMutation.error && <p role="alert">{transferMutation.error.message}</p>}</>}
     </ConfirmDialog>
-    {inspected && <Panel title={managing ? "Inspecionar personagem" : "Meu inventário"} code={`${inspected.slots.filter(s => s.assignment).length}/${SLOT_COUNT} INFORMADOS`}>
+    {inspected && <Panel className="equipment-workspace__inspection" aria-label={`Equipamentos de ${inspected.nickname}`} title={managing ? "Inspecionar personagem" : "Meu inventário"} code={`${inspected.slots.filter(s => s.assignment).length}/${SLOT_COUNT} INFORMADOS`}>
       <div className="equipment-page__heading"><h2 ref={inspectRef} tabIndex={-1}>{inspected.nickname} · {memberScore(inspected)}</h2>{managing && <Button variant="secondary" onClick={() => { setHistoryId(0); setEditor(null) }}>Fechar inspeção</Button>}</div>
+      {managing && <div className="equipment-inspection-summary">
+        {inspected.classImageUrl && inspected.className && <MemberClassIcon classImageUrl={inspected.classImageUrl} classLabel={inspected.className} size="sm" />}
+        <span>Lv. {inspected.level}{inspected.expPercent != null ? ` · ${inspected.expPercent.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% XP` : ''} · {inspected.className ?? 'Classe não informada'}</span>
+      </div>}
       {inspected.gearScore && <small title="Itens +0. Arma ×5 (somente a maior), armaduras ×1, acessórios ×3. Capa fora do cálculo.">Arma: {inspected.gearScore.weapon.toLocaleString('pt-BR')} · Armaduras: {inspected.gearScore.armor.toLocaleString('pt-BR')} · Acessórios: {inspected.gearScore.accessories.toLocaleString('pt-BR')}{inspected.gearScore.unscored > 0 && ` · ${inspected.gearScore.unscored} item(ns) sem pontuação confirmada`}</small>}
       {admin && <div className="equipment-actions">
         <Button size="sm" onClick={() => registerDelivery(inspected)}>Registrar entrega</Button>
+        {managing && <Button size="sm" variant="danger" aria-label={`Limpar todos os equipamentos de ${inspected.nickname}`} disabled={!inspected.slots.some(s => s.assignment) || slotMutation.isPending || !!failedEdit} onClick={() => removeItems(inspected)}>Limpar</Button>}
         <Button size="sm" variant="secondary" disabled={reviewAction.isPending || (!!inspectedReview && inspectedReview.status !== 'CONFIRMED')} onClick={() => reviewAction.mutate({ memberId: inspected.memberId, operationId: crypto.randomUUID() })}>Solicitar revisão · 72h</Button>
         {inspectedReview && <small>{inspectedReview.status === 'OVERDUE' ? 'Revisão em atraso' : inspectedReview.status === 'PENDING' ? 'Revisão pendente' : 'Revisado'} · {new Date(inspectedReview.dueAt).toLocaleString('pt-BR')}</small>}
       </div>}
       {admin && <div className="equipment-tabs" role="tablist" aria-label="Consulta do personagem" onKeyDown={e => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
         e.preventDefault()
-        const tabs = ['current', 'history', 'deliveries'] as const
-        const next = e.key === 'Home' ? 'current' : e.key === 'End' ? 'deliveries' : tabs[(tabs.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : 2)) % tabs.length]
+        const tabs = ['current', 'previous', 'history', 'deliveries'] as const
+        const next = e.key === 'Home' ? 'current' : e.key === 'End' ? 'deliveries' : tabs[(tabs.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
         setTab(next); document.getElementById(`equipment-${next}-tab`)?.focus()
       }}>
         <button id="equipment-current-tab" role="tab" tabIndex={tab === 'current' ? 0 : -1} aria-selected={tab === 'current'} aria-controls="equipment-current-panel" onClick={() => setTab('current')}>Equipamento atual</button>
+        <button id="equipment-previous-tab" role="tab" tabIndex={tab === 'previous' ? 0 : -1} aria-selected={tab === 'previous'} aria-controls="equipment-previous-panel" onClick={() => { setTab('previous'); setEditor(null) }}>Itens anteriores{!historyLoading && !historyError ? ` (${previousItems.length})` : ''}</button>
         <button id="equipment-history-tab" role="tab" tabIndex={tab === 'history' ? 0 : -1} aria-selected={tab === 'history'} aria-controls="equipment-history-panel" onClick={() => setTab('history')}>Histórico</button>
         <button id="equipment-deliveries-tab" role="tab" tabIndex={tab === 'deliveries' ? 0 : -1} aria-selected={tab === 'deliveries'} aria-controls="equipment-deliveries-panel" onClick={() => setTab('deliveries')}>Itens entregues</button>
       </div>}
@@ -359,6 +371,13 @@ export function EquipmentPage() {
             {canEdit && <Button onClick={() => openEditor(selectedSlot, 'CREATE')}>Registrar em {SLOT_LABELS[selectedSlot]}</Button>}
           </section>}
         </div>
+      </div> : tab === 'previous' ? <div id="equipment-previous-panel" role="tabpanel" aria-labelledby="equipment-previous-tab">
+        {historyLoading && <p role="status">Carregando itens anteriores…</p>}
+        {historyError && <p role="alert">{historyError.message}<Button size="sm" onClick={() => void refetchHistory()}>Tentar novamente</Button></p>}
+        {!historyLoading && !historyError && <PreviousEquipment key={inspected.memberId} member={inspected} items={previousItems} members={members} busy={transferMutation.isPending}
+          onDragStart={source => { closeTooltip(); dragSource.current = source; setDragged(source) }}
+          onDragEnd={() => { dragSource.current = null; setDragged(null) }}
+          onTransfer={requestTransfer} onDiscard={record => openEditor(record.slot, 'CANCEL', record)} />}
       </div> : <div id={`equipment-${tab}-panel`} role="tabpanel" aria-labelledby={`equipment-${tab}-tab`}>
         {tab === 'deliveries' && <section aria-label="Totais recebidos"><h3>Totais recebidos</h3>
           {deliveryTotals.length ? <ul className="equipment-delivery-totals">{deliveryTotals.map(total => {
@@ -385,10 +404,48 @@ export function EquipmentPage() {
       </div>}
       {(tab === 'current' || !admin) && <EquipmentRelics key={inspected.memberId} memberId={inspected.memberId} editable={admin} />}
     </Panel>}
+    </div>
     {tooltip && tooltipItem && createPortal(<div id="equipment-item-tooltip" role="tooltip" className="equipment-tooltip" style={{ left: tooltip.left, top: tooltip.top, bottom: tooltip.bottom }} onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
       <EquipmentIcon item={tooltipItem} size={48} /><div style={{ color: gradeColor(tooltipItem.grade) }}><strong>{tooltipItem.name}</strong><div className="equipment-tooltip__meta">Lv. {tooltipItem.level} · {gradeLabel(tooltipItem.grade)} · {itemScore(tooltipItem)}</div><p>{effectLabel(tooltipItem.effect)}</p></div>
     </div>, document.body)}
   </div>
+}
+
+function PreviousEquipment({ member, items, members, busy, onDragStart, onDragEnd, onTransfer, onDiscard }: {
+  member: MemberEquipment; items: EquipmentAssignment[]; members: MemberEquipment[]; busy: boolean
+  onDragStart: (source: Editor) => void; onDragEnd: () => void
+  onTransfer: (source: Editor, recipient: MemberEquipment, slot?: EquipmentSlot) => void
+  onDiscard: (record: EquipmentAssignment) => void
+}) {
+  const [sendingId, setSendingId] = useState<number | null>(null)
+  const [recipientId, setRecipientId] = useState('')
+  const [targetSlot, setTargetSlot] = useState<EquipmentSlot | ''>('')
+  const sourceFor = (record: EquipmentAssignment): Editor => ({ memberId: member.memberId, nickname: member.nickname,
+    position: { slot: record.slot, version: member.slots.find(s => s.slot === record.slot)?.version ?? 0, assignment: record }, action: 'TRANSFER', original: record })
+  return <section aria-label="Disponíveis para repasse">
+    <h3>Disponíveis para repasse</h3>
+    {!items.length && <p>Nenhum item anterior disponível para repasse.</p>}
+    <ul className="equipment-previous">{items.map(record => <li key={record.id}>
+      <div className="equipment-previous__item">
+        <button type="button" className="equipment-previous__drag" draggable={!busy} disabled={busy} aria-label={`Arrastar ou repassar ${record.name} · registro ${record.id}`}
+          onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', record.name); onDragStart(sourceFor(record)) }} onDragEnd={onDragEnd}
+          onClick={() => { setSendingId(record.id); setTargetSlot(record.slot) }}>
+          <span aria-hidden="true">⠿</span><EquipmentIcon item={record} size={40} />
+          <span style={{ color: gradeColor(record.grade) }}><strong>{record.name}</strong><span>Lv. {record.level} · {gradeLabel(record.grade)}</span><span>{effectLabel(record.effect)}</span></span>
+        </button>
+        <Button size="sm" variant="danger" disabled={busy} aria-label={`Descartar ${record.name} · registro ${record.id}`} onClick={() => onDiscard(record)}>×</Button>
+      </div>
+      <small>{slotDescription(record.slot)} · Registrado em {new Date(record.createdAt).toLocaleString('pt-BR')}</small>
+      {sendingId === record.id && <form className="equipment-previous__send" aria-label={`Repassar ${record.name}`} onSubmit={e => {
+        e.preventDefault(); const recipient = members.find(m => String(m.memberId) === recipientId)
+        if (recipient) onTransfer(sourceFor(record), recipient, targetSlot || record.slot)
+      }}>
+        <label>Destinatário<select required value={recipientId} disabled={busy} onChange={e => setRecipientId(e.target.value)}><option value="">Selecione o player</option>{members.filter(m => m.memberId !== member.memberId).map(m => <option key={m.memberId} value={m.memberId}>{m.nickname}</option>)}</select></label>
+        {['RING', 'AMULET'].includes(record.category) && <label>Posição<select value={targetSlot} disabled={busy} onChange={e => setTargetSlot(e.target.value as EquipmentSlot)}>{EQUIPMENT_GROUPS.flatMap(g => g.slots).filter(slot => SLOT_CATEGORY[slot] === record.category).map(slot => <option key={slot} value={slot}>{slotDescription(slot)}</option>)}</select></label>}
+        <Button type="submit" size="sm" disabled={busy || !recipientId}>Enviar</Button>
+      </form>}
+    </li>)}</ul>
+  </section>
 }
 
 type EquipmentEditorProps = { editor: Editor; members: MemberEquipment[]; onClose: () => void; onSaved: () => void }

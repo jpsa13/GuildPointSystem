@@ -81,6 +81,9 @@ public class EquipmentRepository {
     public Assignment assignment(long id) {
         return jdbc.query(ASSIGNMENTS+" WHERE a.id=?",assignmentMapper(),id).stream().findFirst().orElse(null);
     }
+    public boolean isEquipped(long id) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM member_equipment_slot WHERE assignment_id=?)",Boolean.class,id));
+    }
     public List<MemberEquipment> board() {
         var assigned = jdbc.query(ASSIGNMENTS+" JOIN member_equipment_slot s ON s.assignment_id=a.id",assignmentMapper());
         var byId = new HashMap<Long,Assignment>();
