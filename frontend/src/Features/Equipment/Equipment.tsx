@@ -5,7 +5,7 @@ import { useEquipment, useEquipmentHistory, useEquipmentCatalog, useEquipmentOpe
 import { EQUIPMENT_GROUPS, SLOT_CATEGORY, type CatalogFilters, type CurrentSlot, type EquipmentAssignment, type EquipmentEffect, type EquipmentItem, type EquipmentOperation, type EquipmentSlot, type EquipmentSlotEdit, type EquipmentSlotEditResult, type MemberEquipment } from '@/Domain/Equipment/types'
 import { useMember } from '@/Domain/Member/hooks/useMembers'
 import { isGuildDelivery, summarizeDeliveries } from '@/Domain/Equipment/utils/equipmentDeliveries'
-import { armorClassForCharacter, weaponClassForCharacter } from '@/Domain/Equipment/utils/equipmentClass'
+import { armorClassForCharacter, playerClassForEquipmentList, weaponClassForCharacter } from '@/Domain/Equipment/utils/equipmentClass'
 import { gradeLabel as catalogGradeLabel, gradeColor } from '@/Domain/Catalog/utils/catalogUtils'
 import { Panel } from '@/Shared/ui/components/Panel/Panel'
 import { Button } from '@/Shared/ui/components/Button/Button'
@@ -173,7 +173,7 @@ export function EquipmentPage() {
   }, [historyId])
   const canEdit = admin || inspected?.memberId === user?.memberId
   const filteringSelection = onlySelected && selectedMembers.size > 0
-  const filtered = members.filter(m => m.nickname.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) && (!playerClass || armorClassForCharacter(m.className ?? undefined) === playerClass) && (!filled || m.slots.some(s => s.assignment)) && (!filteringSelection || selectedMembers.has(m.memberId)))
+  const filtered = members.filter(m => m.nickname.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) && (!playerClass || playerClassForEquipmentList(m.className ?? undefined) === playerClass) && (!filled || m.slots.some(s => s.assignment)) && (!filteringSelection || selectedMembers.has(m.memberId)))
     .sort((a, b) => (sort === 'gs-asc' ? (a.gearScore?.total ?? 0) - (b.gearScore?.total ?? 0) : sort === 'gs-desc' ? (b.gearScore?.total ?? 0) - (a.gearScore?.total ?? 0) : sort === 'name-desc' ? b.nickname.localeCompare(a.nickname, 'pt-BR', { sensitivity: 'base' }) : sort === 'level-asc' ? a.level - b.level : sort === 'level-desc' ? b.level - a.level : 0) || a.nickname.localeCompare(b.nickname, 'pt-BR', { sensitivity: 'base' }) || a.memberId - b.memberId)
   const acceptsDrop = (memberId: number, slot?: EquipmentSlot, source = dragged) => !!(admin && source && source.memberId !== memberId && !transferMutation.isPending && (!slot || slot === source.position.slot ||
     (['RING', 'AMULET'].includes(SLOT_CATEGORY[source.position.slot]) && SLOT_CATEGORY[slot] === SLOT_CATEGORY[source.position.slot])))

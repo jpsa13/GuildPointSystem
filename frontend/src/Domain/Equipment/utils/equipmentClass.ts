@@ -13,6 +13,11 @@ export function armorClassForCharacter(className?: string) {
   return ARMOR_CLASSES[className?.trim().toLowerCase() ?? '']
 }
 
+export function playerClassForEquipmentList(className?: string) {
+  return ['artist', 'specialist', 'spec', 'specs', 'especialista', 'especialistas', 'mental smith', 'armor rider', 'scientist', 'battle leader']
+    .includes(className?.trim().toLowerCase() ?? '') ? 'RANGER' as const : armorClassForCharacter(className)
+}
+
 export function weaponClassForCharacter(className?: string) {
   return ['gunner', 'striker', 'dementer'].includes(className?.trim().toLowerCase() ?? '') ? 'LAUNCHER' as const : armorClassForCharacter(className)
 }

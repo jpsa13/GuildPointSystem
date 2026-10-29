@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { armorClassForCharacter, weaponClassForCharacter } from './equipmentClass'
+import { armorClassForCharacter, playerClassForEquipmentList, weaponClassForCharacter } from './equipmentClass'
 
 describe('armorClassForCharacter', () => {
   it.each(['Gunner', 'Striker', 'Dementer'])('uses launcher weapons but keeps armor unfiltered for %s', name => {
@@ -12,5 +12,20 @@ describe('armorClassForCharacter', () => {
   it('normalizes names and leaves specialists or missing classes unfiltered', () => {
     expect(armorClassForCharacter('  BLACK KNIGHT ')).toBe('MELEE')
     for (const name of [undefined, '', 'Artist', 'Mental Smith', 'Armor Rider', 'Scientist', 'Battle Leader', 'Striker', 'Dementer']) expect(armorClassForCharacter(name)).toBeUndefined()
+  })
+})
+
+describe('playerClassForEquipmentList', () => {
+  it.each(['Artist', 'Specialist', 'Spec', 'Specs', 'Especialista', 'Especialistas', 'Mental Smith', 'Armor Rider', 'Scientist', 'Battle Leader', '  ARTIST  '])('includes %s under ranger in the player list', name => {
+    expect(playerClassForEquipmentList(name)).toBe('RANGER')
+    expect(armorClassForCharacter(name)).toBeUndefined()
+    expect(weaponClassForCharacter(name)).toBeUndefined()
+  })
+  it('keeps the other groups and unknown classes unchanged', () => {
+    expect(playerClassForEquipmentList('Warrior')).toBe('MELEE')
+    expect(playerClassForEquipmentList('Adventurer')).toBe('RANGER')
+    expect(playerClassForEquipmentList('Warlock')).toBe('FORCE')
+    expect(playerClassForEquipmentList(undefined)).toBeUndefined()
+    expect(playerClassForEquipmentList('Unknown')).toBeUndefined()
   })
 })
