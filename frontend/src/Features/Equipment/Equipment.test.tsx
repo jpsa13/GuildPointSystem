@@ -1,4 +1,4 @@
-import { fireEvent, render as rawRender, screen, waitFor, cleanup, within } from '@testing-library/react'
+import { act, fireEvent, render as rawRender, screen, waitFor, cleanup, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EquipmentPage } from './Equipment'
 import { EQUIPMENT_GROUPS, type CatalogFilters, type EquipmentAssignment, type EquipmentSlot } from '@/Domain/Equipment/types'
@@ -149,15 +149,15 @@ describe('Equipamentos', () => {
   it('removes one item without opening its editor, then supports keyboard undo and redo', async () => {
     state.current = true
     render(<EquipmentPage />)
-    fireEvent.click(screen.getByRole('button', { name: 'Remover Arma à esquerda de Player local' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Remover Arma à esquerda de Player local' })) })
     await waitFor(() => expect(screen.getByRole('button', { name: 'Desfazer' })).toBeEnabled())
     expect(state.slotEdit.mock.calls[0][0]).toMatchObject({ memberId: 1, slots: [{ slot: 'Weapon', expectedVersion: 1 }] })
     expect(screen.queryByRole('heading', { name: 'Registrar equipamento · Arma' })).not.toBeInTheDocument()
     const removed = state.slotEdit.mock.calls[0][0]
-    fireEvent.keyDown(window, { key: 'z', ctrlKey: true })
+    await act(async () => { fireEvent.keyDown(window, { key: 'z', ctrlKey: true }) })
     await waitFor(() => expect(screen.getByRole('button', { name: 'Refazer' })).toBeEnabled())
     expect(state.slotEdit.mock.calls[1][0]).toMatchObject({ reversesOperationId: removed.operationId, slots: [{ slot: 'Weapon', expectedVersion: 2 }] })
-    fireEvent.keyDown(window, { key: 'z', ctrlKey: true, shiftKey: true })
+    await act(async () => { fireEvent.keyDown(window, { key: 'z', ctrlKey: true, shiftKey: true }) })
     await waitFor(() => expect(state.slotEdit).toHaveBeenCalledTimes(3))
     expect(state.slotEdit.mock.calls[2][0]).toMatchObject({ reversesOperationId: state.slotEdit.mock.calls[1][0].operationId, slots: [{ slot: 'Weapon', expectedVersion: 3 }] })
   })
